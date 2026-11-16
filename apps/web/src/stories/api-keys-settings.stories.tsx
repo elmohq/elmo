@@ -213,7 +213,9 @@ export const KeyJustCreated: Story = {
 		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
 		await userEvent.click(await dialog.findByRole("button", { name: "Create" }));
 		await expect(await canvas.findByText("Key Created")).toBeVisible();
-		await expect(await canvas.findByText("elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8")).toBeVisible();
+		await expect(await canvas.findByRole("textbox", { name: "API Key" })).toHaveValue(
+			"elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8",
+		);
 	},
 };
 

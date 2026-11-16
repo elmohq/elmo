@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { organizationBillingSchema } from "@/lib/api/schemas/organizations";
 import { requireOrganizationInScope } from "@/lib/api/scope";
 import { OrganizationNotFoundError, organizationBilling } from "@/server/billing-core";
 
@@ -7,6 +8,7 @@ export const Route = createFileRoute("/api/v1/organizations/$organizationId/bill
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: organizationBillingSchema,
 				scopes: ["read"],
 				mapError: (err) =>
 					err instanceof OrganizationNotFoundError ? new ApiError(404, "Not Found", err.message) : undefined,

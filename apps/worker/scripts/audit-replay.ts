@@ -11,8 +11,8 @@ import { normalizeUrl } from "@workspace/lib/citations/domain-categories";
  * often that will happen and where replay would change history instead.
  *
  * Mentions are re-judged the way the worker would, with Jev: that's a paid call per run (very
- * roughly $0.0002), so set TYPESAFE_API_KEY, keep --limit small, or pass --skip-mentions to audit
- * extraction only.
+ * roughly $0.0002), so set TYPESAFE_API_KEY (or OPENROUTER_API_KEY), keep --limit small, or pass
+ * --skip-mentions to audit extraction only.
  *
  * Usage (never loads .env; point it at a database you mean to read):
  *   cd apps/worker
@@ -24,7 +24,7 @@ import { brands, citations, competitors, promptRuns } from "@workspace/lib/db/sc
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { extractorFor, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gt, gte, inArray } from "drizzle-orm";
-import { mentionAnalyzer } from "../src/mention-judge/analyze";
+import { mentionAnalyzer } from "../src/mention-judge";
 
 if (!process.env.DATABASE_URL) {
 	console.error("Set DATABASE_URL explicitly; this script never reads .env.");

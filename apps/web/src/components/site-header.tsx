@@ -11,6 +11,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { cn } from "@workspace/ui/lib/utils";
 import { Fragment } from "react";
+import { DemoSignupCta } from "@/components/demo-signup-cta";
 import { SupportChatButton } from "@/components/support-chat-button";
 import { type Crumb, useBreadcrumbs } from "@/lib/breadcrumbs";
 
@@ -65,7 +66,8 @@ export function SiteHeader() {
 						})}
 					</BreadcrumbList>
 				</Breadcrumb>
-				<div className="ml-auto flex items-center">
+				<div className="ml-auto flex items-center gap-2">
+					<DemoSignupCta />
 					<SupportChatButton />
 				</div>
 			</div>

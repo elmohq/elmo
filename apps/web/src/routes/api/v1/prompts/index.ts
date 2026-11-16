@@ -3,46 +3,50 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { countryCodeSchema, parseCountryFilter } from "@workspace/config/countries";
-import { languageCodeSchema, parseLanguageFilter } from "@workspace/config/languages";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
-import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { promptWriteError } from "@/lib/api/prompt-errors";
+import { clampedCount, DEFAULT_LIMIT, offsetOf, page, paginationOf } from "@/lib/api/query";
+import { promptListSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
-import { PromptMarketTakenError } from "@/server/prompt-save";
-import { createPrompts, listPrompts } from "@/server/prompts-core";
+import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-core";
+
+const listPromptsQuery = z.object({
+	brandId: z.string().optional(),
+	page,
+	limit: clampedCount(1000, DEFAULT_LIMIT),
+	// Anything but `true` or `false` filters nothing, rather than being refused.
+	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
+	tags: z.string().optional(),
+	groupId: z.uuid().optional(),
+	q: z.string().optional(),
+});
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
-	country: countryCodeSchema.optional(),
-	language: languageCodeSchema.optional(),
-	groupId: z.guid().optional(),
+	groupId: z.uuid().optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: promptListSchema,
+				query: listPromptsQuery,
 				scopes: ["read"],
-				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams, 1000);
-
-					const enabled = searchParams.get("enabled");
+				handle: async ({ query, auth }) => {
 					const { data, total } = await listPrompts({
 						scope: await brandScopeCondition(auth, prompts.brandId),
-						brandId: searchParams.get("brandId") ?? undefined,
-						enabled: enabled === "true" ? true : enabled === "false" ? false : undefined,
-						tags: (searchParams.get("tags") ?? "").split(","),
-						countries: parseCountryFilter(searchParams.get("countries")),
-						languages: parseLanguageFilter(searchParams.get("languages")),
-						groupId: searchParams.get("groupId") ?? undefined,
-						q: searchParams.get("q") ?? undefined,
-						limit,
-						offset,
+						brandId: query.brandId,
+						enabled: query.enabled,
+						tags: (query.tags ?? "").split(","),
+						groupId: query.groupId,
+						q: query.q,
+						limit: query.limit,
+						offset: offsetOf(query),
 					});
 
 					// Both keys hold the same array while callers move to `data`, which
@@ -50,33 +54,23 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					return {
 						data,
 						prompts: data,
-						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+						pagination: paginationOf(query, total),
 					};
 				},
 			}),
 
 			POST: createApiHandler({
+				response: promptSchema,
 				body: createPromptBody,
 				status: 201,
 				scopes: ["write"],
-				mapError: (err) => {
-					return err instanceof PromptMarketTakenError ? new ApiError(409, "Conflict", err.message) : undefined;
-				},
+				mapError: promptWriteError,
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [
-							{
-								value: body.value,
-								tags: body.tags,
-								country: body.country,
-								language: body.language,
-								groupId: body.groupId,
-								enabled: true,
-							},
-						],
+						prompts: [{ value: body.value, tags: body.tags, groupId: body.groupId, enabled: true }],
 					});
-					return created;
+					return toPromptSummary(created);
 				},
 			}),
 		}),

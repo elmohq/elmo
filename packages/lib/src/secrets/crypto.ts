@@ -103,11 +103,10 @@ function decodeKey(raw: string, source: string): Buffer {
 	return key;
 }
 
-/** Resolve the keyring from the environment: ELMO_ENCRYPTION_KEY encrypts, and
- *  the comma-separated ELMO_ENCRYPTION_KEY_OLD keys stay readable so a rotation
- *  doesn't strand existing rows. Returns null when no key is set at all
- *  (storage disabled, environment credentials unaffected); throws
- *  EncryptionKeyError when a key is set but unusable. */
+/**
+ * ELMO_ENCRYPTION_KEY_OLD keys stay readable so a rotation doesn't strand rows.
+ * Null when no key is set, which disables storage; throws when a key is unusable.
+ */
 export function getKeyring(env: NodeJS.ProcessEnv = process.env): Keyring | null {
 	const retired = (env[RETIRED_KEYS_ENV] ?? "")
 		.split(",")

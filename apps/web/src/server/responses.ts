@@ -9,7 +9,6 @@ import {
 	type ResponseMatchRow,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
-import { promptScopeFields } from "@/lib/prompt-scope";
 import { getMentionTotals } from "@/lib/rollup-read";
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -23,7 +22,7 @@ const searchScopeSchema = z.object({
 	query: z.string().max(500).optional(),
 	lookback: lookbackSchema.default("1m"),
 	model: z.string().optional(),
-	...promptScopeFields,
+	tags: z.string().optional(),
 	/** Comma-joined prompt IDs; absent means every prompt. */
 	prompts: z.string().optional(),
 	timezone: z.string().default("UTC"),
@@ -33,13 +32,9 @@ async function resolveSearch(data: z.infer<typeof searchScopeSchema>) {
 	await requireBrandSession(data.brandId);
 	const query = data.query?.trim() || undefined;
 	const picked = data.prompts ? new Set(data.prompts.split(",")) : null;
-	const prompts = (
-		await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
-			countries: data.countries,
-			languages: data.languages,
-		})
-	).filter((prompt) => !picked || picked.has(prompt.id));
+	const prompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags })).filter(
+		(prompt) => !picked || picked.has(prompt.id),
+	);
 	const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 	const scope: ResponseSearchScope = {
 		brandId: data.brandId,

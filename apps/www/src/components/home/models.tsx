@@ -2,18 +2,19 @@ import { Plus } from "lucide-react";
 import { EngineIcon } from "./engines";
 import { SectionHeading } from "./ui";
 
-const ENGINES = [
+export const TRACKED_ENGINES = [
 	{ name: "ChatGPT", iconId: "openai" },
 	{ name: "Claude", iconId: "anthropic" },
 	{ name: "Gemini", iconId: "gemini" },
 	{ name: "Perplexity", iconId: "perplexity" },
 	{ name: "AI Overviews", iconId: "google" },
 	{ name: "AI Mode", iconId: "google" },
-	{ name: "Copilot", iconId: "microsoft" },
+	{ name: "Bing AI Mode", iconId: "microsoft" },
 	{ name: "Grok", iconId: "x" },
 	{ name: "DeepSeek", iconId: "deepseek" },
 	{ name: "Mistral", iconId: "mistral" },
 	{ name: "Qwen", iconId: "qwen" },
+	{ name: "Kimi", iconId: "moonshotai" },
 ];
 
 function Tile({ name, iconId }: { name: string; iconId: string }) {
@@ -39,14 +40,14 @@ export function ModelCoverage() {
 				</div>
 				<div className="lg:col-span-7">
 					<ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-label="AI engines Elmo tracks">
-						{ENGINES.map((m) => (
+						{TRACKED_ENGINES.map((m) => (
 							<Tile key={m.name} {...m} />
 						))}
-						<li className="flex h-14 items-center gap-2 rounded-xl border border-dashed border-zinc-300 px-3 text-sm font-medium text-zinc-700 sm:px-4 sm:text-[15px]">
+						<li className="col-span-full flex h-14 items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 px-4 text-[15px] font-medium text-zinc-700">
 							<span className="inline-flex size-5 shrink-0 items-center justify-center text-zinc-500">
 								<Plus className="size-[18px]" strokeWidth={2.25} aria-hidden="true" />
 							</span>
-							<span className="whitespace-nowrap">OpenRouter LLMs</span>
+							<span className="whitespace-nowrap">All OpenRouter LLMs</span>
 						</li>
 					</ul>
 				</div>

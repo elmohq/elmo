@@ -1,10 +1,4 @@
-/**
- * Transactional email templates for cloud auth flows.
- *
- * Pure template functions — no I/O — so they're unit-testable without
- * mocking Resend. All interpolated user-controlled strings (inviter name,
- * organization name) are HTML-escaped before landing in markup.
- */
+/** Every user-controlled string (inviter name, organization name) is HTML-escaped before it lands in markup. */
 
 export interface EmailContent {
 	subject: string;

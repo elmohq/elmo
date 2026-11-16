@@ -33,6 +33,15 @@ describe("cloud platform menu", () => {
 		}
 	});
 
+	it("names the exact model version behind every API pick and premium model", () => {
+		const { pickGroups, premium } = planPlatformBreakdown(PLANS.business);
+		const versioned = [...(pickGroups.find((group) => group.id === "api")?.models ?? []), ...(premium?.models ?? [])];
+		expect(versioned.length).toBeGreaterThan(0);
+		for (const member of versioned) {
+			expect(member.tooltip, member.model).toBeTruthy();
+		}
+	});
+
 	it("keeps a model too dear to pick out of the pick menu", () => {
 		// Grok's own answers cost several times a scrape per run, so it is sold as
 		// a metered premium call rather than one of four picks sampled 4x/day.
@@ -73,9 +82,9 @@ describe("planPlatformBreakdown", () => {
 
 	it("separates scraped searches from model APIs", () => {
 		const groups = groupsById("business");
-		expect(groups.get("scraped")?.models.map((m) => m.model)).toContain("perplexity");
+		expect(groups.get("scraped")?.models.map((m) => m.model)).toContain("gemini");
 		expect(groups.get("scraped")?.models.map((m) => m.model)).not.toContain("claude");
-		expect(groups.get("api")?.models.map((m) => m.model)).not.toContain("perplexity");
+		expect(groups.get("api")?.models.map((m) => m.model)).not.toContain("gemini");
 	});
 
 	it("names every platform it lists", () => {

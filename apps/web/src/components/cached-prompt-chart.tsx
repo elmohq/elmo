@@ -2,6 +2,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
@@ -21,21 +22,9 @@ function PlaceholderBars({ heights }: { heights: readonly number[] }) {
 	);
 }
 
-function PromptTitle({ name, highlight, market }: { name: string; highlight: string; market?: PromptMarketLabel }) {
+function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 	const term = highlight.trim();
-	const countryLabel = market && (
-		<span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground" title={market.title}>
-			{market.label}
-			{market.variants > 1 && ` · ${market.variants} markets`}
-		</span>
-	);
-	if (!term)
-		return (
-			<CardTitle className="text-sm">
-				{name}
-				{countryLabel}
-			</CardTitle>
-		);
+	if (!term) return <CardTitle className="text-sm">{name}</CardTitle>;
 
 	const pattern = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
 	const segments = name.split(pattern).map((part, index) => ({
@@ -48,15 +37,55 @@ function PromptTitle({ name, highlight, market }: { name: string; highlight: str
 		<CardTitle className="text-sm">
 			{segments.map((segment) =>
 				segment.isMatch ? (
-					<mark key={segment.key} className="bg-yellow-200 dark:bg-yellow-800 rounded-sm">
+					<mark key={segment.key} className="bg-yellow-200 rounded-sm">
 						{segment.part}
 					</mark>
 				) : (
 					<Fragment key={segment.key}>{segment.part}</Fragment>
 				),
 			)}
-			{countryLabel}
 		</CardTitle>
+	);
+}
+
+/** Null for a prompt that is the only wording of its question. */
+function VariantBadge({ variantOf, variantCount }: { variantOf: string | null; variantCount: number }) {
+	if (variantOf) {
+		return (
+			<Tooltip>
+				<TooltipTrigger render={<Badge variant="outline" className="shrink-0 font-normal text-muted-foreground" />}>
+					Variant
+				</TooltipTrigger>
+				<TooltipContent>
+					<p className="max-w-xs">Another wording of “{variantOf}”, tracked on its own.</p>
+				</TooltipContent>
+			</Tooltip>
+		);
+	}
+	if (variantCount === 0) return null;
+	return (
+		<Badge variant="outline" className="shrink-0 font-normal text-muted-foreground">
+			{variantCount === 1 ? "1 Variant" : `${variantCount} Variants`}
+		</Badge>
+	);
+}
+
+function PromptHeading({
+	name,
+	highlight,
+	variantOf,
+	variantCount,
+}: {
+	name: string;
+	highlight: string;
+	variantOf: string | null;
+	variantCount: number;
+}) {
+	return (
+		<div className="flex min-w-0 items-center gap-2">
+			<PromptTitle name={name} highlight={highlight} />
+			<VariantBadge variantOf={variantOf} variantCount={variantCount} />
+		</div>
 	);
 }
 
@@ -92,20 +121,9 @@ export function PromptChartSkeleton() {
 	);
 }
 
-export interface PromptMarketLabel {
-	/** "GB · EN" */
-	label: string;
-	/** Full names, for the hover. */
-	title: string;
-	/** Members of the prompt's group, itself included. */
-	variants: number;
-}
-
 export interface CachedPromptChartProps {
 	promptId: string;
 	promptName: string;
-	/** Shown beside the title when the list mixes countries or languages. */
-	market?: PromptMarketLabel;
 	brandId: string;
 	lookback: LookbackPeriod;
 	/** Current model filter from the URL. "all" = no filter. */
@@ -116,6 +134,10 @@ export interface CachedPromptChartProps {
 	searchHighlight?: string;
 	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
+	/** The prompt this one is another wording of. */
+	variantOf?: string | null;
+	/** Other tracked prompts asking the same question. */
+	variantCount?: number;
 }
 
 // Memoized: when a sibling filter / react-query state change re-renders
@@ -124,13 +146,14 @@ export interface CachedPromptChartProps {
 export const CachedPromptChart = memo(function CachedPromptChart({
 	promptId,
 	promptName,
-	market,
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
 	availableModels,
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
+	variantOf = null,
+	variantCount = 0,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
 
@@ -139,7 +162,6 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		return chartContext.getChartDataForPrompt(promptId);
 	}, [chartContext, promptId]);
 
-	// Setup export functionality
 	const fileName = chartContext?.brand
 		? `${chartContext.brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
 		: `chart-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
@@ -164,6 +186,10 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		});
 	}, [handleExport, promptName, lastBrandVisibility, data, lookback, brand, competitors]);
 
+	const heading = (
+		<PromptHeading name={promptName} highlight={searchHighlight} variantOf={variantOf} variantCount={variantCount} />
+	);
+
 	if (!chartContext || chartContext.isLoading || !chartData) {
 		return <PromptChartSkeleton />;
 	}
@@ -174,9 +200,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} market={market} />
-				</CardHeader>
+				<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 				<Separator className="py-0 my-0" />
 				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
 				   keeping overall card height consistent with data-filled cards for virtualization */}
@@ -209,15 +233,12 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		);
 	}
 
-	// No visibility data state
 	if (!hasVisibilityData) {
 		return (
 			<>
 				{exportPortal}
 				<Card className="py-3 gap-3">
-					<CardHeader className="flex justify-between items-center px-3">
-						<PromptTitle name={promptName} highlight={searchHighlight} market={market} />
-					</CardHeader>
+					<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 					<Separator className="py-0 my-0" />
 					<CardContent className="px-3">
 						<div className="h-[250px] flex items-center justify-center">
@@ -247,13 +268,12 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		);
 	}
 
-	// Success state with chart
 	return (
 		<>
 			{exportPortal}
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} market={market} />
+					{heading}
 					{lastBrandVisibility !== null && (
 						<Badge
 							variant={visibilityBadgeProps(lastBrandVisibility).variant}

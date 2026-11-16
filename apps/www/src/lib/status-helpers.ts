@@ -1,3 +1,6 @@
+import { getModelMeta } from "@workspace/config/models";
+import { RETIRED_STATUS_TARGETS } from "@workspace/config/scrape-targets";
+
 export interface StatusEntry {
 	ts: string;
 	status: "pass" | "fail";
@@ -30,20 +33,7 @@ export function parseTarget(target: string) {
 }
 
 export function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		kimi: "Kimi",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
+	return getModelMeta(model).label;
 }
 
 export function formatProvider(provider: string) {
@@ -103,10 +93,10 @@ export function providerCategory(provider: string, model: string, version?: stri
 // scrape a live web surface.
 export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
-// Models that only exist as a scraped web surface. Google's AI Mode and AI
-// Overview are Search features and Copilot is a consumer assistant — none expose
-// an inference endpoint, so a Model API can't reach them at all.
-const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
+// Models that only exist as a scraped web surface. Google AI Mode, AI Overview,
+// and Bing AI Mode are search features and Copilot is a consumer assistant —
+// none expose an inference endpoint, so a Model API can't reach them at all.
+const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot", "bing-ai-mode"]);
 
 // Which models each provider category has a collector for. A model missing from
 // a category's set can't be reached through it — a hard capability gap, not
@@ -114,11 +104,11 @@ const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "cop
 // @workspace/lib. Categories absent here (direct-api, openrouter) reach any
 // model that exposes an inference endpoint.
 const PROVIDER_MODELS: Record<string, Set<string>> = {
-	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
-	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"]),
+	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
+	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview"]),
+	searchapi: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"]),
+	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"]),
 	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
 	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
 	// no Perplexity scraper on either.
@@ -126,6 +116,48 @@ const PROVIDER_MODELS: Record<string, Set<string>> = {
 	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
 	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
+
+// The model APIs that still serve these surfaces keep reporting as usual.
+const RETIRED_SURFACES: Record<string, string> = {
+	copilot:
+		"Microsoft Copilot now requires a sign-in, so scrapers can no longer reach it. Elmo tracks Bing AI Mode, which still answers signed-out visitors, instead.",
+	perplexity:
+		"Perplexity now requires a sign-in, so scrapers can no longer reach it. Elmo tracks Perplexity through its Sonar API instead.",
+};
+
+/** Why a model's scraped surface is no longer tracked, if it isn't. */
+export function retiredSurfaceReason(model: string): string | undefined {
+	return RETIRED_SURFACES[model];
+}
+
+export interface RetiredNoticeText {
+	kind: "walled" | "moved";
+	label: string;
+	reason: string;
+}
+
+// SearchApi's Copilot engine never read the Copilot app, so its row wasn't walled
+// off: it moved to the Bing AI Mode row under that model's name.
+const RETIRED_TARGET_NOTICES: Record<string, RetiredNoticeText> = {
+	"copilot:searchapi:online": {
+		kind: "moved",
+		label: "Moved.",
+		reason:
+			"SearchApi's Copilot engine always returned Bing AI Mode, not the Copilot app. Elmo now tracks it as Bing AI Mode.",
+	},
+};
+
+export function retiredTargetNotice(target: string): RetiredNoticeText | undefined {
+	if (!isRetiredTarget(target)) return undefined;
+	const override = RETIRED_TARGET_NOTICES[target];
+	if (override) return override;
+	const reason = retiredSurfaceReason(parseTarget(target).model);
+	return reason ? { kind: "walled", label: "Login-walled.", reason } : undefined;
+}
+
+export function isRetiredTarget(target: string): boolean {
+	return RETIRED_STATUS_TARGETS.includes(target);
+}
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
 
@@ -353,6 +385,8 @@ export interface StatusMatrix {
 	availability: (model: string, provider: string) => CellAvailability;
 	rowTargets: (model: string) => TargetStatus[];
 	colTargets: (provider: string) => TargetStatus[];
+	/** Every target except the retired ones, for the overall health cell. */
+	liveTargets: TargetStatus[];
 }
 
 // A model (rows) by provider-category (columns) grid of uptime, with a `down`
@@ -360,12 +394,15 @@ export interface StatusMatrix {
 // return null so the grid can render a blank. Each cell carries the targets
 // behind it, and rows and columns expose theirs, so the aggregate health cells
 // and every tooltip re-derive their numbers from one grouping.
-export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
-	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort((a, b) =>
+// Retired targets keep their rows and columns but stay out of every rate, so a
+// login wall doesn't read as a provider outage.
+export function buildStatusMatrix(allData: TargetStatus[]): StatusMatrix {
+	const data = allData.filter((d) => !isRetiredTarget(d.target));
+	const models = [...new Set(allData.map((d) => parseTarget(d.target).model))].sort((a, b) =>
 		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => {
+		allData.some((d) => {
 			const { model, provider, version } = parseTarget(d.target);
 			return providerCategory(provider, model, version) === c;
 		}),
@@ -406,5 +443,6 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 		},
 		rowTargets: (model) => byModel.get(model) ?? [],
 		colTargets: (provider) => byProvider.get(provider) ?? [],
+		liveTargets: data,
 	};
 }

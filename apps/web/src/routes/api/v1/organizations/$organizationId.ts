@@ -6,12 +6,14 @@ import { organization } from "@workspace/lib/db/schema";
 import { countOrgBrands } from "@workspace/lib/entitlements";
 import { eq } from "drizzle-orm";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { organizationSchema } from "@/lib/api/schemas/organizations";
 import { requireOrganizationInScope } from "@/lib/api/scope";
 
 export const Route = createFileRoute("/api/v1/organizations/$organizationId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: organizationSchema,
 				handle: async ({ params, auth }) => {
 					const { organizationId } = params;
 					requireOrganizationInScope(auth, organizationId);

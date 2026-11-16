@@ -127,6 +127,7 @@ export interface TargetResult {
 	rawOutputBytes: number;
 	citations: number;
 	webQueries: number;
+	realWebQueries: number;
 	webSearch: boolean;
 	sampleOutput: string;
 	issues: ValidationIssue[];
@@ -313,6 +314,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 				rawOutputBytes: 0,
 				citations: 0,
 				webQueries: 0,
+				realWebQueries: 0,
 				webSearch: config.webSearch,
 				sampleOutput: "",
 				issues: [],
@@ -352,6 +354,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 			rawOutputBytes,
 			citations: result.citations.length,
 			webQueries: result.webQueries.length,
+			realWebQueries: result.webQueries.filter((q) => q !== "unavailable").length,
 			webSearch: config.webSearch,
 			sampleOutput: result.textContent?.slice(0, 500) ?? "",
 			issues,

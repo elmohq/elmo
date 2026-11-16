@@ -50,17 +50,6 @@ const AI_OVERVIEW_RESPONSE = {
 	},
 };
 
-// Perplexity echoes the prompt back under `search_model_queries`, and suggests
-// follow-up questions under `related_queries`.
-const PERPLEXITY_RESPONSE = {
-	text: "The Sonos Era 100 lasts longer than the Bose SoundLink Flex.",
-	markdown:
-		"The **Sonos Era 100** lasts longer than the Bose SoundLink Flex. ([Era 100 review](https://www.soundguys.com/era-100-review))",
-	sources: [{ position: 1, url: "https://www.soundguys.com/era-100-review", label: "Era 100 review" }],
-	search_model_queries: ["Compare the Sonos Era 100 and the Bose SoundLink Flex"],
-	related_queries: ["Which is better for a pool party", "What about the JBL Charge 6"],
-};
-
 // `relatedLinks` is what Google offers alongside the overview, not what it drew
 // on — here a Shopping deep link, which is still not a source for the answer.
 const AI_OVERVIEW_WITH_RELATED_LINKS = {
@@ -137,6 +126,7 @@ describe("cloro provider", () => {
 				prompt: "What is a well-reviewed speaker?",
 				country: "US",
 				include: { markdown: true, searchQueries: true },
+				legacy: true,
 			},
 		});
 		expect(fetchMock.mock.calls[1][0]).toBe("https://api.cloro.dev/v1/async/task/task-1");
@@ -161,7 +151,7 @@ describe("cloro provider", () => {
 			);
 		vi.stubGlobal("fetch", fetchMock);
 
-		const promise = cloro.run("google-ai-overview", "best running shoes for beginners", { country: "DE" });
+		const promise = cloro.run("google-ai-overview", "best running shoes for beginners");
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
@@ -169,7 +159,7 @@ describe("cloro provider", () => {
 			taskType: "GOOGLE",
 			payload: {
 				query: "best running shoes for beginners",
-				country: "DE",
+				country: "US",
 				include: { aioverview: { markdown: true } },
 			},
 		});
@@ -179,25 +169,6 @@ describe("cloro provider", () => {
 		expect(stored(result).citations[0].domain).toBe("runnersworld.com");
 		// The overview exposes no query strings, but its citations prove a search ran.
 		expect(result.webQueries).toEqual(["unavailable"]);
-	});
-
-	it("stores Perplexity's reported query verbatim and ignores its follow-up suggestions", async () => {
-		vi.useFakeTimers();
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-pplx", status: "QUEUED" } }))
-			.mockResolvedValueOnce(
-				jsonResponse({ task: { id: "task-pplx", status: "COMPLETED" }, response: PERPLEXITY_RESPONSE }),
-			);
-		vi.stubGlobal("fetch", fetchMock);
-
-		const promise = cloro.run("perplexity", "Compare the Sonos Era 100 and the Bose SoundLink Flex");
-		await vi.runAllTimersAsync();
-		const result = await promise;
-
-		// The prompt echo is kept as reported — excluding it is the fan-out read
-		// path's job — and `related_queries` never counts as a search.
-		expect(result.webQueries).toEqual(["Compare the Sonos Era 100 and the Bose SoundLink Flex"]);
 	});
 
 	it("does not cite AI Overview's related links", async () => {
@@ -238,10 +209,9 @@ describe("cloro provider", () => {
 	// downgrades to `text` — the same answer with its citations stripped.
 	it.each([
 		["chatgpt", "CHATGPT", { markdown: true, searchQueries: true }],
-		["perplexity", "PERPLEXITY", { markdown: true }],
-		["copilot", "COPILOT", { markdown: true }],
 		["gemini", "GEMINI", { markdown: true }],
 		["google-ai-mode", "AIMODE", { markdown: true }],
+		["bing-ai-mode", "BING_AIMODE", { markdown: true }],
 		// The overview is one section of a SERP response, so the flag rides inside
 		// the block that asks for it rather than sitting at the top level.
 		["google-ai-overview", "GOOGLE", { aioverview: { markdown: true } }],
@@ -270,13 +240,13 @@ describe("cloro provider", () => {
 			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-2", status: "COMPLETED" }, response: CHATGPT_RESPONSE }));
 		vi.stubGlobal("fetch", fetchMock);
 
-		const promise = cloro.run("perplexity", "What is a well-reviewed speaker?");
+		const promise = cloro.run("gemini", "What is a well-reviewed speaker?");
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
 		expect(fetchMock).toHaveBeenCalledTimes(4);
 		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-			taskType: "PERPLEXITY",
+			taskType: "GEMINI",
 			payload: { prompt: "What is a well-reviewed speaker?", country: "US", include: { markdown: true } },
 		});
 		expect(stored(result).textContent).toContain("Sonos Era 300");
@@ -296,11 +266,36 @@ describe("cloro provider", () => {
 		await assertion;
 	});
 
+	// Bing AI Mode answers some prompts with a list of results and no written
+	// answer. That is what the visitor saw, so it is tracked like any other run.
+	it("keeps a Bing AI Mode run that Bing answered with search results only", async () => {
+		vi.useFakeTimers();
+		const searchResults = {
+			text: "Search results\n\nWhat Hi-Fi?\n\nSonos Era 300 review",
+			markdown:
+				"## Search results\n\nWhat Hi-Fi?\n\n[Sonos Era 300 review](https://www.whathifi.com/reviews/sonos-era-300)",
+			sources: [{ position: 1, url: "https://www.whathifi.com/reviews/sonos-era-300", label: "Sonos Era 300 review" }],
+			citationPills: [],
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-bing", status: "QUEUED" } }))
+			.mockResolvedValueOnce(jsonResponse({ task: { id: "task-bing", status: "COMPLETED" }, response: searchResults }));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("bing-ai-mode", "What is a well-reviewed speaker?");
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(stored(result).textContent).toContain("Sonos Era 300 review");
+		expect(stored(result).citations.map((c) => c.domain)).toEqual(["whathifi.com"]);
+	});
+
 	it("surfaces task submission errors", async () => {
 		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ error: "Invalid or missing API key" }, 401));
 		vi.stubGlobal("fetch", fetchMock);
 
-		await expect(cloro.run("copilot", "What is a well-reviewed speaker?")).rejects.toThrow(
+		await expect(cloro.run("gemini", "What is a well-reviewed speaker?")).rejects.toThrow(
 			'Cloro task submission failed (401: {"error":"Invalid or missing API key"})',
 		);
 	});

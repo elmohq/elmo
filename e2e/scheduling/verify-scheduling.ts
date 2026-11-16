@@ -1,25 +1,8 @@
 /**
- * Live scheduling-policy verification (run by the scheduling-policy CI job in
- * .github/workflows/e2e.yaml, or locally against any disposable database).
- *
- * Drives a REAL worker over a REAL database with the no-network stub provider
- * and asserts the run policy's externally observable behavior:
- *
- *   local scenario (worker booted with DEPLOYMENT_MODE=local, stub target):
- *     - one firing records exactly RUNS_PER_PROMPT runs
- *     - an immediate duplicate firing records nothing new
- *     - the chain stays scheduled
- *
- *   cloud scenario (DEPLOYMENT_MODE=cloud, menu models on the stub provider):
- *     - a Pro org's picked platforms run once each (replication 1) and the
- *       prompt's Claude web assignment runs once
- *     - duplicate fire records nothing new
- *     - canceling the subscription stops due targets from running
- *     - resubscribing revives tracking via schedule-maintenance
- *
- * Scenario is argv[2]: local | cloud. DATABASE_URL env overrides the default
- * local connection string. The worker must already be running in the matching
- * mode — see the workflow for the exact env.
+ * Checks the run policy against a real worker and database, using the stub
+ * provider so nothing leaves the machine. Scenario is argv[2] (local | cloud);
+ * the worker must already be running in that mode, with the env the
+ * scheduling-policy job in .github/workflows/e2e.yaml sets.
  */
 import pg from "pg";
 import { PgBoss } from "pg-boss";
@@ -109,7 +92,7 @@ if (scenario === "local") {
      VALUES ('sub-verify-1', 'pro', 'cloudorg-1', 'active', NOW() - interval '1 day', NOW() + interval '29 days')`);
   await client.query(
     `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, enabled_models, created_at, updated_at)
-     VALUES ('cloudbrand-1', 'cloudorg-1', 'Cloud Verify Brand', 'https://verify.example', true, true, '{chatgpt,perplexity}', NOW(), NOW())`);
+     VALUES ('cloudbrand-1', 'cloudorg-1', 'Cloud Verify Brand', 'https://verify.example', true, true, '{chatgpt,gemini}', NOW(), NOW())`);
   const { rows: [prompt] } = await client.query(
     "INSERT INTO prompts (brand_id, value, enabled, premium_models) VALUES ('cloudbrand-1', 'scheduling e2e — cloud policy', true, '{claude}') RETURNING id");
 
@@ -121,7 +104,7 @@ if (scenario === "local") {
     [prompt.id]);
   const shape = runs.map((r: { model: string; web_search_enabled: boolean; n: number }) => `${r.model}:${r.web_search_enabled ? "web" : "base"}=${r.n}`).join(",");
   assert(
-    shape === "chatgpt:base=1,claude:web=1,perplexity:base=1",
+    shape === "chatgpt:base=1,claude:web=1,gemini:base=1",
     `cloud volume: picked platforms + one premium slot, replication 1 (got ${shape})`,
   );
 

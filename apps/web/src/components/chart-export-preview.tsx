@@ -53,7 +53,6 @@ export function ChartExportPreview({
 			style={{ width: EXPORT_W, height: EXPORT_H, paddingTop: HEADER_TOP, fontSize: 16 }}
 			className="bg-white overflow-hidden flex flex-col"
 		>
-			{/* Title bar */}
 			<div
 				style={{ height: HEADER_H, marginBottom: GAP_HEADER_CARD }}
 				className="flex items-center justify-between px-10 gap-6 shrink-0"
@@ -72,7 +71,6 @@ export function ChartExportPreview({
 				)}
 			</div>
 
-			{/* Chart card */}
 			<div className="px-8 shrink-0">
 				<div
 					className="rounded-xl border border-gray-200 overflow-hidden pl-0"

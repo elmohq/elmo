@@ -2,6 +2,8 @@ import type { PlanKey } from "@workspace/config/plans";
 
 export interface AeoVertical {
 	slug: string;
+	/** YYYY-MM-DD of the last substantive edit; the page\'s sitemap lastmod and dateModified. */
+	updated: string;
 	/** Display noun used after "AEO for", e.g. "agencies". */
 	audience: string;
 	/** The cloud tier the pricing table points this audience at. */
@@ -24,6 +26,7 @@ export interface AeoVertical {
 export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "agencies",
+		updated: "2026-10-08",
 		audience: "agencies",
 		plan: "business",
 		technical: true,
@@ -73,6 +76,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "saas",
+		updated: "2026-10-08",
 		audience: "SaaS companies",
 		plan: "pro",
 		technical: true,
@@ -131,6 +135,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "ecommerce",
+		updated: "2026-10-08",
 		audience: "e-commerce brands",
 		plan: "basic",
 		headline: "AEO for E-Commerce",
@@ -175,6 +180,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "b2b",
+		updated: "2026-10-08",
 		audience: "B2B companies",
 		plan: "pro",
 		short: "Show up when buyers research categories, vendors, and you, across long and considered purchases.",
@@ -222,6 +228,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "startups",
+		updated: "2026-10-08",
 		audience: "startups",
 		plan: "starter",
 		technical: true,
@@ -270,6 +277,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "enterprise",
+		updated: "2026-10-08",
 		audience: "enterprises",
 		plan: "business",
 		technical: true,
@@ -318,6 +326,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "healthcare",
+		updated: "2026-10-08",
 		audience: "healthcare brands",
 		plan: "basic",
 		short: "Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
@@ -361,6 +370,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "financial-services",
+		updated: "2026-10-08",
 		audience: "financial services",
 		plan: "pro",
 		short: "Track how AI engines describe your financial brand, with the accuracy and data control the sector demands.",
@@ -404,6 +414,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "law-firms",
+		updated: "2026-10-08",
 		audience: "law firms",
 		plan: "basic",
 		short:
@@ -458,6 +469,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "local-business",
+		updated: "2026-10-08",
 		audience: "local businesses",
 		plan: "starter",
 		short:
@@ -507,6 +519,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "real-estate",
+		updated: "2026-10-08",
 		audience: "real estate companies",
 		plan: "basic",
 		short:
@@ -556,6 +569,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "education",
+		updated: "2026-10-08",
 		audience: "education institutions",
 		plan: "pro",
 		short:
@@ -605,6 +619,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "travel-hospitality",
+		updated: "2026-10-08",
 		audience: "travel and hospitality brands",
 		plan: "basic",
 		short:
@@ -654,6 +669,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "manufacturing",
+		updated: "2026-10-08",
 		audience: "manufacturers",
 		plan: "basic",
 		short: "Be the supplier an AI assistant names when an engineer or buyer asks who makes the part they need.",
@@ -702,6 +718,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "insurance",
+		updated: "2026-10-08",
 		audience: "insurance companies",
 		plan: "pro",
 		short: "Be named accurately when someone asks an AI assistant which policy to buy and what it actually covers.",
@@ -750,6 +767,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "automotive",
+		updated: "2026-10-08",
 		audience: "automotive brands",
 		plan: "pro",
 		short:
@@ -799,6 +817,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "nonprofits",
+		updated: "2026-10-08",
 		audience: "nonprofits",
 		plan: "starter",
 		short:
@@ -848,6 +867,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "cybersecurity",
+		updated: "2026-10-08",
 		audience: "cybersecurity companies",
 		plan: "pro",
 		technical: true,
@@ -898,6 +918,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "recruiting",
+		updated: "2026-10-08",
 		audience: "recruiting and HR companies",
 		plan: "basic",
 		short: "Be named when employers ask an AI assistant which staffing partner or HR platform to use.",
@@ -946,6 +967,7 @@ export const aeoVerticals: AeoVertical[] = [
 	},
 	{
 		slug: "dev-tools",
+		updated: "2026-10-08",
 		audience: "developer tools companies",
 		plan: "pro",
 		technical: true,

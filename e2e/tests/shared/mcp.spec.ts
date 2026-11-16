@@ -134,6 +134,20 @@ test.describe("MCP", () => {
     expect((await below.json()).error.message).toBe("Not Found");
   });
 
+  test("the endpoint refuses to open a stream it would never write to", async ({ request }) => {
+    for (const token of [undefined, API_KEYS.orgFull.token]) {
+      const response = await request.get(MCP_PATH, {
+        headers: {
+          Accept: "text/event-stream",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      expect(response.status(), token ? "authenticated" : "anonymous").toBe(405);
+      expect(response.headers()["allow"]).toContain("POST");
+    }
+  });
+
   test("a person can authorize an MCP client from the browser", async ({ page, baseURL, clientHeaders }, testInfo) => {
     test.skip(
       testInfo.project.name === "demo",
@@ -283,7 +297,7 @@ test.describe("MCP", () => {
 
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("button", { name: "Sign In", exact: true }).click();
 
     await page.waitForURL(/\/auth\/authorize/);
     await expect(page.getByText("Playwright Signed-out Client").first()).toBeVisible();

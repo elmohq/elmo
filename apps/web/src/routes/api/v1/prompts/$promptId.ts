@@ -2,50 +2,37 @@
  * /api/v1/prompts/:promptId — single prompt resource.
  *
  * GET     fetch one prompt
- * PATCH   update value / enabled / tags
+ * PATCH   update value / enabled / tags / group
  * DELETE  remove the prompt (cascades to runs + citations) — admin key only
  *
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { promptWriteError } from "@/lib/api/prompt-errors";
+import { deletedPromptSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { requirePromptInScope } from "@/lib/api/scope";
-import { PromptMarketTakenError } from "@/server/prompt-save";
-import {
-	deletePrompt,
-	PromptNotFoundError,
-	toPromptSummary,
-	updatePrompt,
-	updatePromptInputSchema,
-} from "@/server/prompts-core";
+import { deletePrompt, toPromptSummary, updatePrompt, updatePromptInputSchema } from "@/server/prompts-core";
 
-// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
-// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
-const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
-
-/** The writes re-check under their own lock, so a prompt that a concurrent
- * delete takes between the scope check and the write reads as 404 here rather
- * than as a 500. */
-const mapPromptError = (err: unknown) => {
-	if (err instanceof PromptNotFoundError) return new ApiError(404, "Not Found", err.message);
-	return err instanceof PromptMarketTakenError ? new ApiError(409, "Conflict", err.message) : undefined;
-};
+const promptParams = z.object({ promptId: z.uuid("Invalid prompt ID format") });
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
 			}),
 
 			PATCH: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				body: updatePromptInputSchema,
 				scopes: ["write"],
-				mapError: mapPromptError,
+				mapError: promptWriteError,
 				handle: async ({ params, body, auth }) => {
 					const { brand } = await requirePromptInScope(auth, params.promptId);
 					return toPromptSummary(await updatePrompt(brand, params.promptId, body));
@@ -56,10 +43,11 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			// at any role — so no scope grants it. Disabling frees the plan slot
 			// just the same and keeps the history.
 			DELETE: createApiHandler({
+				response: deletedPromptSchema,
 				params: promptParams,
 				adminOnly: true,
 				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",
-				mapError: mapPromptError,
+				mapError: promptWriteError,
 				handle: async ({ params, auth }) => {
 					await requirePromptInScope(auth, params.promptId);
 					const { prompt, deletedRunsCount } = await deletePrompt(params.promptId);

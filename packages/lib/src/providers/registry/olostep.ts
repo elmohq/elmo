@@ -5,8 +5,6 @@ import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { nonEmptyStrings } from "./scrape-shared";
 
-const OLOSTEP_COUNTRIES = new Set(["US", "GB", "DE", "FR", "SG"]);
-
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
 		parserId: "@olostep/chatgpt-results",
@@ -26,16 +24,6 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 	gemini: {
 		parserId: "@olostep/gemini-results",
 		urlTemplate: (q) => `https://gemini.google.com/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
-	copilot: {
-		parserId: "@olostep/microsoft-copilot-results",
-		urlTemplate: (q) => `https://copilot.microsoft.com/chats?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
-	perplexity: {
-		parserId: "@olostep/perplexity-results",
-		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
 };
@@ -106,14 +94,7 @@ export const olostep: Provider = {
 		return null;
 	},
 
-	// Olostep runs each batch through a browser in the requested country, so
-	// every surface localizes the same way — but only from the countries its
-	// SDK names; others aren't documented.
-	localizes(_config: ModelConfig, country: string) {
-		return OLOSTEP_COUNTRIES.has(country);
-	},
-
-	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
 		const parserConfig = OLOSTEP_PARSERS[model];
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
@@ -121,10 +102,7 @@ export const olostep: Provider = {
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create([{ url, customId: "1" }], {
-			parser: { id: parserConfig.parserId },
-			...(options?.country ? { country: options.country } : {}),
-		});
+		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
 
 		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 
@@ -150,8 +128,6 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			modelVersion: parsed?.model ?? undefined,
 		};

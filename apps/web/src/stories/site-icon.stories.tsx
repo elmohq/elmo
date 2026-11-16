@@ -52,6 +52,29 @@ export const Subjects: Story = {
 };
 
 /**
+ * A white mark on transparency gets a dark backdrop so it doesn't vanish on
+ * the page; dark marks and icons with their own background are left as is.
+ */
+export const LightMarks: Story = {
+	args: { domain: "peec.ai", size: "lg" },
+	render: () => (
+		<div className="flex flex-col gap-3 p-8">
+			{[
+				{ label: "white mark", domain: "peec.ai" },
+				{ label: "black mark", domain: "adidas.com" },
+				{ label: "own background", domain: "hubspot.com" },
+				{ label: "own background", domain: "apple.com" },
+			].map((subject) => (
+				<div key={subject.domain} className="flex items-center gap-2 text-sm">
+					<SiteIcon domain={subject.domain} size="lg" />
+					{subject.domain} — {subject.label}
+				</div>
+			))}
+		</div>
+	),
+};
+
+/**
  * The three ways an icon can be absent, side by side: no domain set, a domain
  * the favicon service has no icon for, and a domain that doesn't resolve. All
  * three should land on the same glyph.

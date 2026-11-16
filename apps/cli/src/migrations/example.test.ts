@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Migration, MigrationContext } from "./types.js";
 
-// Template for testing a real migration: build an in-memory context, run the
-// migration's `run` against it, and assert on the resulting env. Copy this when
-// you add a migration to MIGRATIONS.
+// A template to copy when adding a migration to MIGRATIONS.
 
 function inMemoryContext(initial: Record<string, string> = {}): MigrationContext & {
 	env: () => Record<string, string>;

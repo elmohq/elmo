@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { brandOf, LANDSCAPE_METRICS, type Landscape, type LandscapeMetric } from "@/lib/landscape";
 import { lookbackSchema } from "@/lib/lookback";
-import { pickPromptScope, promptScopeFields } from "@/lib/prompt-scope";
 import { getMentionTotals } from "@/lib/rollup-read";
 import { getCompetitiveLandscape } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -43,7 +42,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			...promptScopeFields,
+			tags: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -52,8 +51,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 		const window = { from: fromDateStr, to: toDateStr, timezone };
-		const filters = { model: data.model, ...pickPromptScope(data) };
-		const prompts = resolveFilteredPrompts(data.brandId, pickPromptScope(data));
+		const filters = { model: data.model, tags: data.tags };
+		const prompts = resolveFilteredPrompts(data.brandId, { tags: data.tags });
 		const [landscape, promptCount, totals] = await Promise.all([
 			getCompetitiveLandscape(data.brandId, window, filters),
 			prompts.then((p) => p.length),

@@ -91,7 +91,7 @@ WORKDIR /app
 
 COPY --from=lib-deploy /deploy/lib ./
 
-CMD ["npx", "drizzle-kit", "migrate"]
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # Worker stage
 FROM base AS worker
@@ -110,4 +110,4 @@ COPY --from=worker-deploy --chown=worker:nodejs /deploy/worker ./
 USER worker
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["./node_modules/.bin/tsx", "--import", "./src/instrument.ts", "src/index.ts"]

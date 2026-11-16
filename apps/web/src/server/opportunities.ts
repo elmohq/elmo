@@ -1,20 +1,7 @@
 /**
- * AI-generated Opportunities.
- *
- * We assemble a compact, deterministic digest of the brand's tracked
- * AI-visibility data (overall + per-platform visibility, per-prompt standing vs
- * the leading competitor over 7d + 30d with tags + citation difficulty, and the
- * citation landscape), then make a SINGLE structured LLM completion — no web
- * search, no agent loop — to turn it into categorized opportunities (Creation /
- * Existing content / Outreach / Social), each with a plain-language "why". The
- * server then attaches each opportunity's related prompts (resolved to IDs) and
- * its cited pages split into the brand's vs competitors' — the page renders that.
- *
- * Provider selection reuses the same config as onboarding / prompt-idea
- * generation (`runStructuredCompletionPrompt` → `resolveResearchProvider`, which
- * honors ONBOARDING_LLM_TARGET / the preference order). Reports are persisted to
- * the brand_opportunities table (append-only) and served as-is until the latest
- * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
+ * One structured LLM completion over a deterministic digest of the brand's
+ * tracked data, with no web search or agent loop. Reports are stored and served
+ * until REFRESH_AFTER_DAYS, so a normal page load doesn't call the LLM.
  */
 
 import { type CitationCategory, extractDomain } from "@workspace/lib/citations/domain-categories";
@@ -184,7 +171,6 @@ function difficultyLabel(stability: number | null): "wide-open" | "contested" | 
 	return "locked-in";
 }
 
-/** Map a tracked model id to its assistant/platform family for the digest. */
 function modelToPlatform(model: string): string {
 	const m = model.toLowerCase();
 	if (m.includes("claude")) return "Claude";
@@ -392,8 +378,6 @@ function summarizePlatformVisibility(byModel: { model: string; runs: number; bra
 	};
 }
 
-/** Assemble the deterministic digest text + the structured bits the server needs
- * to enrich the LLM output. Returns null if there isn't enough data. */
 async function buildDigest(brandId: string, timezoneParam: string): Promise<Digest | null> {
 	const timezone = resolveTimezone(timezoneParam);
 	const r30 = resolveLookbackRange("1m", timezone);
@@ -432,20 +416,17 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 		count: Number(row.count),
 	}));
 
-	// Per-prompt cited pages (URL-level), tagged by owner — powers both the
-	// "cited via" digest line and the per-opportunity drill-downs.
 	const citationsByPrompt = groupByPrompt(
-		pages30.filter((row) => row.url),
+		pages30,
 		(row): DigestCitation => ({
 			title: row.title,
 			domain: row.domain,
-			url: row.url as string,
+			url: row.url,
 			count: row.count,
 			owner: ownerOf(row.domain),
 		}),
 	);
 
-	// Rank prompts by the gap to the leading competitor (30d); branded flagged.
 	const ranked = promptIds
 		.map((pid) => {
 			const brand30 = brand30By.get(pid) ?? 0;
@@ -500,8 +481,6 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 	return { text, brandName, prompts: prompts.map((p) => ({ id: p.id, value: p.value })), citationsByPrompt };
 }
 
-/** From an opportunity's related prompt IDs, gather its cited pages (deduped by
- * URL) split into the brand's own vs competitors'. */
 function citationsForPrompts(
 	promptIds: string[],
 	citationsByPrompt: Map<string, DigestCitation[]>,
@@ -525,13 +504,10 @@ function citationsForPrompts(
 	};
 }
 
-/** Regenerate at most this often; stored generations newer than this are served
- * from cache. Surfaced as "Refreshed weekly" on the page — kept a touch under 7 days. */
+/** The page says "Refreshed weekly", so this stays a touch under 7. */
 const REFRESH_AFTER_DAYS = 6;
 const MAX_GENERATION_ATTEMPTS = 3;
 
-/** Resolve the LLM output's prompt strings to tracked IDs (for deep-linking) and
- * attach each opportunity's cited pages split into the brand's vs competitors'. */
 function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	const idByText = new Map(digest.prompts.map((p) => [p.value.trim().toLowerCase(), p.id]));
 
@@ -548,8 +524,6 @@ function enrichReport(raw: RawReport, digest: Digest): OpportunitiesReport {
 	});
 }
 
-/** Generate the report, retrying until the model's output satisfies the schema.
- * Returns the validated report plus the model id that produced it. */
 async function generateValidReport(prompt: string): Promise<{ report: RawReport; model: string | null } | null> {
 	for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
 		try {
@@ -564,11 +538,7 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-/**
- * Generation is inline and synchronous — there is no queue, so a caller either
- * gets the current report or waits for the one it just caused. The freshness
- * gate is what bounds the spend.
- */
+/** Generates inline, with no queue: the freshness gate is what bounds the spend. */
 export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
 	const [latest] = await db
 		.select()

@@ -27,7 +27,7 @@ assert {
 }
 
 tests {
-  test("the whole window's domains come back in one response", function() {
+  test("a small window's domains fit on the first page", function() {
     expect(res.getBody().data.length).to.be.at.least(1);
   });
 

@@ -1,0 +1,19 @@
+meta {
+  name: the brand with an empty organizationId was not created
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/e2e-empty-org-brand
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{adminKey}}
+}
+
+assert {
+  res.status: eq 404
+}

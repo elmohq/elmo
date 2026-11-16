@@ -20,12 +20,12 @@ function Harness({
 	initial,
 	showSystemTags = true,
 	premium,
-	newPromptMarket,
+	variants,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
-	newPromptMarket?: { country: string; language: string };
+	variants?: boolean;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
@@ -36,7 +36,7 @@ function Harness({
 				onChange={setPrompts}
 				showSystemTags={showSystemTags}
 				premium={premium}
-				newPromptMarket={newPromptMarket}
+				variants={variants}
 			/>
 		</div>
 	);
@@ -47,8 +47,7 @@ const entries = (values: string[], partial?: Partial<EditablePrompt>) =>
 
 const filler = (count: number) => entries(Array.from({ length: count }, (_, i) => `best running shoes option ${i}`));
 
-/** Opens the bulk panel and pastes `text` into it. */
-const addMultiple =
+const pasteIntoBulkPanel =
 	(text: string) =>
 	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
@@ -76,7 +75,7 @@ export const Populated = () => (
 export const AddMultiple: StoryObj = {
 	render: () => <Harness initial={entries(["best running shoes for flat feet", "most durable trail runners"])} />,
 	play: async (ctx) => {
-		await addMultiple(
+		await pasteIntoBulkPanel(
 			"trail shoes for wide feet\n\nBest  Running   Shoes For Flat Feet\n   \nbest marathon racing flats\ntrail shoes for wide feet",
 		)(ctx);
 		const canvas = within(ctx.canvasElement);
@@ -96,7 +95,7 @@ export const AddMultipleOverCapacity: StoryObj = {
 		<Harness showSystemTags={false} initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />
 	),
 	play: async (ctx) => {
-		await addMultiple(
+		await pasteIntoBulkPanel(
 			"trail shoes for wide feet\nbest marathon racing flats\nlightweight gym trainers\nbest shoes for plantar fasciitis\ncushioned recovery runners\nzero drop road shoes",
 		)(ctx);
 		const canvas = within(ctx.canvasElement);
@@ -126,23 +125,49 @@ export const RemoveUnsavedRow: StoryObj = {
 	},
 };
 
+/**
+ * A variant lands under the prompt it rewords, below the variants already
+ * there, and the count line says it is tracked as a prompt of its own.
+ */
+export const Variants: StoryObj = {
+	render: () => (
+		<Harness
+			variants
+			initial={[
+				...entries(["best crm for small business"], { id: "crm", groupId: "crm-group", tags: ["crm"] }),
+				...entries(["which crm should a startup use"], { id: "crm-2", groupId: "crm-group", tags: ["crm"] }),
+				...entries(["cheapest project management tool"], { id: "pm" }),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText(/including 1 variant\./)).toBeVisible();
+
+		await userEvent.click(
+			canvas.getAllByRole("button", { name: 'Add a variant of "best crm for small business"' })[0]!,
+		);
+		const added = canvas.getAllByRole("textbox", { name: 'Variant of "best crm for small business"' });
+		await userEvent.type(added.at(-1)!, "top crm tools for small teams");
+
+		// Each row renders twice, once per layout, so every prompt appears as a pair.
+		const promptTexts = canvas
+			.getAllByRole("textbox")
+			.map((input) => (input as HTMLInputElement).value)
+			.filter((value) => value.includes("crm") || value.includes("project"));
+		await expect(promptTexts.filter((_, index) => index % 2 === 0)).toEqual([
+			"best crm for small business",
+			"which crm should a startup use",
+			"top crm tools for small teams",
+			"cheapest project management tool",
+		]);
+		await expect(await canvas.findByText(/including 2 variants\./)).toBeVisible();
+	},
+};
+
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
 
-// ---------------------------------------------------------------------------
-// Web-grounded Claude assignment (cloud plans)
-// ---------------------------------------------------------------------------
-
-/**
- * The stacked mobile block and the desktop grid both render, so every row has
- * two of these. Queries go through the state rather than an index so they don't
- * depend on which layout the canvas width happens to show.
- */
-/**
- * Each row opens a popover naming the premium models, so the assertions below
- * work through it the way a customer would rather than reaching for a checkbox
- * the table no longer shows.
- */
 // The mobile block and the desktop grid both render (one is just hidden), so a
 // row has two triggers. Selecting by what the trigger says avoids depending on
 // which layout comes first in the DOM.
@@ -249,56 +274,5 @@ export const NoPremiumColumn: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByRole("button", { name: /premium models:/i })).toBeNull();
 		await expect(canvas.queryByText(/pairings in use/i)).toBeNull();
-	},
-};
-
-const marketsFixture = () => [
-	...entries(["best running shoes for flat feet"], {
-		id: "saved-us",
-		groupId: "g1",
-		country: "US",
-		systemTags: ["unbranded"],
-	}),
-	...entries(["best running shoes for flat feet"], {
-		id: "saved-gb",
-		groupId: "g1",
-		country: "GB",
-		systemTags: ["unbranded"],
-	}),
-	...entries(["meilleures chaussures de running pieds plats"], { groupId: "g1", country: "FR", language: "fr" }),
-	...entries(["most durable trail runners"], { id: "saved-trail", groupId: "g2", systemTags: ["unbranded"] }),
-];
-
-/**
- * One row per prompt, with its markets as chips under the text. Picking a
- * chip shows that market's wording; "+ Market" adds one, starting from the
- * text on screen.
- */
-export const Markets: StoryObj = {
-	render: () => <Harness newPromptMarket={{ country: "US", language: "en" }} initial={marketsFixture()} />,
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		await userEvent.click(canvas.getAllByRole("button", { name: "FR · FR" })[0]);
-		await expect(canvas.getAllByDisplayValue("meilleures chaussures de running pieds plats")[0]).toBeVisible();
-
-		await userEvent.click(canvas.getAllByRole("button", { name: /market/i })[0]);
-		await userEvent.type(await within(document.body).findByPlaceholderText(/search country/i), "germany german");
-		await userEvent.click(await within(document.body).findByRole("option", { name: /germany \(german\)/i }));
-		await expect(canvas.getAllByRole("button", { name: /DE · DE/ })[0]).toBeVisible();
-	},
-};
-
-/** Pasting with a second market picked adds every line once per market. */
-export const AddMultipleInMarkets: StoryObj = {
-	render: () => <Harness newPromptMarket={{ country: "US", language: "en" }} initial={marketsFixture()} />,
-	play: async (ctx) => {
-		await addMultiple("trail shoes for wide feet\nbest running shoes for flat feet")(ctx);
-		const canvas = within(ctx.canvasElement);
-		await expect(canvas.getByRole("button", { name: /^add 1 prompt$/i })).toBeEnabled();
-
-		await userEvent.click(canvas.getByRole("button", { name: /markets to add in/i }));
-		await userEvent.click(await within(document.body).findByRole("option", { name: /united kingdom \(english\)/i }));
-		await expect(canvas.getByRole("button", { name: /^add 2 prompts$/i })).toBeEnabled();
-		await expect(canvas.getByText("Each line becomes one prompt in every market.")).toBeVisible();
 	},
 };

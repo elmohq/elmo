@@ -10,10 +10,12 @@ import {
 	pipelineState,
 	promptRuns,
 	prompts,
+	rollupCitationPages,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
 } from "@workspace/lib/db/schema";
 import {
 	BUCKET_MS,
@@ -66,7 +68,14 @@ async function createFixture(): Promise<Fixture> {
 }
 
 async function deleteFixture({ brandId }: Fixture): Promise<void> {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupCitationUrls, rollupDirty]) {
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupCitationUrls,
+		rollupCitationPages,
+		rollupSentimentQuotes,
+		rollupDirty,
+	]) {
 		await db.delete(table).where(eq(table.brandId, brandId));
 	}
 	await db.delete(citations).where(eq(citations.brandId, brandId));

@@ -1,15 +1,6 @@
 /**
- * Stories for the brand-onboarding flow. Cover the meaningful UI states:
- *   - Setup (the BrandOnboarding form that captures the website URL — runs
- *     before the wizard).
- *   - Idle (the analyze button before the user clicks it).
- *   - Analyzing (the in-flight loader, simulated with a long mock delay).
- *   - Review (every section populated, prompts pre-tagged).
- *   - Analyze error (the wizard surfaces the message inline).
- *
- * The mocks live in src/stories/_mocks; the storybook alias in
- * .storybook/main.ts swaps `@/server/onboarding` and `@/server/brands` for
- * the mocks at bundle time.
+ * The storybook alias in .storybook/main.ts swaps `@/server/onboarding` and
+ * `@/server/brands` for the mocks in src/stories/_mocks at bundle time.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -86,11 +77,6 @@ export default {
 	title: "Onboarding / Prompt wizard",
 } satisfies Meta;
 
-/**
- * Click the wizard's "Analyze brand" button after mount so the story lands on
- * the analyzing/review state. Stories that want to show the idle screen
- * simply omit this.
- */
 function AutoAnalyze() {
 	useEffect(() => {
 		const id = window.setTimeout(() => {
@@ -104,11 +90,6 @@ function AutoAnalyze() {
 }
 
 /**
- * Step 1 — the website-capture form that runs before the wizard. The real
- * flow renders this when the auth-side brand exists but no DB row does;
- * once the user submits, createBrandFn writes the row and the route
- * re-renders into the wizard.
- *
  * The platform-state mock is set during render (not in an effect): the
  * component fetches it on mount, and child effects run before the story's
  * own would.
@@ -183,13 +164,12 @@ export const SetupSinglePlatformPlan: StoryObj = {
 	},
 };
 
-/** Initial state — analyze button visible, no suggestion fetched yet. */
 export const Idle = () => {
 	useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
 	return <PromptWizard onComplete={() => {}} />;
 };
 
-/** In-flight — analyze is mocked to take 5s so the loader is visible. */
+/** Analyze is mocked to take 5s so the loader stays visible. */
 export const Analyzing = () => {
 	useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION, delayMs: 5_000 });
 	return (
@@ -200,7 +180,6 @@ export const Analyzing = () => {
 	);
 };
 
-/** Review with a fully-populated suggestion — every section editable. */
 export const Review: StoryObj = {
 	render: () => {
 		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
@@ -221,10 +200,93 @@ export const Review: StoryObj = {
 	},
 };
 
+export const ReviewRejectsCoveredDomain: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		// Brand name and website are plain inputs, so domains is the first combobox.
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+
+		const search = await documentBody.findByPlaceholderText("Add domain...");
+		await userEvent.type(search, "blog.acme.com");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(documentBody.findByText(/already covered by acme\.com/i)).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+
+		await userEvent.clear(search);
+		await userEvent.type(search, "acme.io");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(documentBody.queryByText(/already covered/i)).toBeNull();
+	},
+};
+
+export const ReviewPasteSkipsCoveredDomains: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await canvas.findByText("Brand details");
+		const [domainsInput] = canvas.getAllByRole("combobox");
+		await userEvent.click(domainsInput);
+		await userEvent.click(await documentBody.findByPlaceholderText("Add domain..."));
+		await userEvent.paste("blog.acme.com, acme.io, shop.acme.io");
+
+		await expect(documentBody.findByText(/"blog\.acme\.com" is already covered by acme\.com/i)).resolves.toBeVisible();
+		await expect(canvas.findByText("acme.io")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("shop.acme.io")).toBeNull();
+	},
+};
+
+export const ReviewDropsCoveredSuggestions: StoryObj = {
+	render: () => {
+		useWizardSetup({
+			brand: MOCK_BRAND,
+			suggestion: { ...RICH_SUGGESTION, additionalDomains: ["acme.co.uk", "blog.acme.com", "eu.acme.co.uk"] },
+		});
+		return (
+			<>
+				<PromptWizard onComplete={() => {}} />
+				<AutoAnalyze />
+			</>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await canvas.findByText("Brand details");
+		await expect(canvas.findByText("acme.co.uk")).resolves.toBeVisible();
+		expect(canvas.queryByText("blog.acme.com")).toBeNull();
+		expect(canvas.queryByText("eu.acme.co.uk")).toBeNull();
+	},
+};
+
 /**
- * Analyze fails — the wizard surfaces a generic, user-safe message inline. The
- * real provider/stack detail stays server-side (captured by the worker's
- * Sentry wrapper) and is never forwarded to the browser.
+ * The provider/stack detail stays server-side and is never forwarded to the
+ * browser, so the wizard shows a generic message.
  */
 export const AnalyzeError: StoryObj = {
 	render: () => {
@@ -247,12 +309,6 @@ export const AnalyzeError: StoryObj = {
 	},
 };
 
-/**
- * Cancel mid-analysis. The analysis is mocked to take a long time so the
- * "Analyzing brand…" loader and its Cancel button are visible; the play
- * function clicks Analyze, then Cancel, and asserts the wizard returns to the
- * idle state (analyze button enabled again, cancel button gone).
- */
 export const Cancel: StoryObj = {
 	render: () => {
 		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION, delayMs: 60_000 });
@@ -263,10 +319,8 @@ export const Cancel: StoryObj = {
 
 		await userEvent.click(await canvas.findByRole("button", { name: /analyze brand/i }));
 
-		// Cancel only appears while analyzing.
 		await userEvent.click(await canvas.findByRole("button", { name: /^cancel$/i }));
 
-		// Back to idle: analyze is enabled again and the cancel button is gone.
 		await waitFor(() => {
 			expect(canvas.getByRole("button", { name: /analyze brand/i })).toBeEnabled();
 		});

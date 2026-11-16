@@ -11,8 +11,9 @@ import { reports } from "@workspace/lib/db/schema";
 import { cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { count, desc } from "drizzle-orm";
 import { z } from "zod";
-import { clampedPaging } from "@/lib/api/analytics-range";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { createdReportSchema, reportListSchema } from "@/lib/api/schemas/reports";
 import { createReport, ReportCreateError, ReportQueueError } from "@/server/reports-core";
 
 const createReportBody = z.object({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
 		handlers: withMethodGuard({
 			POST: createApiHandler({
+				response: createdReportSchema,
 				adminOnly: true,
 				body: createReportBody,
 				status: 201,
@@ -52,7 +54,8 @@ export const Route = createFileRoute("/api/v1/reports/")({
 
 					return {
 						reportId: createdReport.id,
-						status: createdReport.status,
+						// createReport returns the row as inserted, or throws when it cannot queue it.
+						status: "pending" as const,
 						brandName: createdReport.brandName,
 						brandAliases: createdReport.brandAliases,
 						brandWebsite: createdReport.brandWebsite,
@@ -62,14 +65,12 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				response: reportListSchema,
+				query: z.object(paging),
 				adminOnly: true,
-				handle: async ({ request }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
-
+				handle: async ({ query }) => {
 					const [totalCountResult] = await db.select({ count: count() }).from(reports);
 					const totalCount = totalCountResult?.count || 0;
-					const totalPages = Math.ceil(totalCount / limit);
 
 					const reportsList = await db
 						.select({
@@ -83,8 +84,8 @@ export const Route = createFileRoute("/api/v1/reports/")({
 						})
 						.from(reports)
 						.orderBy(desc(reports.createdAt))
-						.limit(limit)
-						.offset(offset);
+						.limit(query.limit)
+						.offset(offsetOf(query));
 
 					// Both keys hold the same array while callers move to `data`, which
 					// every list in this API answers with. `reports` is documented as
@@ -92,7 +93,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 					return {
 						data: reportsList,
 						reports: reportsList,
-						pagination: { page, limit, total: totalCount, totalPages },
+						pagination: paginationOf(query, totalCount),
 					};
 				},
 			}),

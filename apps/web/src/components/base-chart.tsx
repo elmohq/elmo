@@ -159,6 +159,15 @@ export function BaseChart({
 					opacity: opacityFor(key),
 				};
 	const opacityFor = (key: string) => (activeSeries && activeSeries !== key ? DIMMED_OPACITY : 1);
+	const renderDot =
+		(key: string, size: number, id: string) =>
+		({ cx, cy, payload, value }: any) => {
+			// Recharts' dot render prop must return an element, so a hidden dot is an empty <g>.
+			if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+				return <g key={`${id}-empty-${key}-${cx}`} />;
+			}
+			return <circle key={`${id}-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, size)} />;
+		};
 
 	// Each series has solid and dashed lines, but the legend should list it once.
 	const legendPayload = [
@@ -402,20 +411,8 @@ export function BaseChart({
 									stroke={`var(--color-${key})`}
 									strokeWidth={strokeWidthFor(key)}
 									strokeOpacity={opacityFor(key)}
-									dot={({ cx, cy, payload, value }: any) => {
-										// Return empty <g> element instead of null to satisfy Recharts types
-										if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-											return <g key={`dot-empty-${key}-${cx}`} />;
-										}
-										return <circle key={`dot-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, 3)} />;
-									}}
-									activeDot={({ cx, cy, payload, value }: any) => {
-										// Return empty <g> element instead of null to satisfy Recharts types
-										if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-											return <g key={`activedot-empty-${key}-${cx}`} />;
-										}
-										return <circle key={`activedot-${key}-${cx}`} cx={cx} cy={cy} {...dotProps(key, 5)} />;
-									}}
+									dot={renderDot(key, 3, "dot")}
+									activeDot={renderDot(key, 5, "activedot")}
 									connectNulls={true}
 									isAnimationActive={isAnimationActive}
 								/>,

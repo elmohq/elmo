@@ -1,3 +1,5 @@
+import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/prompt-jobs";
+import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { PgBoss } from "pg-boss";
 
 let bossInstance: PgBoss | null = null;
@@ -33,18 +35,8 @@ export async function getBoss(): Promise<PgBoss> {
 
 		// Create queues if they don't exist (required in pg-boss v12)
 		// createQueue is idempotent - safe to call multiple times
-		await boss.createQueue("process-prompt", {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 15,
-		});
-		await boss.createQueue("generate-report", {
-			retryLimit: 3,
-			retryDelay: 60,
-			retryBackoff: true,
-			expireInSeconds: 60 * 60,
-		});
+		await boss.createQueue(PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
+		await boss.createQueue(GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS);
 		await boss.createQueue("analyze-brand", {
 			retryLimit: 1,
 			retryDelay: 10,

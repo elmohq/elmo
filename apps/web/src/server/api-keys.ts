@@ -5,6 +5,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { API_KEY_PREFIX } from "@workspace/config/constants";
 import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
@@ -144,7 +145,7 @@ export const createApiKeyFn = createServerFn({ method: "POST" })
 				name: data.name,
 				organizationId: org.id,
 				userId: session.user.id,
-				prefix: "elmo_",
+				prefix: API_KEY_PREFIX,
 				permissions: scopesToPermissions(ACCESS_SCOPES[data.access]),
 				// Absent, not empty: "every brand" is the absence of a narrowing.
 				metadata: data.brandIds ? { brandIds: data.brandIds } : {},

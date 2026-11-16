@@ -129,8 +129,12 @@ describe("dynamic client registration", () => {
 			redirect_uris: ["http://localhost:8787/callback", "cursor://anysphere.cursor-mcp/oauth/callback"],
 		});
 
-		expect(status).toBe(400);
-		expect(body.error_description).toContain("private-use");
+		expect(status).toBe(201);
+		expect(body.application_type).toBe("native");
+		expect(body.redirect_uris).toEqual([
+			"http://localhost:8787/callback",
+			"cursor://anysphere.cursor-mcp/oauth/callback",
+		]);
 	});
 
 	it("still holds a client that asks to be treated as a web app to https", async () => {

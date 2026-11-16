@@ -32,14 +32,9 @@ function getOpenAIResponsesModel(model: string) {
 type WebSearchOutput = InferToolOutput<ReturnType<typeof openai.tools.webSearch>>;
 
 /**
- * The web-search tool runs on OpenAI's side, so the query it actually issued
- * comes back on the tool *result*, not the call — the call's input is empty.
- * A single search reports `query`; a fanned-out one reports `queries`.
- *
- * `tools` is only passed when web search is on, so the compiler can't tie a
- * result back to the tool that produced it and types `output` as `unknown`;
- * callers establish that link by matching `toolName` first. The shape itself is
- * the SDK's, so a renamed field still fails the build here.
+ * The query comes back on the tool result, not the call, whose input is empty.
+ * `output` is `unknown` because `tools` is conditional, so callers match `toolName`
+ * first; the SDK's shape still catches a renamed field.
  */
 function webSearchQueries(output: unknown): string[] {
 	const action = (output as WebSearchOutput).action;
@@ -72,12 +67,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		toolChoice: webSearch ? "auto" : "none",
 		...(webSearch
 			? {
-					tools: {
-						web_search: openai.tools.webSearch({
-							searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
-							...(options?.country ? { userLocation: { type: "approximate", country: options.country } } : {}),
-						}),
-					},
+					tools: { web_search: openai.tools.webSearch({ searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE }) },
 					providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } },
 				}
 			: {}),
@@ -108,10 +98,6 @@ export const openaiApi: Provider = {
 	docsAnchor: "direct-model-apis",
 
 	isConfigured: configuredWhen("OPENAI_API_KEY"),
-
-	// The web search tool takes an approximate user location; without search
-	// there is nothing to localize.
-	localizes: (config) => config.webSearch,
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;

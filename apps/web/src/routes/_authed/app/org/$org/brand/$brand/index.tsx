@@ -2,6 +2,7 @@ import { IconActivity, IconArrowRight, IconClock, IconInfoCircle, IconList, Icon
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
+import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -296,10 +297,16 @@ function OverviewFigures({
 	);
 }
 
+// A brand that failed to load also lands on the wizard, the safe fallback.
+function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTrackingState } | undefined): boolean {
+	if (isLoading) return false;
+	return !brand || brand.trackingState === "onboarding";
+}
+
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
-	const { model, lookback, scope, isFiltered } = useListFilters();
+	const { model, lookback, tags } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const {
@@ -309,24 +316,22 @@ function DashboardPage() {
 	} = useDashboardSummary(brand?.id, {
 		lookback,
 		model: modelParam,
-		...scope,
+		tags,
 	});
-	// A tag or market filter narrows the count, which would understate the brand's prompts.
-	useReportedPromptCount(
-		scope.tags.length + scope.countries.length + scope.languages.length === 0 ? summary?.totalPrompts : undefined,
-	);
+	// A tag filter narrows the count, which would understate the brand's prompts.
+	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
 	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const loading = isLoadingBrand || isLoadingSummary;
 
-	if (!isLoadingBrand && !brand?.onboarded) {
+	if (showsOnboarding(isLoadingBrand, brand)) {
 		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;
 	}
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
-	if (!loading && summary?.totalRuns === 0 && !isFiltered) {
+	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
 		return (
 			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
 		);

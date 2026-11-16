@@ -6,15 +6,24 @@ import {
 	type CitationPageType,
 	PAGE_TYPE_CONFIG,
 } from "@workspace/lib/citations/domain-categories";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { RemoteChannelMixCard } from "@/components/citations/channel-mix-card";
+import { CITATION_FLOW_ID } from "@/components/citations/citation-flow-card";
+import { CitationFlowSection, type CitationFlowSource } from "@/components/citations/citation-flow-section";
+import {
+	LocalGoogleShoppingCard,
+	LocalTopDomainsCard,
+	LocalTopUrlsCard,
+	RemoteGoogleShoppingCard,
+	type RemoteListSource,
+	RemoteTopDomainsCard,
+	RemoteTopUrlsCard,
+} from "@/components/citations/citation-lists";
 import { ContentGapsCard } from "@/components/citations/content-gaps-card";
-import { GoogleShoppingCard } from "@/components/citations/google-shopping-card";
 import { RecentChangesCard } from "@/components/citations/recent-changes-card";
-import { RedditCard, useSubredditData } from "@/components/citations/reddit-card";
+import { RedditCard } from "@/components/citations/reddit-card";
 import { CATEGORY_META, PAGE_TYPE_META } from "@/components/citations/shared";
 import { CitationStatsCards } from "@/components/citations/stats-cards";
-import { TopDomainsCard } from "@/components/citations/top-domains-card";
-import { TopUrlsCard } from "@/components/citations/top-urls-card";
 import { TrendAreaChart } from "@/components/citations/trend-area-chart";
 import type { CitationData } from "@/components/citations/types";
 
@@ -29,6 +38,8 @@ interface CitationsDisplayProps {
 	maxUrls?: number;
 	days?: number;
 	onCompetitorAdded?: () => void;
+	listSource?: RemoteListSource;
+	flowSource?: CitationFlowSource;
 }
 
 /**
@@ -78,11 +89,7 @@ function useCitationSections(citationData: CitationData) {
 
 	const changed = citationData.whatsChanged;
 	const totalChanges = changed
-		? changed.newUrls.length +
-			changed.droppedUrls.length +
-			changed.titleChanges.length +
-			changed.newDomains.length +
-			changed.droppedDomains.length
+		? changed.newUrls.length + changed.droppedUrls.length + changed.newDomains.length + changed.droppedDomains.length
 		: 0;
 
 	return {
@@ -171,6 +178,8 @@ export function CitationsDisplay({
 	maxUrls = 20,
 	days = 7,
 	onCompetitorAdded,
+	listSource,
+	flowSource,
 }: CitationsDisplayProps) {
 	const { brandShare, chartSourceCategories, chartPageTypes, urlSourceTabs, urlPageTypeTabs, whatsChanged } =
 		useCitationSections(citationData);
@@ -178,10 +187,35 @@ export function CitationsDisplay({
 
 	const contentGaps = citationData.competitorOnlyPrompts ?? [];
 	const googleModule = citationData.googleModule;
-	const subredditData = useSubredditData(citationData.specificUrls, citationData.whatsChanged);
+
+	const [flowDomain, setFlowDomain] = useState<string>();
+	const openInFlow = flowSource
+		? (domain: string) => {
+				setFlowDomain(domain);
+				document.getElementById(CITATION_FLOW_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+		: undefined;
 
 	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
 	if (citationData.totalCitations === 0) return null;
+
+	const domainCardProps = {
+		sourceTabs: domainSourceTabs,
+		maxDomains,
+		brandId,
+		brandName,
+		competitors: citationData.competitors,
+		onCompetitorAdded,
+		onDomainSelect: openInFlow,
+	};
+	const urlCardProps = {
+		sourceTabs: urlSourceTabs,
+		pageTypeTabs: urlPageTypeTabs,
+		maxUrls,
+		brandName,
+		brandShare,
+		brandIsCited: citationData.categoryCounts.brand > 0,
+	};
 
 	return (
 		<>
@@ -201,37 +235,31 @@ export function CitationsDisplay({
 
 			<ChangesAndGapsRow whatsChanged={whatsChanged} contentGaps={contentGaps} days={days} />
 
-			{/* Top Cited Domains */}
-			{citationData.domainDistribution.length > 0 && (
-				<TopDomainsCard
-					domains={citationData.domainDistribution}
-					sourceTabs={domainSourceTabs}
-					maxDomains={maxDomains}
-					brandId={brandId}
-					brandName={brandName}
-					competitors={citationData.competitors}
-					onCompetitorAdded={onCompetitorAdded}
-				/>
-			)}
+			<RemoteChannelMixCard source={listSource} />
 
-			{/* Top Cited URLs */}
-			{citationData.specificUrls.length > 0 && (
-				<TopUrlsCard
-					urls={citationData.specificUrls}
-					sourceTabs={urlSourceTabs}
-					pageTypeTabs={urlPageTypeTabs}
-					maxUrls={maxUrls}
-					brandName={brandName}
-					brandShare={brandShare}
-					brandIsCited={citationData.categoryCounts.brand > 0}
-				/>
-			)}
+			{citationData.domainDistribution
+				? citationData.domainDistribution.length > 0 && (
+						<LocalTopDomainsCard domains={citationData.domainDistribution} {...domainCardProps} />
+					)
+				: listSource && <RemoteTopDomainsCard source={listSource} {...domainCardProps} />}
 
-			{/* Google Shopping */}
-			{googleModule && googleModule.shopping.products.length > 0 && <GoogleShoppingCard googleModule={googleModule} />}
+			{flowSource && <CitationFlowSection source={flowSource} domain={flowDomain} onDomainChange={setFlowDomain} />}
 
-			{/* Top Cited Subreddits */}
-			{subredditData.length > 0 && <RedditCard subreddits={subredditData} />}
+			{citationData.specificUrls
+				? citationData.specificUrls.length > 0 && (
+						<LocalTopUrlsCard urls={citationData.specificUrls} {...urlCardProps} />
+					)
+				: listSource && <RemoteTopUrlsCard source={listSource} {...urlCardProps} />}
+
+			{googleModule &&
+				googleModule.shopping.productCounts.all > 0 &&
+				(citationData.specificUrls ? (
+					<LocalGoogleShoppingCard googleModule={googleModule} />
+				) : (
+					listSource && <RemoteGoogleShoppingCard totals={googleModule} source={listSource} />
+				))}
+
+			{citationData.subreddits.length > 0 && <RedditCard subreddits={citationData.subreddits} />}
 		</>
 	);
 }

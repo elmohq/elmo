@@ -5,6 +5,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import { SlugField } from "@/components/slug-field";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -79,7 +80,11 @@ function OrganizationSettingsPage() {
 					className="w-72"
 				/>
 
-				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+				{error && (
+					<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+						<WriteErrorMessage message={error} />
+					</div>
+				)}
 
 				<Button type="submit" disabled={saving || !isDirty || !isComplete}>
 					{saving ? "Saving..." : "Save"}

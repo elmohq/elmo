@@ -10,6 +10,10 @@ const frontmatterDate = z
 export const docs = defineDocs({
 	dir: "../../packages/docs/content/docs",
 	docs: {
+		schema: pageSchema.extend({
+			// Bump on a substantive edit: it is the page's sitemap lastmod and JSON-LD dateModified.
+			updated: frontmatterDate.optional(),
+		}),
 		postprocess: {
 			includeProcessedMarkdown: true,
 		},

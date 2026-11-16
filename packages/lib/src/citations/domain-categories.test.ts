@@ -10,6 +10,7 @@ import {
 	parseGoogleProductName,
 	parseGoogleSearchQuery,
 	resolvePageType,
+	validateAdditionalDomain,
 } from "./domain-categories";
 import { CURATED_DOMAIN_LISTS, categorizeDomain, classifyUrl } from "./domain-lists";
 
@@ -363,5 +364,35 @@ describe("isForumDomain", () => {
 		expect(isForumDomain("boardgamegeek.com")).toBe(false);
 		expect(isForumDomain("example.com")).toBe(false);
 		expect(isForumDomain("macrumors.com")).toBe(false); // the news site, not its forum subdomain
+	});
+});
+
+describe("validateAdditionalDomain", () => {
+	it("rejects a subdomain of a tracked domain, naming the domain that covers it", () => {
+		expect(validateAdditionalDomain("blog.acme.com", ["https://acme.com"])).toBe(
+			'"blog.acme.com" is already covered by acme.com',
+		);
+		expect(validateAdditionalDomain("https://www.eu.blog.acme.de/path", ["acme.com", "acme.de"])).toBe(
+			'"eu.blog.acme.de" is already covered by acme.de',
+		);
+	});
+
+	it("rejects a domain that is already tracked, however it was stored", () => {
+		expect(validateAdditionalDomain("acme.de", ["acme.com", "www.Acme.de"])).toBe('"acme.de" is already tracked');
+	});
+
+	it("accepts domains nothing covers, including the broader one", () => {
+		expect(validateAdditionalDomain("acme.io", ["acme.com", "acme.co.uk"])).toBe(true);
+		expect(validateAdditionalDomain("acme.com", ["blog.acme.com"])).toBe(true);
+	});
+
+	it("requires a label boundary, so a shared suffix is not coverage", () => {
+		expect(validateAdditionalDomain("notacme.com", ["acme.com"])).toBe(true);
+		expect(validateAdditionalDomain("fake-acme.com", ["acme.com"])).toBe(true);
+	});
+
+	it("skips empty tracked entries and rejects invalid input", () => {
+		expect(validateAdditionalDomain("blog.acme.com", [undefined, null, ""])).toBe(true);
+		expect(validateAdditionalDomain("not a domain", ["acme.com"])).toBe('"not a domain" is not a valid domain');
 	});
 });

@@ -27,5 +27,8 @@ describe("referral links", () => {
 		expect(cloudPricingUrl("cloud-signin")).toBe("https://www.elmohq.com/pricing?ref=cloud-signin");
 		expect(bookDemoUrl("cloud-signin")).toBe("https://www.elmohq.com/demo?ref=cloud-signin");
 		expect(demoSiteUrl("cloud-signin")).toBe("https://demo.elmohq.com/?ref=cloud-signin");
+		expect(demoSiteUrl("marketing-demo-frame", "/app/org/acme/brand/acme/citations")).toBe(
+			"https://demo.elmohq.com/app/org/acme/brand/acme/citations?ref=marketing-demo-frame",
+		);
 	});
 });

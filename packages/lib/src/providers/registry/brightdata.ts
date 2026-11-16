@@ -1,21 +1,15 @@
 import { bdclient } from "@brightdata/sdk";
-import { DEFAULT_COUNTRY } from "@workspace/config/countries";
-import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { type Attempt, nonEmptyStrings, pollDelay, retryTransient, sleep } from "./scrape-shared";
+import { pollTask, type TaskState } from "./poll-task";
+import { type Attempt, hasWebSearchToggle, nonEmptyStrings, retryTransient } from "./scrape-shared";
 
-// Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
-// a normal Google results page, fetched through BrightData's SERP API instead of
-// the datasets/v3 collectors below.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
-	perplexity: "gd_m7dhdot1vw9a7gc1n",
-	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
 };
@@ -24,14 +18,7 @@ const BD_BASE_URL: Record<string, string> = {
 	chatgpt: "https://chatgpt.com/",
 	"google-ai-mode": "https://google.com/aimode",
 	gemini: "https://gemini.google.com/",
-	copilot: "https://copilot.microsoft.com/chats",
-	perplexity: "https://www.perplexity.ai/",
 };
-
-// The AI Overview SERP takes Google's `gl`, and the ChatGPT collector documents
-// a `country` input. The other collectors don't document one, so they only run
-// prompts in the default country.
-const LOCALIZED_MODELS = new Set([AI_OVERVIEW_MODEL, "chatgpt"]);
 
 function createClient(): bdclient {
 	return new bdclient({ apiKey: getCredential("BRIGHTDATA_API_TOKEN") });
@@ -40,22 +27,13 @@ function createClient(): bdclient {
 const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
 
 /**
- * Fetch Google's AI Overview through BrightData's SERP API. AI Overview is the
- * AI summary block on a normal results page, so we request a Google
- * SERP as parsed JSON (`brd_json=1`) with `brd_ai_overview=2` — the flag that
- * makes BrightData surface the overview; without it AIO shows up in only a
- * fraction of SERPs. This runs through a serp zone (default `sdk_serp`, the zone
- * the BrightData SDK auto-provisions; override with BRIGHTDATA_SERP_ZONE), billed
- * to the same BRIGHTDATA_API_TOKEN — no dataset id or extra credential. The
- * parsed SERP carries an `ai_overview` object when Google shows one.
+ * AI Overview isn't a dataset, so it comes through the SERP API. Without
+ * `brd_ai_overview=2` the overview appears in only a fraction of SERPs. The
+ * default `sdk_serp` zone is the one the BrightData SDK auto-provisions.
  */
-function runGoogleAiOverview(
-	prompt: string,
-	country: string = DEFAULT_COUNTRY,
-	language: string = DEFAULT_LANGUAGE,
-): Promise<ScrapeResult> {
+function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
-	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${country.toLowerCase()}&hl=${language}`;
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
 
 	return retryTransient(
 		() => attemptGoogleAiOverview(zone, url),
@@ -70,9 +48,7 @@ async function attemptGoogleAiOverview(zone: string, url: string): Promise<Attem
 			Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
 			"Content-Type": "application/json",
 		},
-		// `method: "GET"` tells BrightData how to fetch the target URL — without
-		// it the response comes back empty. `format: "raw"` returns the brd_json
-		// SERP directly as the body.
+		// Without `method: "GET"` the response comes back empty.
 		body: JSON.stringify({ zone, url, method: "GET", format: "raw" }),
 	});
 	const text = await res.text();
@@ -106,11 +82,7 @@ function findAnswer(record: Record<string, any>): string | null {
 	return null;
 }
 
-/**
- * The record minus its bulky HTML. `response_raw` stays when it is the only answer
- * the record has: extraction reads the stored record, so dropping it would leave
- * the run with no text the first time it is replayed.
- */
+/** `response_raw` stays when it is the record's only answer, or a replay would find no text. */
 export function storedRecord(record: Record<string, any>): Record<string, any> {
 	const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
 	const answeredElsewhere = findAnswer(trimmed) !== null;
@@ -138,22 +110,12 @@ export function readAnswer(record: Record<string, any>, subject: string): string
 }
 
 /**
- * Exported for tests.
- *
- * Do not gate this on `web_search_triggered`. It looks like the right signal
- * and isn't: across real ChatGPT runs, most carry `false` while still
- * reporting a query plainly derived from the prompt ("test 1" → "test 1
- * meaning"), so trusting it discards the bulk of genuine fan-out data.
- *
- * BrightData does occasionally attach another session's search metadata to a
- * correct answer — a run for "test 1" came back with
- * `web_search_query: ["OpenAI GPT-5.6 Luna"]` and matching sources. Nothing in
- * the payload separates that from a real query, and "unrelated to the prompt"
- * would throw away exactly the fan-out this feature exists to surface, so it
- * is recorded as reported and left to the read layer.
+ * Exported for tests. Don't gate on `web_search_triggered`: most real ChatGPT runs
+ * carry `false` alongside a genuine query. BrightData sometimes attaches another
+ * session's queries too, but nothing in the payload tells those apart, so they
+ * are recorded as reported.
  */
 export function extractWebQueries(record: Record<string, any>): string[] {
-	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) return nonEmptyStrings(record.web_search_query);
 	// search_model_queries may be nested in metadata (e.g. chatgpt)
 	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
@@ -169,7 +131,6 @@ export const brightdata: Provider = {
 	isConfigured: configuredWhen("BRIGHTDATA_API_TOKEN"),
 
 	validateTarget(config: ModelConfig) {
-		// Google AI Overview goes through the SERP API, not a dataset collector.
 		if (config.model === AI_OVERVIEW_MODEL) {
 			if (!config.webSearch) {
 				return `${config.model}:brightdata requires :online — AI Overview always uses web search`;
@@ -180,24 +141,15 @@ export const brightdata: Provider = {
 		if (!config.version && !BD_DATASET_IDS[config.model]) {
 			return `BrightData does not support model "${config.model}". Supported: ${[...Object.keys(BD_DATASET_IDS), AI_OVERVIEW_MODEL].join(", ")}`;
 		}
-		// ChatGPT has a web search toggle; all other chatbots always search
-		if (!config.webSearch && config.model !== "chatgpt") {
+		if (!config.webSearch && !hasWebSearchToggle(config.model)) {
 			return `${config.model}:brightdata requires :online — this chatbot always uses web search`;
 		}
 		return null;
 	},
 
-	localizes(config: ModelConfig) {
-		return LOCALIZED_MODELS.has(config.model);
-	},
-
-	sendsLanguage(config: ModelConfig) {
-		return config.model === AI_OVERVIEW_MODEL;
-	},
-
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt, options?.country, options?.language);
+			return runGoogleAiOverview(prompt);
 		}
 
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];
@@ -213,7 +165,7 @@ export const brightdata: Provider = {
 		let snapshotId: string | undefined;
 		let consumed = false;
 		try {
-			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false, options?.country);
+			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false);
 			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 			consumed = true;
@@ -237,25 +189,16 @@ export const brightdata: Provider = {
 				modelVersion: record?.model ?? undefined,
 			};
 		} finally {
-			// A triggered snapshot we never consumed (timeout, terminal failure, an
-			// unknown status we gave up on, or any thrown error) keeps running on
-			// BrightData and counts against the per-dataset concurrency cap — which
-			// eventually 429s even healthy triggers. Best-effort cancel so abandoned
-			// jobs don't accumulate. (Worker SIGTERM mid-poll still leaks; those need
-			// the periodic snapshot sweep.)
+			// An abandoned snapshot keeps running and counts against the per-dataset
+			// concurrency cap, which eventually 429s healthy triggers. A SIGTERM
+			// mid-poll still leaks one; the periodic snapshot sweep catches those.
 			if (snapshotId && !consumed) await cancelSnapshot(client, snapshotId);
 			await client.close();
 		}
 	},
 };
 
-async function triggerSnapshot(
-	datasetId: string,
-	model: string,
-	prompt: string,
-	webSearch: boolean,
-	country: string | undefined,
-): Promise<string> {
+async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
 	const response = await fetch(
 		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
 		{
@@ -269,9 +212,7 @@ async function triggerSnapshot(
 					url: BD_BASE_URL[model] ?? "",
 					prompt,
 					index: 1,
-					// ChatGPT is the only chatbot with a web search toggle.
-					...(model === "chatgpt" ? { web_search: webSearch } : {}),
-					...(country && LOCALIZED_MODELS.has(model) ? { country } : {}),
+					...(hasWebSearchToggle(model) ? { web_search: webSearch } : {}),
 				},
 			]),
 		},
@@ -284,55 +225,46 @@ async function triggerSnapshot(
 	return snapshot_id;
 }
 
-/** Terminal failure statuses from datasets/v3/progress. Anything else —
- *  running, building, "starting", queued, or a status BrightData adds later —
- *  is treated as "still working" so a degraded scraper or an unrecognized
- *  status string doesn't fail the run on the very first poll. */
 const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
 
-/** BrightData publishes no collection deadline, so this is sized past the
- *  slowest error row a stuck input has been seen to produce — not to any
- *  documented limit. Too low and their reason never reaches us. */
+/** No documented deadline: sized past the slowest error row a stuck input has produced. */
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
-async function pollUntilReady(snapshotId: string): Promise<void> {
-	const deadline = Date.now() + POLL_TIMEOUT_MS;
-
-	for (let attempt = 0; Date.now() < deadline; attempt++) {
-		const status = await getSnapshotStatus(snapshotId);
-		if (status === "ready") return;
-		if (TERMINAL_FAILURE.has(status)) {
-			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
-		}
-
-		await sleep(pollDelay(attempt));
-	}
-
-	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+function snapshotState(status: string): TaskState {
+	if (status === "ready") return "ready";
+	if (TERMINAL_FAILURE.has(status)) return "failed";
+	// Unrecognised statuses (e.g. "starting") must not fail the run on the first poll.
+	return "running";
 }
 
-/** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's
- *  getStatus because its response schema is a strict enum
- *  (running|ready|failed|cancelled|error) that throws on any other value — and the
- *  live API also returns statuses like "starting", which would otherwise fail the
- *  run instantly instead of waiting. A transient HTTP/parse error is reported as a
- *  non-terminal status so we keep polling rather than abandon the snapshot. */
-async function getSnapshotStatus(snapshotId: string): Promise<string> {
+function pollUntilReady(snapshotId: string): Promise<string | undefined> {
+	return pollTask<string>({
+		describe: `BrightData snapshot ${snapshotId}`,
+		poll: () => getSnapshotStatus(snapshotId),
+		classify: snapshotState,
+		describeFailure: (status) => ` (${status})`,
+		totalTimeoutMs: POLL_TIMEOUT_MS,
+	});
+}
+
+/**
+ * Bypasses the SDK's getStatus, whose strict enum throws on live statuses like
+ * "starting". A transient error reads as null, so the last known status stands.
+ */
+async function getSnapshotStatus(snapshotId: string): Promise<string | null> {
 	try {
 		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
 			headers: { Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}` },
 		});
-		if (!res.ok) return "pending";
+		if (!res.ok) return null;
 		const body = (await res.json()) as { status?: string };
-		return body.status ?? "pending";
+		return body.status ?? null;
 	} catch {
-		return "pending";
+		return null;
 	}
 }
 
-/** Best-effort cancel of a triggered snapshot we're abandoning, so it stops
- *  counting against BrightData's per-dataset running-jobs cap. Cancellation is
- *  cleanup, not part of the run's success path, so errors are swallowed. */
+/** Cleanup, not part of the run, so errors are swallowed. */
 async function cancelSnapshot(client: bdclient, snapshotId: string): Promise<void> {
 	try {
 		await client.scrape.snapshot.cancel(snapshotId);

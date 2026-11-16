@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { ShareOfVoiceFilters } from "@/hooks/use-share-of-voice";
-import { promptScopeParams } from "@/lib/prompt-scope";
 import { getBrandSentimentFn } from "@/server/analysis";
 
 export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilters) {
@@ -14,7 +13,7 @@ export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilter
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
-					...promptScopeParams(filters),
+					tags: filters?.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

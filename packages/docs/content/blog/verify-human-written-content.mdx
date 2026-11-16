@@ -1,0 +1,144 @@
+---
+title: "Paying for Human-Written Content? Verify It Before AI Search Ignores It"
+description: "Human-led pages earn a far larger share of AI citations than fully automated ones, which makes 'human-written' worth paying for and worth checking. How to verify what your writers and agencies deliver, what an AI detector can and cannot tell you, and where verification stops being the point."
+date: "2026-11-06"
+author: ai
+metaTitle: "How to Verify Human-Written Content From Contractors"
+tags:
+  - content
+  - aeo
+  - ai-citations
+  - tools
+definedTerms:
+  - term: AI slop
+    definition: "AI slop is model output published with little or no human contribution: no original data, no first-hand experience, no editing beyond formatting. It is the tier of content that is heavily underrepresented among the pages AI answer engines cite, relative to how much of it exists."
+  - term: AI-assistance tier
+    definition: "An AI-assistance tier is a graded label for how much of a text an AI model wrote or rewrote, rather than a binary AI-or-human verdict. Pangram, for example, separates fully human-written, lightly AI-assisted (spelling, grammar, phrasing), moderately AI-assisted (rewritten sections or added content), and fully AI-generated text."
+howTo:
+  name: "How to verify human-written content from contractors"
+  description: "A lightweight process for checking that content you paid for as human-written actually is, without turning your editorial team into a tribunal."
+  steps:
+    - name: Define human-written in the contract
+      text: "Name the AI uses you accept (spell-check, grammar fixes, research help) and the ones you don't (drafting, rewriting sections). Tie it to a measurable tier, such as no section above lightly AI-assisted, so both sides know what was promised."
+    - name: Scan every delivery
+      text: "Run each draft through an AI detector before it is edited in-house, so your own editing does not muddy the result. At API rates of a few cents per hundred words, scanning a long article costs less than a dollar."
+    - name: Scan the back catalog once
+      text: "Run the pages you have already published from each contractor. A pattern across twenty articles tells you far more than a verdict on one."
+    - name: Ask for the draft history when something flags
+      text: "Treat a flag as a reason to ask questions, not a verdict. Version history in Google Docs or a similar editor, notes, and interview recordings are the evidence a working writer can produce easily."
+    - name: Check what the page contains, not just how it reads
+      text: "A page can pass a detector and still be thin. Check for the things AI engines cite: original data, first-hand testing, named sources, and claims nobody else has made."
+faq:
+  - question: Does human-written content get cited more by AI search engines?
+    answer: "Yes. Fully automated pages are a small minority of the sources AI engines cite despite making up a large share of new content. Ahrefs found pure-AI pages were 3.6% of Google AI Overview citations, and Graphite found AI-generated articles were about 18% of ChatGPT and Perplexity citations while making up roughly half of new articles. Engines do not appear to detect and penalize AI text directly; the pages they cite tend to have the original data and first-hand detail that fully automated content lacks."
+  - question: How can I tell if a writer used ChatGPT?
+    answer: "Run the text through an AI detector that reports degrees of AI assistance rather than a single yes-or-no score, and read the segment-level results. If a section flags, ask the writer for their draft history or notes. A detector result is strong evidence on long, unedited model output and weaker evidence on short or heavily edited text, so it should start a conversation rather than end one."
+  - question: Are AI detectors accurate enough to use on contractors?
+    answer: "The better ones are accurate on long-form prose. Pangram reports an English false positive rate of 0.0090% for its 4.1 model, about 1 in 11,000 human documents. Accuracy drops on text under about 150 words, lists, templated copy, translations, and AI output that has been rewritten by a person or by a humanizer tool. Use a detector to screen deliveries, and use the writer's process evidence to settle disputes."
+  - question: Is it a problem if a writer uses Grammarly or AI for light edits?
+    answer: "Usually not, and your contract should say so. Spelling fixes, grammar, and small phrasing changes do not alter the ideas or structure of a piece. Pangram classifies this kind of editing as lightly AI-assisted, separately from moderately assisted text, where a model has rewritten sections or added content of its own."
+  - question: Does Google penalize AI-generated content?
+    answer: "Not for being AI-generated. Google's scaled content abuse policy targets many pages made to manipulate rankings with little value to users, no matter how they are created, and lists generating many pages with generative AI tools without adding value as an example. In May 2026 Google clarified that its spam policies also apply to generative AI responses in Search, including AI Overviews and AI Mode."
+  - question: What should I do if a contractor's work flags as AI-generated?
+    answer: "Ask before you accuse. Share the segment-level result, ask for the draft history, and give the writer a chance to explain. If the history shows the text arriving in large pasted blocks, or the writer cannot produce any process evidence, you have a contract problem, not a detector problem, and you should handle it as one."
+---
+
+**Human-written content is now the premium tier of the web, and anything sold at a premium deserves checking.** Roughly half of newly published articles [classify as AI-generated](https://graphite.io/five-percent/ai-now-writes-as-many-online-articles-as-humans-do), yet fully AI-written pages make up only [3.6% of Google AI Overview citations](https://ahrefs.com/blog/ai-overviews-cite-ai-generated-content-more-than-human-writing/) and about [18% of ChatGPT and Perplexity citations](https://graphite.io/five-percent/ai-content-in-search-and-llms). If you pay freelancers, agencies, or a content shop for human-written work, you are paying for the pages answer engines actually cite. If what arrives is pasted model output, you are paying human rates for the tier that underperforms everywhere it has been measured, and you won't find out from your traffic until months later.
+
+**Key takeaways**
+
+- The citation gap between human-led and fully automated content is the business case for human writing in AI search. We covered the data in detail in [does AI-written content get cited](/blog/does-ai-written-content-get-cited).
+- "Human-written" is a claim a contractor makes, and it is cheap to check. Detector API pricing works out to well under a dollar for a typical long-form article.
+- Modern detectors grade AI assistance instead of answering yes or no. That matters, because a writer who uses spell-check is not the same as a writer who pastes ChatGPT output.
+- A detector flag is evidence, not a verdict. Pair it with process evidence like draft history before you act on it.
+- Passing a detector is the floor, not the goal. The pages engines cite contain original data and first-hand detail, and no detector checks for those.
+
+## Why human content is worth paying for in AI search
+
+Answer engines don't cite pages because a human wrote them. As far as anyone has measured, they don't detect AI text and demote it either: Ahrefs found [no correlation between a page's AI share and its citation order](https://ahrefs.com/blog/ai-overviews-cite-ai-generated-content-more-than-human-writing/) once cited. What they cite is pages with something to retrieve: a number nobody else published, a test someone actually ran, a specific claim from someone who did the work. Fully automated content almost never has those, because a model writing from its training data can only restate what is already out there.
+
+That's the practical definition of AI slop: model output published with little or no human contribution. It reads fluently, it is often accurate, and it adds nothing to an answer engine's options. When an engine has dozens of pages saying the same thing, it cites the one with the most specific, verifiable detail, and that page is rarely the one that took ninety seconds to generate.
+
+Google's position lines up with this. Its [spam policies](https://developers.google.com/search/docs/essentials/spam-policies) define scaled content abuse as pages generated "for the primary purpose of manipulating search rankings and not helping users," "no matter how it's created," and list "using generative AI tools or other similar tools to generate many pages without adding value for users" as an example. In May 2026 Google [clarified that those spam policies also apply](https://ppc.land/google-spam-policies-now-officially-cover-ai-overviews-and-ai-mode-in-search) to generative AI responses in Search, including AI Overviews and AI Mode. Slop is not just less likely to be cited; at scale, it can put the whole site at risk.
+
+So the human contribution is the asset. And if you're buying it from someone else, it's worth knowing you received it.
+
+## The contractor problem
+
+Most teams that care about content quality don't write everything themselves. They hire freelancers, agencies, and content subscriptions, and many of those vendors sell "human-written" as a feature, often at several times the price of AI-generated alternatives.
+
+The incentive problem is obvious. A writer paid per article can produce one in an afternoon, or in five minutes with a model and a light pass for tone. Both deliver a document. Only one delivers the thing you paid for, and the two can be hard to tell apart on a quick read, especially when the reviewer is skimming twenty deliveries a week.
+
+None of this assumes contractors are dishonest. Most aren't. But "human-written" is a claim, it's the claim your content budget rests on, and it can be checked cheaply, so checking it is ordinary diligence, the same as checking that an invoice matches the work delivered. Writers who do the work benefit too: a verifiable record is the easiest way to show a client that the premium was earned.
+
+## What an AI detector can tell you
+
+Early AI detectors gave a single percentage and a lot of false accusations, which is why many editors still distrust the whole category. Current tools are considerably better, and the most useful change is that they now report degrees of AI involvement rather than a single verdict.
+
+[Pangram](https://affiliate.pangram.com/r0bbt3x26tgr), the detector that research teams including [Pew Research Center](https://www.pewresearch.org/data-labs/2026/08/20/how-much-of-the-internet-is-written-with-ai/) and [Graphite](https://graphite.io/five-percent/ai-now-writes-as-many-online-articles-as-humans-do) used to measure how much of the web is AI-written, splits text into [four tiers](https://www.pangram.com/blog/introducing-ai-assistance-detection):
+
+| Tier | What it means | Should a "human-written" contract allow it? |
+|---|---|---|
+| Fully human-written | No significant AI assistance | Yes |
+| Lightly AI-assisted | Spelling, grammar, phrasing, translation, readability fixes | Usually yes. This is what Grammarly-style tools do |
+| Moderately AI-assisted | AI rewrote significant portions or added content of its own | Usually no |
+| Fully AI-generated | Text taken more or less directly from a model | No |
+
+It classifies long documents segment by segment, so a 2,000-word article with two pasted sections shows you which two. That segment-level view is what makes a detector useful for contractor work: you aren't arguing about a whole-document percentage, you're looking at specific paragraphs.
+
+On accuracy, Pangram's [model card for Pangram 4.1](https://www.pangram.com/research/model-card/pangram-4-1), released in October 2026, reports an English false positive rate of 0.0090% (70 of 781,981 human-written documents) and a false negative rate of 0.37% across output from 26 models. Those are vendor-reported figures on the vendor's benchmark, and they describe clean long-form prose. The same model card is explicit about where it is less reliable:
+
+- **Short text.** It is built for at least 50 words of natural prose and shows less certainty under 150 words. Don't scan meta descriptions or social captions and draw conclusions.
+- **Non-prose content.** Lists, tables, templated copy, recipes and instructions, math-heavy text, and AI translations are out of scope.
+- **Edited model output.** A model draft that a person rewrites substantially, or runs through a "humanizer" tool, gets harder to tell from human writing. The model card reports humanizer signals but publishes no accuracy figures for them.
+
+The model card also says, plainly, that false accusations can cause serious harm. Take that seriously. A detector is a screening tool, and a high-precision one, but the decision about a person's work should rest on more than one signal.
+
+## A verification process that doesn't turn editors into investigators
+
+### 1. Put the definition in the contract
+
+Most disputes start because "human-written" was never defined. Write down which AI uses are fine (spell-check, grammar fixes, research and outlining help, translation of source material) and which aren't (drafting, rewriting sections, generating examples or quotes). Then tie it to something measurable, for example: *no section of a delivered draft classifies above lightly AI-assisted*. Writers know the standard up front, and you have a fair basis for raising a problem later.
+
+### 2. Scan on delivery, before you edit
+
+Run each draft as it arrives, before anyone on your side touches it. Your own edits, especially if your team uses AI tools in editing, will muddy the result. The cost is trivial: Pangram's [API](https://affiliate.pangram.com/r0bbt3x26tgr) is listed at $0.05 per 100 words, so a 1,500-word article costs about $0.75 to scan. The Individual plan, at $20 a month, covers 300,000 words through the web app, enough for roughly 200 long-form articles, plus Google Docs and Gmail integrations if your drafts arrive there.
+
+If you take in a lot of content, wire the API into your intake step so every delivery is scored automatically and only flagged drafts reach a human reviewer.
+
+### 3. Scan the back catalog once
+
+The pages already on your site from each contractor are the most useful dataset you have. One flagged article could be anything. Twelve of fifteen flagged articles from the same vendor, starting the month their prices stayed flat while their turnaround halved, is a pattern. Do this once per vendor, and again if quality seems to shift.
+
+### 4. When something flags, ask for process evidence
+
+A writer who did the work can show it easily. Google Docs version history shows a document growing sentence by sentence over hours; pasted model output arrives in large blocks in seconds. Notes, interview recordings, source lists, and earlier drafts all count. Share the segment-level result, ask for the history, and give the writer a real chance to explain. Most flags resolve in one email. If the history shows pasted blocks, or the writer can't produce anything at all, you have a contract problem rather than a detector problem, and you should handle it as one.
+
+### 5. Check what the page contains, not just how it reads
+
+This is the step most verification processes skip, and it's the one that matters most for AI search. A page can be entirely human-written and still be thin: a writer paraphrasing the top five search results by hand produces content just as unoriginal as a model would. Before publishing, check for the things engines actually retrieve and cite:
+
+- Data you collected or numbers nobody else has published
+- First-hand testing, screenshots, or examples from real use
+- Named sources, interviews, or quotes from people with relevant experience
+- A specific claim or recommendation, not a survey of everyone else's
+
+A detector can tell you whether a human wrote the page. It can't tell you whether the page is worth citing. You still need an editor for that.
+
+## Don't optimize for the detector score
+
+There's an obvious failure mode here, on both sides of the contract. Writers can run model output through humanizer tools until it scores human, and teams can start treating a clean score as the definition of good content. Both miss the point. Nothing in the citation data suggests answer engines reward undetectability. They reward what human-led pages tend to contain. A rewritten model draft that passes a detector still has nothing new in it, and it will be cited about as often as the original would have been.
+
+Verification protects what you paid for. The work that earns citations is still original reporting, real expertise, and specific claims, and that's what the human premium should be buying.
+
+## Beyond your own site
+
+The same tools are useful outside the contractor relationship. Pangram's browser extension scans posts on LinkedIn, Medium, X, and Substack as you scroll, which is a quick way to judge whether the "thought leadership" in your category is actually written by the people posting it. That matters for AEO too: LinkedIn is [one of the most-cited domains in AI search](/blog/linkedin-ai-citations), and most of those citations point at individual profiles and posts, so it's worth knowing which of the posts shaping answers in your category carry real expertise and which are slop.
+
+## Measure whether it pays off
+
+Verification tells you what you published. It doesn't tell you whether it worked. For that, you need to see which of your pages answer engines actually cite for the prompts your buyers ask.
+
+[Elmo](https://www.elmohq.com/) is an open-source AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces on a schedule and records every answer, mention, and cited page. Put each page's detector tier next to its citation history and you can see whether your human-led pages are earning more citations than the rest, in your category rather than on a web-wide average.
+
+For the underlying data, read [does AI-written content get cited](/blog/does-ai-written-content-get-cited) and [where AI citations come from](/blog/where-ai-citations-come-from). For the tooling side of AI-assisted writing, see [the best AI content writers for AEO](/blog/best-ai-content-writers).

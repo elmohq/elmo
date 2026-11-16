@@ -1,10 +1,3 @@
-/**
- * Mock for @/lib/config/client — provides a controllable clientConfig.
- *
- * Components import `clientConfig` directly from this module.
- * Stories call `setMockClientConfig()` before rendering to control values.
- */
-
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 
 export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
@@ -13,6 +6,7 @@ export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
 	canCreateBrands: boolean;
+	promotesCloud?: boolean;
 	/** Cloud only: gates the Billing nav item and the billing/paywall routes. */
 	billing?: boolean;
 	teamInvites?: boolean;
@@ -47,10 +41,6 @@ export interface ClientConfig {
 	hasUsers: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Module-level config that stories can mutate
-// ---------------------------------------------------------------------------
-
 let _config: ClientConfig = {
 	mode: "local",
 	features: {
@@ -72,11 +62,7 @@ export function setMockClientConfig(config: ClientConfig) {
 	_config = config;
 }
 
-/**
- * Proxy-like object that always reads from the current `_config`.
- * This ensures that stories calling `setMockClientConfig` before render
- * will have the updated config read by child components.
- */
+/** Components import `clientConfig` once, so it reads through to whatever a story set last. */
 export const clientConfig: ClientConfig = new Proxy({} as ClientConfig, {
 	get(_target, prop: string) {
 		return (_config as unknown as Record<string, unknown>)[prop];

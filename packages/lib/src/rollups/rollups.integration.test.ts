@@ -13,14 +13,17 @@ import {
 	organization,
 	promptRuns,
 	prompts,
+	rollupCitationPages,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
+	runExtractions,
 	runMentions,
 } from "../db/schema";
 import type { RunMentionAssessments } from "../mentions";
-import { resolveUnpagedCitations } from "./citation-pages";
+import { resolveUnpagedCitations, upsertCitedPages } from "./citation-pages";
 import { BUCKET_MS, CLASSIFIER_VERSION } from "./constants";
 import { markDirty, markPromptRunsDirty, markRunsDirty, pendingMarks, refreshRange } from "./dirty";
 import { getPipelineState, setPipelineState } from "./pipeline-state";
@@ -138,7 +141,8 @@ const SEED_CITATIONS = [
 async function reset(db: TestDb): Promise<void> {
 	await db.execute(sql`
 		TRUNCATE citations, prompt_runs, prompts, competitors, brands, organization,
-			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty
+			rollup_prompt_runs, rollup_competitor_mentions, rollup_citation_urls, cited_pages, rollup_dirty,
+			rollup_citation_pages, rollup_sentiment_quotes
 		RESTART IDENTITY CASCADE
 	`);
 	await db.execute(sql`INSERT INTO pipeline_state (id) VALUES (1) ON CONFLICT DO NOTHING`);
@@ -231,6 +235,9 @@ const urlRows = (db: TestDb) =>
 		.orderBy(asc(rollupCitationUrls.bucket), asc(rollupCitationUrls.promptId), asc(rollupCitationUrls.domain));
 
 const pageRows = (db: TestDb) => db.select().from(citedPages).orderBy(asc(citedPages.url));
+
+const brandPageRows = (db: TestDb) =>
+	db.select().from(rollupCitationPages).orderBy(asc(rollupCitationPages.brandId), asc(rollupCitationPages.url));
 
 async function snapshot(db: TestDb) {
 	return {
@@ -476,6 +483,69 @@ describe("rollups against postgres", () => {
 		}
 	});
 
+	it("copies the pages a brand cites for its own reads", async () => {
+		await rebuildAll(db);
+		const pages = await pageRows(db);
+		const copies = await brandPageRows(db);
+		expect(copies.map((copy) => [copy.brandId, copy.url, copy.title, copy.staticCategory, copy.pageType])).toEqual(
+			pages.map((page) => [BRAND_ID, page.url, page.title, page.staticCategory, page.pageType]),
+		);
+	});
+
+	it("brings a brand's copy of a page up to date when a rebuild next cites it", async () => {
+		await rebuildAll(db);
+		await upsertCitedPages(db, [
+			{ url: GUIDE, domain: "example.com", title: "Acme pricing", seenAt: new Date("2026-02-01T00:00:00.000Z") },
+		]);
+		await rebuildAll(db);
+
+		const [page] = (await pageRows(db)).filter((row) => row.url === GUIDE);
+		const [copy] = (await brandPageRows(db)).filter((row) => row.url === GUIDE);
+		expect(page.title).toBe("Acme pricing");
+		expect([copy.title, copy.staticCategory, copy.pageType]).toEqual([page.title, page.staticCategory, page.pageType]);
+	});
+
+	it("keeps, per bucket and sentiment, the quotable run the judge is surest of", async () => {
+		const quotable = (runId: string, sentiment: string, confidence: number, passage = { start: 0, end: 4 }) =>
+			db
+				.update(runMentions)
+				.set({
+					assessments: {
+						brand: {
+							mentioned: true,
+							probability: 0.9,
+							sentiment: sentiment as "positive",
+							sentimentProbabilities: { [sentiment]: confidence },
+							passage,
+						},
+						competitors: {},
+						judged: { brand: "acme", competitors: {} },
+					},
+				})
+				.where(eq(runMentions.runId, runId));
+		await db.update(runExtractions).set({ textContent: "Acme is great." });
+		await quotable(RUN(1), "positive", 0.6);
+		await quotable(RUN(3), "positive", 0.9);
+		// No passage to quote, however sure the judge is.
+		await quotable(RUN(4), "positive", 0.99, { start: 3, end: 3 });
+		// Not a mention, so not the brand's sentiment.
+		await quotable(RUN(2), "negative", 0.99);
+		await rebuildAll(db);
+
+		const quotes = await db.select().from(rollupSentimentQuotes).orderBy(asc(rollupSentimentQuotes.bucket));
+		expect(quotes.map((quote) => [quote.bucket.toISOString(), quote.promptId, quote.sentiment, quote.runId])).toEqual([
+			[B0.toISOString(), PROMPT_1, "positive", RUN(1)],
+			[B0.toISOString(), PROMPT_2, "positive", RUN(3)],
+		]);
+
+		await db
+			.update(runExtractions)
+			.set({ textContent: null })
+			.where(eq(runExtractions.runId, RUN(3)));
+		await rebuildAll(db);
+		expect((await db.select().from(rollupSentimentQuotes)).map((quote) => quote.runId)).toEqual([RUN(1)]);
+	});
+
 	it("is idempotent", async () => {
 		await rebuildAll(db);
 		const before = await snapshot(db);
@@ -561,6 +631,9 @@ describe("rollups against postgres", () => {
 			["google", "search"],
 			["editorial", "article"],
 		]);
+		expect((await brandPageRows(db)).map((copy) => [copy.staticCategory, copy.pageType])).toEqual(
+			pages.map((page) => [page.staticCategory, page.pageType]),
+		);
 	});
 
 	it("resolves unpaged citations a window of heap pages at a time", async () => {

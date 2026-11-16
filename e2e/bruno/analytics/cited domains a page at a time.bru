@@ -1,0 +1,43 @@
+meta {
+  name: cited domains a page at a time
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}/citations/domains?start={{windowStart}}&end={{windowEnd}}&limit=1&q=competitor-alpha
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{orgFullKey}}
+}
+
+params:query {
+  start: {{windowStart}}
+  end: {{windowEnd}}
+  limit: 1
+  q: competitor-alpha
+}
+
+assert {
+  res.status: eq 200
+  res.body.pagination.page: eq 1
+  res.body.pagination.limit: eq 1
+}
+
+tests {
+  test("a search finds a domain wherever it ranks, and paging stops at the limit", function() {
+    const body = res.getBody();
+    expect(body.data).to.have.lengthOf(1);
+    expect(body.data[0].domain).to.equal("competitor-alpha.com");
+    expect(body.pagination.total).to.equal(1);
+    expect(body.pagination.totalPages).to.equal(1);
+  });
+
+  test("the totals still cover every domain in the window", function() {
+    const body = res.getBody();
+    expect(body.totals.uniqueDomains).to.be.at.least(2);
+  });
+}

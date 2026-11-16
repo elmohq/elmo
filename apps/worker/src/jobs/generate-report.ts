@@ -1,30 +1,25 @@
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
+import { describeReportPhase, type ReportPhase, reportProgress } from "@workspace/lib/reports/lifecycle";
 import { eq } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { processReportJob, type ReportJobData } from "../report-worker";
 
 export interface GenerateReportData extends ReportJobData {}
 
-/**
- * Generate a report - runs website analysis, competitor research, and prompt testing.
- * This is a pg-boss job handler.
- */
 export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promise<void> {
-	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { reportId, brandName, brandAliases, brandWebsite, manualPrompts } = job.data;
 
 		console.log(`Generating report ${reportId} for ${brandName}`);
 
 		const log = (message: string) => console.log(`[Report ${reportId}] ${message}`);
-		const updateProgress = async (progress: number) => {
-			console.log(`[Report ${reportId}] Progress: ${progress}%`);
+		const enterPhase = async (phase: ReportPhase) => {
+			const progress = reportProgress(phase);
+			console.log(`[Report ${reportId}] ${describeReportPhase(phase)} (${progress}%)`);
 			try {
-				await db
-					.update(reports)
-					.set({ progress: Math.round(progress) })
-					.where(eq(reports.id, reportId));
+				// updatedAt is the heartbeat the maintenance sweep uses to detect dead workers.
+				await db.update(reports).set({ progress, updatedAt: new Date() }).where(eq(reports.id, reportId));
 			} catch (err) {
 				console.error(`[Report ${reportId}] Failed to persist progress:`, err);
 			}
@@ -39,7 +34,7 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 				manualPrompts,
 			},
 			log,
-			updateProgress,
+			enterPhase,
 		});
 
 		console.log(`Report ${reportId} completed successfully`);

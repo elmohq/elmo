@@ -1,0 +1,30 @@
+meta {
+  name: competitors and prompts may omit their lists
+  type: http
+  seq: 33
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: inherit
+}
+
+script:pre-request {
+  bru.setVar("listsBrandId", "e2e-omitted-lists-" + Date.now());
+}
+
+body:json {
+  {
+    "id": "{{listsBrandId}}",
+    "name": "Omitted Lists Brand",
+    "domains": ["{{listsBrandId}}.example.com"],
+    "competitors": [{ "name": "Bare Competitor", "domains": ["bare-competitor.example.com"] }],
+    "prompts": [{ "value": "Which tools does a bare prompt compare?" }]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: eq {{listsBrandId}}
+}

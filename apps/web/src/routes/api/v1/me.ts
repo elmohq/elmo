@@ -2,16 +2,18 @@
  * — including by a key that turns out to hold nothing. */
 import { createFileRoute } from "@tanstack/react-router";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { apiKeyIdentitySchema } from "@/lib/api/schemas/identity";
 import { API_SCOPES } from "@/lib/api/scopes";
 
 export const Route = createFileRoute("/api/v1/me")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: apiKeyIdentitySchema,
 				handle: async ({ auth }) => {
 					if (auth.kind === "admin") {
 						return {
-							keyType: "admin",
+							keyType: "admin" as const,
 							organizationId: null,
 							organizationName: null,
 							scopes: [...API_SCOPES],
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/api/v1/me")({
 					}
 
 					return {
-						keyType: "organization",
+						keyType: "organization" as const,
 						organizationId: auth.organizationId,
 						organizationName: auth.organizationName,
 						scopes: [...auth.scopes].sort(),

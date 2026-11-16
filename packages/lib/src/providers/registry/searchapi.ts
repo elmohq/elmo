@@ -2,12 +2,19 @@ import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromSearchapi, searchapiText } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { type Attempt, failureDetails, isTransientStatus, nonEmptyStrings, retryTransient } from "./scrape-shared";
+import {
+	type Attempt,
+	failureDetails,
+	hasWebSearchToggle,
+	isTransientStatus,
+	nonEmptyStrings,
+	retryTransient,
+	searchesWeb,
+} from "./scrape-shared";
 
 const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 
-// Only the Google engines take a location and language; the chatbot engines
-// answer from wherever SearchApi runs them.
+// SearchApi localizes every surface it can; default to a US audience.
 const GOOGLE_LOCALE = { gl: "us", hl: "en" } as const;
 
 const SEARCHAPI_TIMEOUT_MS = 3 * 60 * 1000;
@@ -23,8 +30,8 @@ type SearchapiTarget = {
 // the dedicated engine can redeem.
 const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
 	chatgpt: { engine: "chatgpt" },
-	perplexity: { engine: "perplexity" },
-	copilot: { engine: "bing_copilot" },
+	// SearchApi's name for bing.com/copilotsearch, which Bing now titles AI Mode.
+	"bing-ai-mode": { engine: "bing_copilot" },
 	gemini: { engine: "gemini" },
 	"google-ai-mode": { engine: "google_ai_mode", params: { ...GOOGLE_LOCALE } },
 	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },
@@ -81,9 +88,8 @@ async function redeemAiOverviewToken(payload: Record<string, any>): Promise<Reco
 	return { ...payload, ai_overview: answer };
 }
 
-// A shell with no answer in it — a page token that redeemed to nothing — fails rather than storing as a run nobody was
-// mentioned in. The text comes back with it so the run can't be gated on one
-// reading of the payload and then stored from another.
+// A page token that redeemed to nothing fails rather than storing an empty run. The
+// text comes back too, so the gate and the stored run read the payload the same way.
 function readAnswer(
 	payload: Record<string, any>,
 	target: SearchapiTarget,
@@ -123,19 +129,10 @@ export const searchapi: Provider = {
 		if (!SEARCHAPI_TARGETS[config.model]) {
 			return `SearchApi does not support model "${config.model}". Supported: ${Object.keys(SEARCHAPI_TARGETS).join(", ")}`;
 		}
-		// ChatGPT is the one surface with a toggle; the rest always search.
-		if (config.model !== "chatgpt" && !config.webSearch) {
+		if (!hasWebSearchToggle(config.model) && !config.webSearch) {
 			return `${config.model}:searchapi requires :online — SearchApi reads the live web-search UIs`;
 		}
 		return null;
-	},
-
-	localizes(config: ModelConfig) {
-		return SEARCHAPI_TARGETS[config.model]?.params?.gl !== undefined;
-	},
-
-	sendsLanguage(config: ModelConfig) {
-		return SEARCHAPI_TARGETS[config.model]?.params?.hl !== undefined;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -147,9 +144,7 @@ export const searchapi: Provider = {
 		}
 
 		const params = new URLSearchParams({ engine: target.engine, q: prompt, ...target.params });
-		if (model === "chatgpt") params.set("web_search", String(options?.webSearch ?? false));
-		if (options?.country && params.has("gl")) params.set("gl", options.country.toLowerCase());
-		if (options?.language && params.has("hl")) params.set("hl", options.language);
+		if (hasWebSearchToggle(model)) params.set("web_search", String(options?.webSearch ?? false));
 
 		const serp = await search(params);
 		const payload = target.nested === "ai_overview" ? await redeemAiOverviewToken(serp) : serp;
@@ -161,7 +156,7 @@ export const searchapi: Provider = {
 		return {
 			rawOutput: stored,
 			webQueries: reportedWebQueries(nonEmptyStrings(answer.search_queries), {
-				webSearch: model !== "chatgpt" || (options?.webSearch ?? false),
+				webSearch: searchesWeb(model, options?.webSearch),
 				searchProven: citations.length > 0,
 			}),
 			modelVersion: typeof answer.response_metadata?.model === "string" ? answer.response_metadata.model : undefined,

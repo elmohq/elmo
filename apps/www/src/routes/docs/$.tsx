@@ -16,6 +16,7 @@ interface DocsLoaderData {
 	description: string;
 	filePath: string;
 	pageTree: SerializedPageTree;
+	lastModified?: string;
 }
 
 interface OpenApiLoaderData {
@@ -57,7 +58,12 @@ export const Route = createFileRoute("/docs/$")({
 			],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
-				articleJsonLd({ title, description: pageDescription, path }),
+				articleJsonLd({
+					title,
+					description: pageDescription,
+					path,
+					dateModified: data.type === "docs" ? data.lastModified : undefined,
+				}),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
 					{ name: "Docs", path: "/docs" },
@@ -75,13 +81,14 @@ export const Route = createFileRoute("/docs/$")({
 export const serverLoader = createServerFn({
 	method: "GET",
 })
-	.inputValidator((slugs: string[]) => slugs)
+	.validator((slugs: string[]) => slugs)
 	.handler(async ({ data: slugs }): Promise<LoaderData> => {
 		// Lazy import keeps fumadocs-core/source + fumadocs-openapi (and their
 		// transitive deps) out of the client bundle. The handler body is stripped
 		// from the client by createServerFn but the static import at the top of
 		// the file would still pull source.ts in via its top-level await.
 		const { source } = await import("@/lib/source");
+		const { pageLastUpdated } = await import("@/lib/page-dates");
 		const page = source.getPage(slugs);
 		if (!page) throw notFound();
 
@@ -113,6 +120,7 @@ export const serverLoader = createServerFn({
 			description: page.data.description ?? "",
 			filePath,
 			pageTree,
+			lastModified: pageLastUpdated(page),
 		};
 	});
 

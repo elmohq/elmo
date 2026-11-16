@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import type { ReactNode } from "react";
 import { CodeBlock, InlineCode } from "@/components/code-block";
-import { CopyButton } from "@/components/copy-button";
+import { CopyField } from "@/components/copy-button";
 import { DemoModeAlert } from "@/components/demo-mode-alert";
 import { useAppOrigin } from "@/hooks/use-app-origin";
 import { useBranding } from "@/hooks/use-deployment-features";
@@ -140,7 +140,7 @@ function clientDocs(id: string, endpoint: string): ClientDocs[] {
 
 function Snippet({ heading, snippet }: { heading: string; snippet: ClientSnippet }) {
 	return (
-		<div className="space-y-2">
+		<div className="space-y-1.5">
 			<h3 className="text-sm font-medium">{heading}</h3>
 			{snippet.note && <p className="text-sm text-muted-foreground">{snippet.note}</p>}
 			<CodeBlock code={snippet.code} />
@@ -169,13 +169,7 @@ function McpSettingsPage() {
 
 			<section className="space-y-3">
 				<h2 className="text-lg font-semibold">Endpoint</h2>
-				<div className="flex min-w-0 items-stretch gap-2">
-					<code className="min-w-0 truncate rounded-md border bg-muted/40 px-3 py-1.5 font-mono text-sm">
-						{endpoint}
-					</code>
-					{/* The icon button is square by default and stands taller than the chip beside it. */}
-					<CopyButton value={endpoint} className="h-auto w-9" />
-				</div>
+				<CopyField value={endpoint} label="Endpoint" className="max-w-xl" />
 			</section>
 
 			<section className="space-y-3">
@@ -189,7 +183,7 @@ function McpSettingsPage() {
 						))}
 					</TabsList>
 					{clients.map((client) => (
-						<TabsContent key={client.value} value={client.value} className="space-y-5 pt-2">
+						<TabsContent key={client.value} value={client.value} className="space-y-6 pt-4">
 							<Snippet heading="Sign in with OAuth" snippet={client.signIn} />
 							<Snippet heading="Sign in with API Key" snippet={client.apiKey} />
 						</TabsContent>

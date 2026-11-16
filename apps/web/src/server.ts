@@ -1,5 +1,5 @@
 import "../instrument.server.mjs";
-import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
+import * as Sentry from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
@@ -19,14 +19,14 @@ const strictTransportSecurity =
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		`script-src 'self' 'unsafe-inline' https://*.clarity.ms https://var.elmohq.com https://*.crisp.chat ${AD_TAG_CSP.script}`,
+		`script-src 'self' 'unsafe-inline' https://*.clarity.ms https://var.elmohq.com https://*.crisp.chat https://challenges.cloudflare.com ${AD_TAG_CSP.script}`,
 		`style-src 'self' 'unsafe-inline' https://*.crisp.chat ${AD_TAG_CSP.style}`,
 		"img-src 'self' data: https: https://c.bing.com",
 		`font-src 'self' data: https://*.crisp.chat ${AD_TAG_CSP.font}`,
 		"media-src 'self' https://*.crisp.chat",
 		// The chatbox runs its background work in a blob worker.
 		"worker-src 'self' blob: https://*.crisp.chat",
-		`frame-src 'self' https://*.crisp.chat ${AD_TAG_CSP.frame}`,
+		`frame-src 'self' https://*.crisp.chat https://challenges.cloudflare.com ${AD_TAG_CSP.frame}`,
 		`connect-src 'self' https://var.elmohq.com https://*.sentry.io https://*.clarity.ms https://c.bing.com https://*.crisp.chat wss://*.relay.crisp.chat wss://*.relay.rescue.crisp.chat ${AD_TAG_CSP.connect}`,
 		"object-src 'none'",
 		"frame-ancestors 'none'",
@@ -51,10 +51,13 @@ function addSecurityHeaders(response: Response): Response {
 }
 
 export default createServerEntry(
-	wrapFetchWithSentry({
-		async fetch(request: Request) {
-			const response = await handler.fetch(request);
-			return addSecurityHeaders(response);
-		},
+	Sentry.wrapFetchWithSentry({
+		// The first request a server instance handles runs before Sentry isolates requests from
+		// each other, so without its own scope the user set on it would stick to every later one.
+		fetch: (request: Request) =>
+			Sentry.withIsolationScope(async () => {
+				const response = await handler.fetch(request);
+				return addSecurityHeaders(response);
+			}),
 	}),
 );

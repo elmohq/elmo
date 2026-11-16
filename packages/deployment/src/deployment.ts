@@ -1,10 +1,7 @@
 /**
- * The singleton is cached at module scope. On Vercel serverless this persists
- * across warm invocations, which is safe because the Deployment object contains
- * no request-scoped state.
- *
- * This module stays Node-safe: branding is assembled from env alone, so server
- * code builds a Deployment without pulling in the React OptimizeButton.
+ * The cached singleton survives warm serverless invocations, which is safe
+ * because a Deployment holds no request state. Branding comes from env alone,
+ * so server code never pulls in the React OptimizeButton.
  */
 
 import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
@@ -15,6 +12,7 @@ type Env = Record<string, string | undefined>;
 
 export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 	local: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: false,
 		canCreateBrands: true,
@@ -27,6 +25,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	demo: {
+		promotesCloud: true,
 		readOnly: true,
 		showOptimizeButton: false,
 		canCreateBrands: false,
@@ -39,6 +38,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	whitelabel: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: true,
 		canCreateBrands: false,
@@ -51,6 +51,7 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		teamInvites: false,
 	},
 	cloud: {
+		promotesCloud: false,
 		readOnly: false,
 		showOptimizeButton: false,
 		canCreateBrands: true,
@@ -98,8 +99,7 @@ function whitelabelBranding(env: Env): BrandingConfig {
 function brandingFor(mode: DeploymentMode, env: Env): BrandingConfig {
 	if (mode === "whitelabel") return whitelabelBranding(env);
 
-	// The localhost URL fallback keeps this total: a missing APP_URL surfaces on
-	// the env-validation page rather than throwing here.
+	// Defaulted, so a missing APP_URL shows on the env-validation page rather than throwing here.
 	if (mode === "cloud") {
 		return {
 			name: DEFAULT_APP_NAME,
@@ -123,11 +123,16 @@ function resolveMode(requestedMode: DeploymentMode, env: Env): DeploymentMode {
 	return requestedMode === "local" && env.READ_ONLY === "true" ? "demo" : requestedMode;
 }
 
+function featuresFor(requestedMode: DeploymentMode, env: Env): FeaturesConfig {
+	const features = FEATURES_BY_MODE[resolveMode(requestedMode, env)];
+	return features.promotesCloud && requestedMode !== "demo" ? { ...features, promotesCloud: false } : features;
+}
+
 export function buildDeployment(requestedMode: DeploymentMode, env: Env): Deployment {
 	const mode = resolveMode(requestedMode, env);
 	return {
 		mode,
-		features: FEATURES_BY_MODE[mode],
+		features: featuresFor(requestedMode, env),
 		branding: brandingFor(mode, env),
 	};
 }
@@ -152,13 +157,9 @@ export function getDeployment(options?: GetDeploymentOptions): Deployment {
  */
 export function getDeploymentFeatures(options?: GetDeploymentOptions): FeaturesConfig {
 	const env = options?.env ?? process.env;
-	return FEATURES_BY_MODE[resolveMode(getDeploymentModeFromEnv(env), env)];
+	return featuresFor(getDeploymentModeFromEnv(env), env);
 }
 
-/**
- * Reset the cached deployment instance.
- * Only used in tests to switch between deployment modes.
- */
 export function resetDeploymentCache(): void {
 	cached = null;
 }

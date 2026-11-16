@@ -7,7 +7,7 @@ interface Step {
 	alt: string;
 }
 
-const STEPS: Step[] = [
+export const HOW_IT_WORKS_STEPS: Step[] = [
 	{
 		title: "Add your brand",
 		body: "Point Elmo at your site. It suggests the prompts your buyers ask and the competitors to track against.",
@@ -60,7 +60,7 @@ export function HowItWorks() {
 					lede="No sales call, no bloat. Elmo sets up your tracking and tells you what to change."
 				/>
 				<ol className="mt-12 grid gap-5 md:grid-cols-3">
-					{STEPS.map((step, i) => (
+					{HOW_IT_WORKS_STEPS.map((step, i) => (
 						<li key={step.title} className={`flex flex-col overflow-hidden ${CARD}`}>
 							<Crop src={step.src} alt={step.alt} />
 							<div className="p-6">

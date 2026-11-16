@@ -2,7 +2,14 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CompetitorComparison } from "@/components/competitor-comparison";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { type Competitor, competitors, getComparisonFaqs, getComparisonSlug, isLowDR } from "@/lib/competitors";
+import {
+	type Competitor,
+	competitors,
+	getComparisonFaqs,
+	getComparisonSlug,
+	hasComparisonPage,
+	isLowDR,
+} from "@/lib/competitors";
 import {
 	breadcrumbJsonLd,
 	canonicalUrl,
@@ -16,7 +23,7 @@ import {
 export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 	loader: ({ params }) => {
 		const competitor = competitors.find((c) => getComparisonSlug(c) === params.slug);
-		if (!competitor) throw notFound();
+		if (!competitor || !hasComparisonPage(competitor)) throw notFound();
 		return { competitor, faqs: getComparisonFaqs(competitor), noindex: isLowDR(competitor) };
 	},
 	head: ({ params, loaderData }) => {
@@ -38,7 +45,7 @@ export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `Elmo vs ${competitor.name}`, path },
 				]),
-				faqJsonLd(faqs),
+				faqJsonLd(faqs, { path, dateModified: competitor.checkedAt }),
 				comparisonJsonLd([ELMO_LISTING, { name: competitor.name, url: competitor.url }]),
 				softwareApplicationJsonLd(),
 			],

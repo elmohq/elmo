@@ -7,12 +7,10 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { isSystemTag, normalizeTag } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import type * as z from "zod";
+import type { tagSchema } from "@/lib/api/schemas/tags";
 
-export interface Tag {
-	name: string;
-	promptCount: number;
-	system: boolean;
-}
+export type Tag = z.infer<typeof tagSchema>;
 
 async function brandPrompts(brandId: string) {
 	return db

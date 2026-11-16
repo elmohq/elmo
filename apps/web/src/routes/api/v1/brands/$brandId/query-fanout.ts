@@ -1,41 +1,42 @@
 /**
- * GET /api/v1/brands/:brandId/query-fanout — the searches engines ran.
+ * GET /api/v1/brands/:brandId/query-fanout — the searches engines ran, a page at a time.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { parseAnalyticsFilters, parseAnalyticsWindow, publicRange } from "@/lib/api/analytics-range";
+import { z } from "zod";
+import { publicRange, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { analyticsListPaging, analyticsQuery, offsetOf, paginationOf } from "@/lib/api/query";
+import { brandQueryFanoutSchema } from "@/lib/api/schemas/query-fanout";
 import { requireBrandInScope } from "@/lib/api/scope";
-import { getBrandQueryFanout } from "@/server/analytics-core";
+import { getBrandFanoutQueries } from "@/server/analytics-core";
+
+const queryFanoutQuery = analyticsQuery.extend({
+	...analyticsListPaging,
+	q: z.string().optional(),
+});
 
 export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: brandQueryFanoutSchema,
+				query: queryFanoutQuery,
 				scopes: ["read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, query, auth }) => {
 					const brand = await requireBrandInScope(auth, params.brandId);
-					const url = new URL(request.url);
-					const range = parseAnalyticsWindow(url);
-					const analysis = await getBrandQueryFanout(brand.id, range, parseAnalyticsFilters(url), {
-						uncapped: true,
-					});
-					// topByRuns carries both figures per query; topQueries carries only
-					// an instance count.
-					const queries = analysis.topByRuns.map((entry) => ({
-						query: entry.query,
-						runs: entry.runs,
-						promptCount: entry.prompts,
-					}));
+					const range = resolveAnalyticsWindow(query.start, query.end);
+					const { queries, total, ...totals } = await getBrandFanoutQueries(
+						brand.id,
+						range,
+						{ model: query.model, tags: query.tags },
+						{ search: query.q, limit: query.limit, offset: offsetOf(query) },
+					);
 					return {
 						brandId: brand.id,
 						range: publicRange(range),
-						totalQueries: analysis.totalQueries,
-						uniqueQueries: analysis.uniqueQueries,
-						fanoutRuns: analysis.fanoutRuns,
-						totalRuns: analysis.totalRuns,
-						avgQueriesPerRun: analysis.avgPerExecution,
-						coverageRate: analysis.coverageRate,
+						...totals,
 						data: queries,
+						pagination: paginationOf(query, total),
 					};
 				},
 			}),

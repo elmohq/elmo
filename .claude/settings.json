@@ -3,5 +3,18 @@
     "commit": "",
     "pr": ""
   },
-  "outputStyle": "Concise"
+  "outputStyle": "Concise",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__vercel__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/vercel-mcp-allowlist.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

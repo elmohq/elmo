@@ -2,7 +2,7 @@ import { expect, test } from "../../test";
 import { brandUrl } from "../../fixtures";
 
 const BRAND_URL = brandUrl();
-const PROMPT_ID = "00000000-0000-0000-0000-000000000001";
+const PROMPT_ID = "00000000-0000-4000-8000-000000000001";
 const PROMPT_TEXT = "What is the best AI monitoring tool";
 
 test.describe("Prompt Details Page", () => {

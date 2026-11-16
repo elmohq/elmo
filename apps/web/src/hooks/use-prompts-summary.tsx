@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getPromptsSummaryFn } from "@/server/prompts";
 
-export interface PromptsSummaryFilters extends PromptScopeFilters {
+export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
 	model?: string;
+	tags?: string[];
 }
 
 export const promptsSummaryKeys = {
@@ -27,7 +27,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					lookback: filters?.lookback || "1m",
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
 					model: filters?.model,
-					...promptScopeParams(filters),
+					tags: filters?.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
@@ -47,10 +47,6 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 	};
 }
 
-/**
- * Hook to get an invalidation function for prompts summary cache.
- * Call at the top level of a component, then invoke the returned function in handlers.
- */
 export function useInvalidatePromptsSummary() {
 	const queryClient = useQueryClient();
 

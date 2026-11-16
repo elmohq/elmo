@@ -1,8 +1,8 @@
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
 import type { JobInsert, PgBoss } from "pg-boss";
+import type { MentionAnalyzer } from "../../mention-judge";
 import { cuedAnalyzer } from "../../mention-judge/__fixtures__/cued-judge";
-import type { MentionAnalyzer } from "../../mention-judge/analyze";
 import { DERIVE_RUNS_QUEUE, type DeriveRunsData, deriveRuns } from "../derive-runs";
 
 interface QueuedJob {

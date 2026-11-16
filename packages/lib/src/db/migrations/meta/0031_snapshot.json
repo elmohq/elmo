@@ -1,5 +1,5 @@
 {
-  "id": "7217d183-0ada-4948-be1d-aa72846bc692",
+  "id": "1ec22bc8-67f2-4640-8393-7f0d3f6b9eae",
   "prevId": "d4c9bf49-dff2-46be-8221-d959645a0f12",
   "version": "7",
   "dialect": "postgresql",
@@ -371,63 +371,6 @@
         }
       },
       "indexes": {
-        "citations_brand_created_analytics_idx": {
-          "name": "citations_brand_created_analytics_idx",
-          "columns": [
-            {
-              "expression": "brand_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "url",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "domain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "title",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prompt_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "model",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "citation_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "citations_prompt_id_created_at_idx": {
           "name": "citations_prompt_id_created_at_idx",
           "columns": [
@@ -454,21 +397,6 @@
           "columns": [
             {
               "expression": "prompt_run_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "citations_domain_idx": {
-          "name": "citations_domain_idx",
-          "columns": [
-            {
-              "expression": "domain",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -610,23 +538,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "cited_pages_domain_idx": {
-          "name": "cited_pages_domain_idx",
-          "columns": [
-            {
-              "expression": "domain",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
@@ -694,7 +606,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "competitors_brand_id_idx": {
+          "name": "competitors_brand_id_idx",
+          "columns": [
+            {
+              "expression": "brand_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "competitors_brand_id_brands_id_fk": {
           "name": "competitors_brand_id_brands_id_fk",
@@ -855,18 +783,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "raw_output": {
           "name": "raw_output",
           "type": "json",
@@ -913,90 +829,6 @@
         "prompt_runs_created_at_idx": {
           "name": "prompt_runs_created_at_idx",
           "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompt_runs_web_search_created_at_idx": {
-          "name": "prompt_runs_web_search_created_at_idx",
-          "columns": [
-            {
-              "expression": "web_search_enabled",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompt_runs_web_search_model_created_at_idx": {
-          "name": "prompt_runs_web_search_model_created_at_idx",
-          "columns": [
-            {
-              "expression": "web_search_enabled",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "model",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompt_runs_provider_idx": {
-          "name": "prompt_runs_provider_idx",
-          "columns": [
-            {
-              "expression": "provider",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompt_runs_model_created_at_idx": {
-          "name": "prompt_runs_model_created_at_idx",
-          "columns": [
-            {
-              "expression": "model",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
             {
               "expression": "created_at",
               "isExpression": false,
@@ -1081,27 +913,6 @@
           "notNull": true,
           "default": "'{}'"
         },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'US'"
-        },
-        "language": {
-          "name": "language",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'en'"
-        },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
         "tags": {
           "name": "tags",
           "type": "text[]",
@@ -1164,34 +975,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prompts_group_market_idx": {
-          "name": "prompts_group_market_idx",
-          "columns": [
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "country",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "language",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"prompts\".\"enabled\"",
           "concurrently": false,
           "method": "btree",
           "with": {}

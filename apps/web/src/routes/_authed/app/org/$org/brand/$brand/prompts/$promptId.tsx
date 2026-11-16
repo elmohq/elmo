@@ -1,7 +1,5 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { countryName } from "@workspace/config/countries";
-import { languageName } from "@workspace/config/languages";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -20,7 +18,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { PromptMarketsPanel } from "@/components/prompt-markets-panel";
+import { type PromptVariant, PromptVariants } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
@@ -40,20 +38,15 @@ import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
-// -------------------------------------------------------------------
-// Types
-// -------------------------------------------------------------------
-
 type PromptMetadata = {
 	id: string;
 	brandId: string;
 	value: string;
 	enabled: boolean;
-	country: string;
-	language: string;
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
+	variants: PromptVariant[];
 };
 
 type PromptRunsData = ReturnType<typeof usePromptRunsOnly>["data"];
@@ -107,10 +100,12 @@ function PromptHeader({
 	promptMeta,
 	isMetaLoading,
 	onLookbackChange,
+	tab,
 }: {
 	promptMeta: PromptMetadata | null;
 	isMetaLoading: boolean;
 	onLookbackChange: () => void;
+	tab?: PromptDetailTab;
 }) {
 	const brandParams = useBrandParams();
 	const systemTags = promptMeta?.systemTags || [];
@@ -149,18 +144,6 @@ function PromptHeader({
 						</span>
 					) : (
 						<span className="text-muted-foreground">Disabled</span>
-					)}
-
-					{promptMeta && (
-						<>
-							<span className="text-border">|</span>
-							<span className="text-muted-foreground">
-								Asked from{" "}
-								<span className="text-foreground">
-									{countryName(promptMeta.country)} in {languageName(promptMeta.language)}
-								</span>
-							</span>
-						</>
 					)}
 
 					{promptMeta?.nextRunAt && (
@@ -209,6 +192,8 @@ function PromptHeader({
 					</Link>
 				</div>
 			)}
+
+			{promptMeta && <PromptVariants variants={promptMeta.variants} tab={tab} />}
 		</div>
 	);
 }
@@ -319,10 +304,13 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
-			<PromptMarketsPanel brandId={brandId} promptId={promptId} />
+			<PromptHeader
+				promptMeta={promptMeta}
+				isMetaLoading={isMetaLoading}
+				onLookbackChange={handleLookbackChange}
+				tab={activeTab}
+			/>
 
-			{/* TABS */}
 			<div className="border-b border-border">
 				<div className="flex items-end justify-between">
 					<nav className="-mb-px flex gap-6" aria-label="Tabs">
@@ -349,7 +337,6 @@ function PromptHistoryPage() {
 				</div>
 			</div>
 
-			{/* TAB CONTENT */}
 			<div className="pt-6 space-y-6">
 				{activeTab === "mentions" && (
 					<MentionsTab
@@ -396,10 +383,6 @@ function PromptHistoryPage() {
 		</div>
 	);
 }
-
-// =====================================================================
-// Tab Content Components
-// =====================================================================
 
 function TabLoadingSkeleton({ lines = 3 }: { lines?: number }) {
 	return (

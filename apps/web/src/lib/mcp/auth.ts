@@ -4,7 +4,13 @@ import { verifyMcpAccessToken } from "@workspace/lib/auth/server";
 import { db } from "@workspace/lib/db/db";
 import { oauthClient, user } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { type ApiAuthFailure, type Principal, resolveApiAuth, type UserAuth } from "@/lib/auth/api-auth";
+import {
+	type ApiAuthFailure,
+	type Principal,
+	presentsApiKey,
+	resolveApiAuth,
+	type UserAuth,
+} from "@/lib/auth/api-auth";
 
 export type McpAuthResult = { auth: Principal } | { failure: ApiAuthFailure };
 
@@ -59,14 +65,23 @@ async function resolveOAuthPrincipal(request: Request): Promise<UserAuth | null>
 	};
 }
 
+const MISSING_CREDENTIAL: ApiAuthFailure = {
+	status: 401,
+	error: "Unauthorized",
+	message: "Access token or API key required",
+	code: "unauthorized",
+};
+
+const INVALID_TOKEN: ApiAuthFailure = {
+	status: 401,
+	error: "Unauthorized",
+	message: "Invalid or expired access token",
+	code: "unauthorized",
+};
+
 export async function resolveMcpAuth(request: Request): Promise<McpAuthResult> {
-	const asKey = await resolveApiAuth(request);
-	if ("auth" in asKey) return { auth: asKey.auth };
-	// A spent key is a different answer from one that was never a key.
-	if (asKey.failure.code === "rate_limited") return asKey;
-
+	if (presentsApiKey(request)) return resolveApiAuth(request);
+	if (!request.headers.get("authorization")?.trim()) return { failure: MISSING_CREDENTIAL };
 	const asUser = await resolveOAuthPrincipal(request);
-	if (asUser) return { auth: asUser };
-
-	return asKey;
+	return asUser ? { auth: asUser } : { failure: INVALID_TOKEN };
 }

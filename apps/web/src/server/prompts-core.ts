@@ -3,22 +3,26 @@
  * its own vocabulary. Callers decide the brand is theirs before calling in.
  */
 
-import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
-import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
+import { randomUUID } from "node:crypto";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, PROMPT_GROUP_MARKET_INDEX, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { lockBrandRollups, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
-import { rethrowMarketTaken } from "@/server/prompt-save";
 
 export const MAX_PROMPT_BATCH = 100;
+
+export class PromptGroupNotFoundError extends Error {
+	constructor(public readonly groupId: string) {
+		super(`No prompt in this brand has groupId '${groupId}'`);
+		this.name = "PromptGroupNotFoundError";
+	}
+}
 
 export class PromptNotFoundError extends Error {
 	constructor(public readonly promptId: string) {
@@ -38,19 +42,7 @@ const promptValueSchema = z
 
 const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for filtering analytics.");
 
-const promptCountrySchema = countryCodeSchema.describe(
-	`ISO 3166-1 alpha-2 country to ask it from. Defaults to ${DEFAULT_COUNTRY}, and is fixed once the prompt exists: to track another country, add a variant in the same group.`,
-);
-
-const promptLanguageSchema = languageCodeSchema.describe(
-	`Language the prompt is written in, e.g. "de" or "pt-BR". Defaults to ${DEFAULT_LANGUAGE}, and is fixed once the prompt exists.`,
-);
-
-const promptGroupIdSchema = z
-	.guid()
-	.describe(
-		"Another prompt's groupId, to track this as the same question in another market. A group holds one enabled prompt per country and language. Omit to start a new group.",
-	);
+const VARIANT_COST = "A variant is tracked and billed as its own prompt.";
 
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
@@ -59,11 +51,14 @@ export const bulkPromptInputSchema = z.object({
 			z.object({
 				value: promptValueSchema,
 				tags: promptTagsSchema.optional(),
-				country: promptCountrySchema.optional(),
-				language: promptLanguageSchema.optional(),
-				groupId: promptGroupIdSchema.optional(),
 				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
 				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
+				groupId: z
+					.uuid()
+					.optional()
+					.describe(
+						`The \`groupId\` of an existing prompt in this brand, to add this one as another wording of the same question. ${VARIANT_COST} Omit to start a new group.`,
+					),
 			}),
 		)
 		.min(1, "prompts must contain at least one entry")
@@ -76,13 +71,20 @@ export const promptUpdateFields = {
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
 	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
 	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
+	groupId: z
+		.uuid()
+		.nullable()
+		.optional()
+		.describe(
+			"Moves the prompt into the group of another prompt in the same brand, making it a variant of that question. Null moves it into a group of its own.",
+		),
 };
 
 export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, or premiumModels must be provided",
+		"At least one of value, enabled, tags, premiumModels, or groupId must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -101,10 +103,8 @@ const PROMPT_COLUMNS = {
 	id: prompts.id,
 	brandId: prompts.brandId,
 	value: prompts.value,
-	enabled: prompts.enabled,
-	country: prompts.country,
-	language: prompts.language,
 	groupId: prompts.groupId,
+	enabled: prompts.enabled,
 	tags: prompts.tags,
 	systemTags: prompts.systemTags,
 	premiumModels: prompts.premiumModels,
@@ -124,10 +124,8 @@ export function toPromptSummary(prompt: Prompt): PromptSummary {
 		id: prompt.id,
 		brandId: prompt.brandId,
 		value: prompt.value,
-		enabled: prompt.enabled,
-		country: prompt.country,
-		language: prompt.language,
 		groupId: prompt.groupId,
+		enabled: prompt.enabled,
 		tags: prompt.tags,
 		systemTags: prompt.systemTags,
 		premiumModels: prompt.premiumModels,
@@ -140,8 +138,6 @@ export interface ListPromptsFilters {
 	brandId?: string;
 	enabled?: boolean;
 	tags?: string[];
-	countries?: string[];
-	languages?: string[];
 	groupId?: string;
 	q?: string;
 	limit: number;
@@ -155,8 +151,6 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	if (filters.enabled !== undefined) conditions.push(eq(prompts.enabled, filters.enabled));
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
-	if (filters.countries?.length) conditions.push(inArray(prompts.country, filters.countries));
-	if (filters.languages?.length) conditions.push(inArray(prompts.language, filters.languages));
 	if (filters.groupId) conditions.push(eq(prompts.groupId, filters.groupId));
 	if (filters.q?.trim()) conditions.push(ilike(prompts.value, `%${filters.q.trim()}%`));
 
@@ -184,6 +178,19 @@ export async function requirePrompt(promptId: string): Promise<Prompt> {
 	return prompt;
 }
 
+/** A group id only means something inside its brand, so one from anywhere else is refused rather than adopted. */
+async function assertGroupsInBrand(conn: DbConnection, brandId: string, groupIds: readonly string[]): Promise<void> {
+	const wanted = [...new Set(groupIds)];
+	if (wanted.length === 0) return;
+	const found = await conn
+		.selectDistinct({ groupId: prompts.groupId })
+		.from(prompts)
+		.where(and(eq(prompts.brandId, brandId), inArray(prompts.groupId, wanted)));
+	const known = new Set(found.map((row) => row.groupId));
+	const missing = wanted.find((groupId) => !known.has(groupId));
+	if (missing) throw new PromptGroupNotFoundError(missing);
+}
+
 /** One delta against both pools in one transaction, so a batch that would
  * overrun a limit creates nothing. */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
@@ -191,10 +198,8 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 	const rows = parsed.prompts.map((prompt) => ({
 		brandId: brand.id,
 		value: prompt.value,
+		...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 		enabled: prompt.enabled ?? true,
-		country: prompt.country ?? DEFAULT_COUNTRY,
-		language: prompt.language ?? DEFAULT_LANGUAGE,
-		groupId: prompt.groupId ?? uuidv4(),
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 		premiumModels: selectPremiumModels(prompt.premiumModels),
@@ -211,11 +216,12 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 			},
 			tx,
 		);
-		return tx
-			.insert(prompts)
-			.values(rows)
-			.returning()
-			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
+		await assertGroupsInBrand(
+			tx,
+			brand.id,
+			parsed.prompts.flatMap((prompt) => prompt.groupId ?? []),
+		);
+		return tx.insert(prompts).values(rows).returning();
 	});
 
 	// Outside the transaction: a queue hiccup must not roll back prompts the
@@ -240,6 +246,7 @@ function promptUpdateData(
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
+	if (input.groupId !== undefined) update.groupId = input.groupId ?? randomUUID();
 	return update;
 }
 
@@ -270,13 +277,13 @@ async function applyPromptUpdate(
 		tx,
 	);
 
-	// Re-enabling can collide with another live prompt in the same market.
+	if (input.groupId) await assertGroupsInBrand(tx, brand.id, [input.groupId]);
+
 	const [row] = await tx
 		.update(prompts)
 		.set(promptUpdateData(input, brand, nextPremium))
 		.where(eq(prompts.id, promptId))
-		.returning()
-		.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
+		.returning();
 	if (input.value !== undefined && input.value !== existing.value) {
 		await markPromptRunsDirty(tx, brand.id, [promptId]);
 	}

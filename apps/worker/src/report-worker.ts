@@ -5,10 +5,11 @@ import { type Brand, brands, reports } from "@workspace/lib/db/schema";
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";
+import { canAdvanceReport, type ReportPhase, type ReportStatus } from "@workspace/lib/reports/lifecycle";
 import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
-import { eq } from "drizzle-orm";
-import { mentionAnalyzer } from "./mention-judge/analyze";
+import { and, eq, inArray } from "drizzle-orm";
+import { mentionAnalyzer } from "./mention-judge";
 
 interface CompetitorResult {
 	name: string;
@@ -63,7 +64,7 @@ export interface ReportJobData {
 export interface ReportJobContext {
 	data: ReportJobData;
 	log: (message: string) => void;
-	updateProgress: (progress: number) => void | Promise<void>;
+	enterPhase: (phase: ReportPhase) => void | Promise<void>;
 }
 
 interface PromptRunResult {
@@ -180,8 +181,6 @@ async function judgeWithRetries(text: string, config: MentionConfig, question: s
 	}
 }
 
-// Whitelabel uses its fixed 2+1+1 mapping; other modes match day-to-day
-// tracking frequency.
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
@@ -237,6 +236,78 @@ async function runPrompt(
 	};
 }
 
+interface CandidateResult {
+	promptValue: string;
+	brandedPrompt: boolean;
+	runs: PromptRunResult["runs"];
+}
+
+const CANDIDATE_BATCH_SIZE = 20;
+const CANDIDATE_BATCH_PAUSE_MS = 1000;
+
+// Failed candidates are kept with no runs so "all failed" can be told apart from "some did".
+async function testCandidates(args: {
+	candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
+	brandName: string;
+	brandAliases: string[];
+	brandWebsite: string;
+	competitors: CompetitorResult[];
+	scrapeConfigs: ModelConfig[];
+	job: ReportJobContext;
+}): Promise<CandidateResult[]> {
+	const { candidatePrompts, brandName, brandAliases, brandWebsite, competitors, scrapeConfigs, job } = args;
+	const total = candidatePrompts.length;
+	const results: CandidateResult[] = [];
+	let completed = 0;
+	let failed = 0;
+
+	await job.enterPhase({ kind: "testing-candidates", completed: 0, total });
+
+	const testOne = async (candidate: { prompt: string; brandedPrompt: boolean }): Promise<CandidateResult> => {
+		let runs: PromptRunResult["runs"] = [];
+		try {
+			runs = (await runPrompt(candidate.prompt, brandName, brandAliases, brandWebsite, competitors, scrapeConfigs, job))
+				.runs;
+		} catch (error) {
+			job.log(
+				`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+			failed++;
+		}
+		completed++;
+		await job.enterPhase({ kind: "testing-candidates", completed, total });
+		return { promptValue: candidate.prompt, brandedPrompt: candidate.brandedPrompt, runs };
+	};
+
+	for (let i = 0; i < candidatePrompts.length; i += CANDIDATE_BATCH_SIZE) {
+		results.push(...(await Promise.all(candidatePrompts.slice(i, i + CANDIDATE_BATCH_SIZE).map(testOne))));
+		// Avoid sending a new provider burst immediately after the previous batch.
+		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length)
+			await new Promise((resolve) => setTimeout(resolve, CANDIDATE_BATCH_PAUSE_MS));
+	}
+
+	// A report built from no answers would read as "never mentioned"; fail it instead.
+	if (total > 0 && failed === total)
+		throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
+
+	return results;
+}
+
+// The status WHERE is the claim: a duplicate worker or a retry of a finished report becomes a no-op.
+async function advanceReportStatus(
+	reportId: string,
+	next: ReportStatus,
+	extra: Partial<typeof reports.$inferInsert> = {},
+): Promise<boolean> {
+	const claimable = (["pending", "processing"] as ReportStatus[]).filter((from) => canAdvanceReport(from, next));
+	const claimed = await db
+		.update(reports)
+		.set({ status: next, updatedAt: new Date(), ...extra })
+		.where(and(eq(reports.id, reportId), inArray(reports.status, claimable)))
+		.returning({ id: reports.id });
+	return claimed.length > 0;
+}
+
 export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
 	const brandAliases = job.data.brandAliases ?? [];
@@ -253,31 +324,27 @@ export async function processReportJob(job: ReportJobContext) {
 	try {
 		// Before anything is spent: the answers a report pays for can't be judged without it.
 		mentionAnalyzer();
-		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		if (!(await advanceReportStatus(reportId, "processing"))) {
+			job.log(`Report ${reportId} is already finished; not running it again`);
+			return { success: false, reportId };
+		}
 
 		job.log(`Report ${reportId} marked as processing`);
-		job.updateProgress(5);
+		await job.enterPhase({ kind: "analyzing-brand" });
 
-		// Analyze competitors and candidate prompts in one shared
-		// LLM call (same `analyzeBrand` the onboarding flow uses; provider-
-		// agnostic with native web search wired in). Manual-prompt path skips
-		// the prompt generation but still needs competitors.
+		// Manual prompts skip prompt generation but still need competitors.
 		job.log(`Analyzing brand: ${brandWebsite}`);
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
 			maxPrompts: useManualPrompts ? 0 : CANDIDATE_PROMPTS_COUNT,
 		});
-		// The report renderer's CompetitorResult expects a single primary domain;
-		// analyzeBrand returns the full list now. Take the first as the canonical
-		// one for the report's UI (which doesn't display the rest anyway).
-		// A brand name variant listed as a competitor would count the brand's own
-		// mentions against it.
+		// The report shows one domain per competitor. A brand name variant listed as
+		// a competitor would count the brand's own mentions against it.
 		const brandNames = new Set([brandName, ...brandAliases].map((name) => name.trim().toLowerCase()));
 		const competitors: CompetitorResult[] = suggestion.competitors
 			.filter((c) => c.domains.length > 0 && !brandNames.has(c.name.trim().toLowerCase()))
 			.map((c) => ({ name: c.name, domain: c.domains[0] }));
-		job.updateProgress(35);
 
 		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
 			? manualPrompts.map((prompt) => ({
@@ -297,84 +364,22 @@ export async function processReportJob(job: ReportJobContext) {
 			`${useManualPrompts ? "Using" : "Generated"} ${candidatePrompts.length} candidate prompts ` +
 				`(${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
 		);
-		job.updateProgress(40);
 
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);
-		const candidateResults: Array<{
-			promptValue: string;
-			brandedPrompt: boolean;
-			runs: Array<{
-				model: string;
-				version: string;
-				webSearchEnabled: boolean;
-				rawOutput: any;
-				webQueries: string[];
-				textContent: string;
-				brandMentioned: boolean;
-				competitorsMentioned: string[];
-			}>;
-		}> = [];
+		const candidateResults = await testCandidates({
+			candidatePrompts,
+			brandName,
+			brandAliases,
+			brandWebsite,
+			competitors,
+			scrapeConfigs,
+			job,
+		});
 
-		const totalCandidates = candidatePrompts.length;
-		let completedCandidates = 0;
-		let failedCandidates = 0;
-
-		const batchSize = 20;
-		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
-			const batch = candidatePrompts.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (candidate) => {
-				try {
-					const result = await runPrompt(
-						candidate.prompt,
-						brandName,
-						brandAliases,
-						brandWebsite,
-						competitors,
-						scrapeConfigs,
-						job,
-					);
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30;
-					job.updateProgress(progress);
-					return {
-						promptValue: result.promptValue,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: result.runs,
-					};
-				} catch (error) {
-					job.log(
-						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
-					);
-					failedCandidates++;
-					completedCandidates++;
-					const progress = 40 + (completedCandidates / totalCandidates) * 30;
-					job.updateProgress(progress);
-					return {
-						promptValue: candidate.prompt,
-						brandedPrompt: candidate.brandedPrompt,
-						runs: [],
-					};
-				}
-			});
-
-			const batchResults = await Promise.all(batchPromises);
-			candidateResults.push(...batchResults);
-
-			// Avoid sending a new provider burst immediately after the previous batch.
-			if (i + batchSize < candidatePrompts.length) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-			}
-		}
-
-		// A report built from no answers would read as "never mentioned"; fail it instead.
-		if (failedCandidates === candidatePrompts.length)
-			throw new Error("Every candidate prompt failed: are the providers or the judge (Jev) down?");
-
-		job.updateProgress(70);
+		await job.enterPhase({ kind: "selecting" });
 
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
 		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandAliases, brandWebsite);
-		job.updateProgress(75);
 
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
 		const promptRuns: PromptRunResult[] = [];
@@ -392,11 +397,10 @@ export async function processReportJob(job: ReportJobContext) {
 				runs: result.runs,
 			});
 			completedFinalRuns++;
-			const progress = 75 + (completedFinalRuns / totalFinalRuns) * 20;
-			job.updateProgress(progress);
+			await job.enterPhase({ kind: "assembling", completed: completedFinalRuns, total: totalFinalRuns });
 		}
 
-		job.updateProgress(95);
+		await job.enterPhase({ kind: "finalizing" });
 
 		const prompts: PromptData[] = selectedPromptValues.map((promptValue) => ({
 			brandId: reportId,
@@ -414,23 +418,18 @@ export async function processReportJob(job: ReportJobContext) {
 
 		job.log(`Finalizing report with ${promptRuns.length} prompt run results`);
 
-		await db
-			.update(reports)
-			.set({
-				status: "completed",
-				completedAt: new Date(),
-				updatedAt: new Date(),
-				rawOutput: JSON.stringify(reportData),
-			})
-			.where(eq(reports.id, reportId));
+		await advanceReportStatus(reportId, "completed", {
+			completedAt: new Date(),
+			rawOutput: JSON.stringify(reportData),
+		});
 
-		job.updateProgress(100);
+		await job.enterPhase({ kind: "completed" });
 		job.log(`Successfully completed report ${reportId}`);
 		return { success: true, reportId };
 	} catch (error) {
 		job.log(`Error processing report ${reportId}: ${error instanceof Error ? error.message : "Unknown error"}`);
 
-		await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, reportId));
+		await advanceReportStatus(reportId, "failed");
 
 		throw error;
 	}

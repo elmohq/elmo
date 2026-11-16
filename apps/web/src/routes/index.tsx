@@ -1,13 +1,14 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { buttonVariants } from "@workspace/ui/components/button";
 import FullPageCard from "@/components/full-page-card";
+import { attributionParams } from "@/lib/attribution";
 import { getSession } from "@/lib/auth/session";
 import { entryRouteForVisitor } from "@/lib/entry-route";
 
 export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
-		ref: typeof search.ref === "string" ? search.ref : undefined,
+		...attributionParams(search),
 	}),
 	beforeLoad: async ({ context, search }) => {
 		const session = await getSession();
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/")({
 				to: entryRoute,
 				search: {
 					...(search.redirect ? { returnTo: search.redirect } : {}),
-					...(search.ref ? { ref: search.ref } : {}),
+					...attributionParams(search),
 				},
 			});
 		}

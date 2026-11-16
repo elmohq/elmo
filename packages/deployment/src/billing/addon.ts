@@ -1,13 +1,8 @@
 /**
- * The extra premium slots add-on ($5/prompt/month, Pro/Business): a
- * quantity-based second item on the org's existing Stripe subscription.
- *
- * @better-auth/stripe manages the base subscription but not additional items,
- * so quantity changes call the Stripe API directly here. The webhook keeps the
- * local mirror honest: every customer.subscription.updated event re-derives
- * organization_settings.premium_addon_quantity from the subscription items, so
- * changes made anywhere (this app, the Stripe dashboard, the customer portal)
- * all converge on the same stored quantity.
+ * The premium slots add-on is a second item on the org's subscription, which
+ * @better-auth/stripe doesn't manage, so this calls Stripe directly. Every
+ * subscription webhook re-derives the stored quantity from the items, so
+ * changes made anywhere converge.
  */
 
 import { type BillingInterval, PREMIUM_ADDON_LOOKUP_KEYS } from "@workspace/config/plans";
@@ -18,7 +13,6 @@ import { getStripeClient } from "./stripe-client";
 
 const ADDON_LOOKUP_KEY_SET = new Set<string>(Object.values(PREMIUM_ADDON_LOOKUP_KEYS));
 
-/** Minimal shape of a Stripe subscription item this module reads. */
 export interface SubscriptionItemLike {
 	id: string;
 	quantity?: number | undefined;
@@ -29,21 +23,17 @@ export function isPremiumAddonItem(item: SubscriptionItemLike): boolean {
 	return !!item.price.lookup_key && ADDON_LOOKUP_KEY_SET.has(item.price.lookup_key);
 }
 
-/** Purchased extra premium slot quantity on a subscription's items. */
 export function extractPremiumAddonQuantity(items: SubscriptionItemLike[]): number {
 	return items.filter(isPremiumAddonItem).reduce((sum, item) => sum + (item.quantity ?? 0), 0);
 }
 
-/**
- * The billing interval of the subscription's base (non-add-on) item — the
- * add-on price must share it (Stripe rejects mixed-interval subscriptions).
- */
+/** The add-on must share the base item's interval: Stripe rejects mixed-interval subscriptions. */
 export function baseItemInterval(items: SubscriptionItemLike[]): BillingInterval {
 	const base = items.find((item) => !isPremiumAddonItem(item));
 	return base?.price.recurring?.interval === "year" ? "annual" : "monthly";
 }
 
-/** Store the quantity we derived from Stripe. Upsert: most orgs have no row. */
+/** Upserts, because most orgs have no settings row. */
 export async function savePremiumAddonQuantity(organizationId: string, quantity: number): Promise<void> {
 	await db
 		.insert(organizationSettings)
@@ -54,7 +44,6 @@ export async function savePremiumAddonQuantity(organizationId: string, quantity:
 		});
 }
 
-/** Webhook path: mirror the subscription's add-on quantity locally. */
 export async function syncPremiumAddonFromSubscription(
 	organizationId: string,
 	stripeSubscription: Pick<Stripe.Subscription, "items">,
@@ -62,12 +51,7 @@ export async function syncPremiumAddonFromSubscription(
 	await savePremiumAddonQuantity(organizationId, extractPremiumAddonQuantity(stripeSubscription.items.data));
 }
 
-/**
- * Set the org's purchased extra premium slot quantity by editing the item on
- * its live Stripe subscription (prorated by Stripe). The caller is responsible
- * for authorization and for validating the org's plan allows the add-on.
- * Returns the new quantity.
- */
+/** The caller checks authorization and that the org's plan sells the add-on. */
 export async function setPremiumAddonQuantity(input: {
 	stripeSubscriptionId: string;
 	organizationId: string;
@@ -111,8 +95,7 @@ export async function setPremiumAddonQuantity(input: {
 		});
 	}
 
-	// The customer.subscription.updated webhook re-derives this too; writing it
-	// now makes the change visible to the app immediately.
+	// The webhook writes this too; writing it now shows the change immediately.
 	await savePremiumAddonQuantity(input.organizationId, quantity);
 	return quantity;
 }

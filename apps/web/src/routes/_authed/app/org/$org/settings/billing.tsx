@@ -73,9 +73,10 @@ function BillingSettingsPage() {
 			annual: state.subscription?.billingInterval === "year",
 			referenceId: state.organization.id,
 			customerType: "organization",
-			...(state.subscription && { subscriptionId: state.subscription.id }),
+			...(state.subscription?.stripeSubscriptionId && { subscriptionId: state.subscription.stripeSubscriptionId }),
 			successUrl: window.location.href,
 			cancelUrl: window.location.href,
+			returnUrl: window.location.href,
 			disableRedirect: false,
 		});
 		if (upgradeError) {
@@ -85,8 +86,8 @@ function BillingSettingsPage() {
 		router.invalidate();
 	};
 
-	// Only an admin with a live subscription can switch, so only they see the plans.
-	const showPlans = isAdmin && state.subscription !== null;
+	// A past-due subscription can't be switched in place; the plugin would open a second checkout beside it.
+	const showPlans = isAdmin && (state.subscription?.status === "active" || state.subscription?.status === "trialing");
 	const meters = showMeters(entitlements);
 
 	return (
@@ -105,7 +106,7 @@ function BillingSettingsPage() {
 						isAdmin={isAdmin}
 						busy={busy}
 						onOpenPortal={openPortal}
-						onChoosePlan={() => router.navigate({ to: "/choose-plan" })}
+						onChoosePlan={() => router.navigate({ to: "/choose-plan", search: { org: state.organization.id } })}
 					/>
 					{meters && <UsagePanel state={state} />}
 				</div>
@@ -203,31 +204,36 @@ function billingCadenceLine(state: BillingState, annual: boolean): string {
 
 function BillingAction({
 	hasSubscription,
+	hasBillingAccount,
 	isCustomPlan,
 	busy,
 	onOpenPortal,
 	onChoosePlan,
 }: {
 	hasSubscription: boolean;
+	hasBillingAccount: boolean;
 	isCustomPlan: boolean;
 	busy: string | null;
 	onOpenPortal: () => void;
 	onChoosePlan: () => void;
 }) {
-	if (hasSubscription) {
-		return (
-			<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
-				{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
-				Manage billing
-			</Button>
-		);
-	}
 	// A custom agreement is billed outside self-serve, so there is nothing to buy.
-	if (isCustomPlan) return null;
+	const canChoosePlan = !hasSubscription && !isCustomPlan;
+	if (!hasBillingAccount && !canChoosePlan) return null;
 	return (
-		<Button size="sm" onClick={onChoosePlan}>
-			Choose a plan
-		</Button>
+		<div className="flex flex-wrap gap-2">
+			{canChoosePlan && (
+				<Button size="sm" onClick={onChoosePlan}>
+					Choose a plan
+				</Button>
+			)}
+			{hasBillingAccount && (
+				<Button variant="outline" size="sm" onClick={onOpenPortal} disabled={busy !== null}>
+					{busy === "portal" ? <Spinner /> : <IconExternalLink className="h-4 w-4" />}
+					Manage billing
+				</Button>
+			)}
+		</div>
 	);
 }
 
@@ -283,6 +289,7 @@ function SubscriptionSummary({
 				<div>
 					<BillingAction
 						hasSubscription={Boolean(subscription)}
+						hasBillingAccount={state.hasBillingAccount}
 						isCustomPlan={entitlements.planKey === "custom"}
 						busy={busy}
 						onOpenPortal={onOpenPortal}

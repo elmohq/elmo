@@ -32,7 +32,7 @@ function AnalyzeBrandDialog() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<OnboardingSuggestion | null>(null);
-	const [copied, setCopied] = useState(false);
+	const [copied, setCopied] = useState<"json" | "prompts" | null>(null);
 	const writeError = useWriteErrorMessage();
 
 	const handleAnalyze = async () => {
@@ -61,15 +61,15 @@ function AnalyzeBrandDialog() {
 	const handleCopy = async () => {
 		if (!result) return;
 		await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		setCopied("json");
+		setTimeout(() => setCopied(null), 2000);
 	};
 
 	const handleCopyPrompts = async () => {
 		if (!result) return;
 		await navigator.clipboard.writeText(result.suggestedPrompts.map((p) => p.prompt).join("\n"));
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		setCopied("prompts");
+		setTimeout(() => setCopied(null), 2000);
 	};
 
 	const handleClose = () => {
@@ -135,7 +135,7 @@ function AnalyzeBrandDialog() {
 								<h4 className="font-semibold">{result.brandName}</h4>
 								<div className="flex gap-2">
 									<Button variant="ghost" size="sm" onClick={handleCopyPrompts} className="cursor-pointer">
-										{copied ? (
+										{copied === "prompts" ? (
 											<>
 												<Check className="h-4 w-4 mr-1" /> Copied
 											</>
@@ -146,7 +146,15 @@ function AnalyzeBrandDialog() {
 										)}
 									</Button>
 									<Button variant="ghost" size="sm" onClick={handleCopy} className="cursor-pointer">
-										<Copy className="h-4 w-4 mr-1" /> Copy JSON
+										{copied === "json" ? (
+											<>
+												<Check className="h-4 w-4 mr-1" /> Copied
+											</>
+										) : (
+											<>
+												<Copy className="h-4 w-4 mr-1" /> Copy JSON
+											</>
+										)}
 									</Button>
 								</div>
 							</div>

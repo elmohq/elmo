@@ -1,20 +1,9 @@
-/** Server functions for prompt operations. */
 import { createServerFn } from "@tanstack/react-start";
-import { countryCodeSchema, DEFAULT_COUNTRY } from "@workspace/config/countries";
-import { DEFAULT_LANGUAGE, languageCodeSchema } from "@workspace/config/languages";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
 import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
-import {
-	brands,
-	competitors,
-	PROMPT_GROUP_MARKET_INDEX,
-	promptRuns,
-	prompts,
-	runMentions,
-	SYSTEM_TAGS,
-} from "@workspace/lib/db/schema";
+import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import {
 	assertAllowed,
 	assertPromptSaveAllowed,
@@ -23,11 +12,11 @@ import {
 	withQuotaLock,
 } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags, getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { and, count, desc, eq, gte, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
+
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
@@ -40,7 +29,6 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
-import { promptScopeFields } from "@/lib/prompt-scope";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -52,17 +40,13 @@ import {
 } from "@/lib/rollup-read";
 import { promptsGainingPremium } from "@/lib/run-config-changes";
 import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
+import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { matchesMarketFilter, parseMarketFilter, parseTagFilter } from "@/server/prompt-resolution";
-import { planPromptSave, rethrowMarketTaken } from "@/server/prompt-save";
+import { parseTagFilter } from "@/server/prompt-resolution";
+import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
-// Server Functions
-// ============================================================================
 
-/**
- * Get metadata for a single prompt
- */
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
@@ -96,6 +80,12 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			// pgboss schema may not exist yet — that's fine
 		}
 
+		const variants = await db
+			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId), ne(prompts.id, prompt.id)))
+			.orderBy(prompts.createdAt, prompts.id);
+
 		return {
 			id: prompt.id,
 			brandId: prompt.brandId,
@@ -103,59 +93,48 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			enabled: prompt.enabled,
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
-			country: prompt.country,
-			language: prompt.language,
 			nextRunAt,
+			/** The other wordings of this question. */
+			variants,
 		};
 	});
 
-/**
- * Get prompts summary for a brand (visibility scores, tags, etc.)
- */
 function summarizePrompt(
 	prompt: {
 		id: string;
 		value: string;
 		enabled: boolean;
-		country: string;
-		language: string;
-		groupId: string;
 		createdAt: Date;
 		tags: string[] | null;
 		systemTags: string[] | null;
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	group: { lead: { id: string; value: string }; size: number },
 ) {
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
 	const totalRuns = stats?.runs ?? 0;
-	// The API publishes these ratios unrounded; the dashboard renders
-	// percentages, and this is where it rounds.
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
-	const brandMentionRate = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
-	const competitorMentionRate = Math.round(ratio(stats?.competitor_runs) * 100);
+	const brandMentionPct = Math.round(ratio(stats?.brand_mentioned_runs) * 100);
+	const competitorMentionPct = Math.round(ratio(stats?.competitor_runs) * 100);
 	const weightedMentions = (stats?.brand_mentioned_runs ?? 0) * 2 + (stats?.competitor_mentions ?? 0);
 
 	return {
 		id: prompt.id,
 		value: prompt.value,
 		enabled: prompt.enabled,
-		country: prompt.country,
-		language: prompt.language,
-		groupId: prompt.groupId,
 		createdAt: prompt.createdAt,
 		totalRuns,
-		brandMentionRate,
-		competitorMentionRate,
+		brandMentionPct,
+		competitorMentionPct,
 		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
-		hasVisibilityData: totalRuns > 0 && (brandMentionRate > 0 || competitorMentionRate > 0),
+		hasVisibilityData: totalRuns > 0 && (brandMentionPct > 0 || competitorMentionPct > 0),
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
-		// Exactly one effective system tag, so branded and unbranded filters use
-		// the same status the UI shows.
-		tags: userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag],
+		tags: effectiveTags(prompt),
+		/** The prompt this one is another wording of; null for the lead of its group. */
+		variantOf: group.lead.id === prompt.id ? null : group.lead.value,
+		/** Other tracked prompts asking the same question. */
+		variantCount: group.size - 1,
 	};
 }
 
@@ -178,7 +157,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
-			...promptScopeFields,
+			tags: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -218,19 +197,21 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
 
-		// Collect all user tags (system tags are added separately)
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
-		const market = parseMarketFilter(data);
+
+		// Newest first, so the last prompt seen for a group is its oldest: the lead.
+		const groups = new Map<string, { lead: { id: string; value: string }; size: number }>();
+		for (const p of allPrompts) {
+			groups.set(p.groupId, { lead: p, size: (groups.get(p.groupId)?.size ?? 0) + 1 });
+		}
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), groups.get(p.groupId)!);
 		});
 
-		const filteredPrompts = promptSummaries.filter(
-			(p) => (tagFilter.length === 0 || tagFilter.some((t) => p.tags.includes(t))) && matchesMarketFilter(p, market),
-		);
+		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -246,13 +227,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Mirrors the brand-wide citations view (server/citations.ts) at the single-
- * prompt level: classify each citation at the URL level, pull Google AI Mode
- * search/shopping surfaces OUT of the source mix into a dedicated Google
- * Shopping module, and rebuild the domain distribution from the URL data.
- * Undefined when the prompt has nothing citable.
- */
+/** The brand-wide citations view (server/citations.ts), for one prompt. */
 function computePromptCitationStats(input: {
 	urlStats: CitationUrlStats[];
 	promptId: string;
@@ -265,9 +240,7 @@ function computePromptCitationStats(input: {
 	const { urlStats } = input;
 	if (urlStats.length === 0) return undefined;
 
-	// Google AI Mode module: Shopping products (brand vs competitor) + search
-	// queries. Built from the raw URL rows (it picks out the Google surfaces);
-	// the rollup below drops those same surfaces from the source mix.
+	// From the raw rows: the rollup below drops these Google surfaces from the source mix.
 	const googleModule = buildGoogleModule(
 		urlStats.map((u) => ({
 			prompt_id: input.promptId,
@@ -292,13 +265,13 @@ function computePromptCitationStats(input: {
 		categoryCounts,
 		domainDistribution,
 		specificUrls,
+		subreddits: summarizeSubreddits(specificUrls.filter((url) => isRedditDomain(url.domain))),
 		pageTypeDistribution,
 		googleModule,
 	};
 }
 
-/** Run window for the prompt detail endpoints: the last `days` up to now, or —
- *  for a custom range — the `days` UTC calendar days ending on `endDate`. */
+/** The last `days` up to now, or for a custom range the `days` UTC calendar days ending on `endDate`. */
 function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDate: Date } {
 	if (!endDate) {
 		const toDate = new Date();
@@ -313,10 +286,6 @@ function promptRunWindow(days: number, endDate?: string): { fromDate: Date; toDa
 	return { fromDate, toDate };
 }
 
-/**
- * Get stats for a single prompt (mentions, web queries, citations)
- * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
- */
 export const getPromptStatsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -355,7 +324,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			db.select({ name: competitors.name }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
-		// ---- Process mention stats ----
 		const mentionStats: { name: string; count: number }[] = [];
 
 		const brandName = brandResult[0]?.name;
@@ -376,7 +344,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
-		// ---- Citation stats ----
 		const [brandInfo, competitorsList] = await Promise.all([
 			db
 				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
@@ -416,9 +383,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Get paginated prompt runs
- */
 export const getPromptRunsFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
@@ -469,9 +433,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/**
- * Update prompts for a brand (add/edit/delete)
- */
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -483,16 +444,14 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					id: z.string().optional(),
 					value: z.string(),
 					enabled: z.boolean().optional().default(true),
-					country: countryCodeSchema.optional(),
-					language: languageCodeSchema.optional(),
-					/** Only read for a new prompt: joins it to an existing prompt as another market. */
-					groupId: z.guid().optional(),
 					tags: z.array(z.string()).optional(),
 					/**
 					 * Premium models to track this prompt on, grounded — one of the org's
 					 * premium slots each.
 					 */
 					premiumModels: z.array(z.string()).optional(),
+					/** Client-minted for a new group, so a new prompt and its variants can be saved together. */
+					groupId: z.uuid().optional(),
 				}),
 			),
 		}),
@@ -516,48 +475,45 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
-		const saved = await db
-			.transaction(async (tx) => {
-				for (const { id, prompt, after } of updates) {
-					await tx
-						.update(prompts)
-						.set({
-							value: prompt.value,
-							enabled: prompt.enabled,
-							tags: prompt.tags || [],
-							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-							premiumModels: after.premiumModels,
-						})
-						.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
-				}
-				const retexted = updates.filter(({ id, prompt }) => existingById.get(id)?.value !== prompt.value);
-				await markPromptRunsDirty(
-					tx,
-					data.brandId,
-					retexted.map(({ id }) => id),
+		const saved = await db.transaction(async (tx) => {
+			for (const { id, prompt, after } of updates) {
+				await tx
+					.update(prompts)
+					.set({
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						premiumModels: after.premiumModels,
+						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
+					})
+					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
+			}
+			const retexted = updates.filter(({ id, prompt }) => existingById.get(id)?.value !== prompt.value);
+			await markPromptRunsDirty(
+				tx,
+				data.brandId,
+				retexted.map(({ id }) => id),
+			);
+
+			if (inserts.length > 0) {
+				await tx.insert(prompts).values(
+					inserts.map(({ prompt, after }) => ({
+						brandId: data.brandId,
+						value: prompt.value,
+						enabled: prompt.enabled,
+						tags: prompt.tags || [],
+						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
+						premiumModels: after.premiumModels,
+						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
+					})),
 				);
+			}
 
-				if (inserts.length > 0) {
-					await tx.insert(prompts).values(
-						inserts.map(({ prompt, after }) => ({
-							brandId: data.brandId,
-							value: prompt.value,
-							enabled: prompt.enabled,
-							country: prompt.country ?? DEFAULT_COUNTRY,
-							language: prompt.language ?? DEFAULT_LANGUAGE,
-							groupId: prompt.groupId ?? uuidv4(),
-							tags: prompt.tags || [],
-							systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
-							premiumModels: after.premiumModels,
-						})),
-					);
-				}
-
-				return tx.query.prompts.findMany({
-					where: eq(prompts.brandId, data.brandId),
-				});
-			})
-			.catch((error) => rethrowMarketTaken(error, PROMPT_GROUP_MARKET_INDEX));
+			return tx.query.prompts.findMany({
+				where: eq(prompts.brandId, data.brandId),
+			});
+		});
 
 		const newPromptIds = saved.filter((p) => !existingIds.has(p.id)).map((p) => p.id);
 		if (newPromptIds.length > 0) {

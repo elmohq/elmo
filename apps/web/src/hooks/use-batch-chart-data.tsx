@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { type PromptScopeFilters, promptScopeParams } from "@/lib/prompt-scope";
 import { getBatchChartDataFn } from "@/server/visibility";
 
-export interface BatchChartDataFilters extends PromptScopeFilters {
+export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	/** Tag filter (resolved to prompt IDs server-side). */
-	/** Search term applied to prompt text (resolved server-side). */
+	tags?: string[];
 	search?: string;
 }
 
@@ -30,7 +28,7 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
-					...promptScopeParams(filters),
+					tags: filters?.tags?.join(","),
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

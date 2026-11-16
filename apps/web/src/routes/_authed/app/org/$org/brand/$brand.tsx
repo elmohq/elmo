@@ -1,6 +1,7 @@
 import { createFileRoute, notFound, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { brandSegment, canonicalBrandHref, resolveSegment } from "@workspace/lib/app-urls";
+import { type BrandTrackingState, brandTrackingState, needsPlan } from "@workspace/lib/brand-state";
 import { db } from "@workspace/lib/db/db";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
@@ -14,7 +15,8 @@ import { getAppName } from "@/lib/route-head";
 
 interface BrandData {
 	brand: BrandWithPrompts;
-	unpaidOrganizationId: string | null;
+	trackingState: BrandTrackingState;
+	organizationId: string;
 }
 
 const getBrandData = createServerFn({ method: "GET" })
@@ -38,7 +40,8 @@ const getBrandData = createServerFn({ method: "GET" })
 
 		return {
 			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
-			unpaidOrganizationId: entitlements.standing === "none" ? brand.organizationId : null,
+			trackingState: brandTrackingState(brand, entitlements),
+			organizationId: brand.organizationId,
 		};
 	});
 
@@ -79,8 +82,8 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 		});
 		if (!result) throw notFound();
 
-		if (result.unpaidOrganizationId) {
-			throw redirect({ to: "/choose-plan", search: { org: result.unpaidOrganizationId } });
+		if (needsPlan(result.trackingState)) {
+			throw redirect({ to: "/choose-plan", search: { org: result.organizationId } });
 		}
 
 		return result;

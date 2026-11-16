@@ -1,26 +1,13 @@
 /**
- * The model filter's vocabulary: what a brand can be filtered down to, how that
- * travels in a URL, and what to call it.
- *
- * A brand can run the same model two ways — ChatGPT scraped from the consumer
- * product and ChatGPT called directly with its own web search on — and those
- * answer different questions, so they are separate entries. A model id alone
- * cannot tell them apart (both are `chatgpt`, both web-search), which is why a
- * filter keyed on model id listed ChatGPT twice and filtered to neither.
- *
- * The discriminator is grounded-API-or-not rather than the vendor behind it, so
- * a URL survives an operator swapping BrightData for Olostep.
- *
- * Lives in config rather than in the dashboard because the deployment packages
- * name targets too, and every surface that names one has to agree.
+ * A brand can run a model scraped and grounded, and a model id can't tell those
+ * apart, so filter values mark the grounded variant. They don't name the vendor,
+ * so a URL survives an operator swapping BrightData for Olostep.
  */
 import { getModelMeta } from "./models";
 import { premiumModelLabel } from "./plans";
 
-/** Sentinel for "no model filter". */
 export const ALL_MODELS_VALUE = "all";
 
-/** Marks the grounded-API variant of a model in a filter value. */
 const PREMIUM_SUFFIX = "::premium";
 
 export function targetFilterValue(model: string, premium: boolean): string {

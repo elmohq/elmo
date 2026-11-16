@@ -17,35 +17,19 @@ const DATAFORSEO_AFFILIATE = "https://try.dataforseo.com/elmo";
 export type RecommendedScraper = "cloro" | "brightdata" | "oxylabs" | "searchapi" | "olostep" | "dataforseo";
 export type DirectApiProvider = "openrouter" | "anthropic" | "openai" | "mistral";
 
-// Surfaces each scraper can track — the first two are the "recommended starter" set.
-const BRIGHTDATA_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
-const SEARCHAPI_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const SEARCHAPI_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"] as const;
 
-const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
+const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini"] as const;
 
-const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
+const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview"] as const;
 
-const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
+const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "bing-ai-mode"] as const;
 
 export const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-// DataForSEO scrapes wherever it can — the two Google SERP surfaces plus the
-// LLM Scraper's ChatGPT and Gemini. Perplexity has no scraper, so it's the one
-// surface that goes through the LLM Responses API.
+
+// DataForSEO has no Perplexity scraper, so Perplexity goes through its LLM Responses API.
 const DATAFORSEO_TARGETS = [
 	{ model: "google-ai-mode", kind: "scraper" },
 	{ model: "google-ai-overview", kind: "scraper" },
@@ -77,7 +61,6 @@ type TargetPicker = {
 export type ProviderSpec = {
 	id: string;
 	kind: "direct" | "scraper";
-	/** Bolded in the "Configure X?" question. */
 	label: string;
 	costHint: string;
 	confirmDefault: boolean;
@@ -106,10 +89,8 @@ function scraperPicker(label: string, provider: string, models: readonly string[
 	};
 }
 
-// Order here is the order they're offered everywhere in the wizard, ranked the
-// same way the providers doc ranks them. Direct APIs come first: the wizard
-// requires one before it will move on to scrapers, and the order within them
-// matches the auto-pick preference in onboarding/llm.ts.
+// The order the wizard offers them in. Direct APIs come first because the wizard
+// requires one before scrapers, ordered like the auto-pick preference in onboarding/llm.ts.
 export const PROVIDER_PROMPTS: ProviderSpec[] = [
 	{
 		id: "openrouter",
@@ -181,7 +162,7 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 		id: "oxylabs",
 		kind: "scraper",
 		label: "Oxylabs",
-		costHint: "cheapest per run, no Gemini/Copilot — $49/mo min",
+		costHint: "cheapest per run, no Gemini — $49/mo min",
 		confirmDefault: false,
 		signup: { message: "Sign up and create Web Scraper API credentials", url: OXYLABS_AFFILIATE },
 		credentials: [

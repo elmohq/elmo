@@ -6,6 +6,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -76,7 +77,9 @@ function TeamSettingsPage() {
 
 			{error && (
 				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
+					<AlertDescription>
+						<WriteErrorMessage message={error} />
+					</AlertDescription>
 				</Alert>
 			)}
 

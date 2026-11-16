@@ -1,16 +1,9 @@
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
 
-// Canonical definition lives next to the SCRAPE_TARGETS parser in
-// @workspace/config; re-exported here so provider code keeps importing it
-// from "./types".
 export type { ModelConfig };
 
-/**
- * What a provider fetched. Text and citations are derived from `rawOutput` by
- * `extractRun` in `text-extraction`, at write time and on every replay alike, so
- * `rawOutput` must keep whatever extraction reads.
- */
+/** Text and citations are re-derived from `rawOutput` on every replay, so it must keep whatever extraction reads. */
 export interface ScrapeResult {
 	rawOutput: unknown;
 	webQueries: string[];
@@ -20,87 +13,42 @@ export interface ScrapeResult {
 export interface ProviderOptions {
 	webSearch?: boolean;
 	version?: string;
-	/**
-	 * ISO 3166-1 alpha-2 country to answer as if asked from. Only read by
-	 * targets their provider `localizes`; omitted, each answers for the market
-	 * it always has.
-	 */
-	country?: string;
-	/** Language code to ask in. Only read by targets that `sendsLanguage`. */
-	language?: string;
 }
 
 export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
-	/**
-	 * Whether the model may use its web-search tool. Defaults to true (the
-	 * onboarding research path). Set false for a single completion over context
-	 * supplied entirely in the prompt — no tools, no agent loop.
-	 */
+	/** Defaults to true. False for a single completion over context supplied in the prompt. */
 	webSearch?: boolean;
 }
 
 export interface StructuredResearchResult<T> {
 	object: T;
-	/** Resolved model id (after any `:online` suffixing etc.). */
+	/** After any `:online` suffixing. */
 	modelVersion?: string;
 }
 
 /**
- * How a provider reaches the model, which is what a customer is really choosing
- * between:
- *  - "scraped": the consumer product is driven and its rendered answer read
- *    back, so results include the surrounding surface (ads, shopping modules,
- *    the citation list a real user sees).
- *  - "api": the model is called directly, so results are the model's own answer
- *    with no consumer chrome, and web grounding only happens when the model has
- *    a search tool and it is switched on.
+ * "scraped" reads back the consumer product, surface and all (ads, shopping,
+ * the citations a user sees); "api" is the model's own answer, grounded only
+ * when its search tool is on.
  */
 export type ProviderAccess = "scraped" | "api";
 
 export interface Provider {
 	id: string;
 	name: string;
-	/** How this provider reaches models, for targets that don't refine it. */
 	access: ProviderAccess;
-	/**
-	 * Per-target refinement, for a provider that offers both paths. DataForSEO
-	 * scrapes a surface by default but routes to its LLM Responses API when a
-	 * target pins a model version, so the same provider is either depending on
-	 * the target.
-	 */
+	/** For a provider offering both paths, like DataForSEO, which uses its API when a target pins a version. */
 	accessFor?(config: ModelConfig): ProviderAccess;
-	/**
-	 * Section of the provider setup guide covering this provider, so the app can
-	 * point an operator at how to configure it. Omitted for providers with no
-	 * public setup docs (the stub used by tests).
-	 */
+	/** Anchor in the provider setup guide; omitted by the test stub. */
 	docsAnchor?: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
-	/**
-	 * Whether a target can answer as if asked from `country`. Omit when no
-	 * target can; such a target only runs prompts in DEFAULT_COUNTRY, the
-	 * market every provider answers for when it isn't told otherwise.
-	 */
-	localizes?(config: ModelConfig, country: string): boolean;
-	/**
-	 * Whether a target passes `ProviderOptions.language` on (a Google `hl`, a
-	 * DataForSEO language code). The rest answer in whatever language the
-	 * prompt is written in.
-	 */
-	sendsLanguage?(config: ModelConfig): boolean;
-	/** Validate a target config. Returns an error message if invalid, null if valid.
-	 *  Omit for providers that accept any model (runtime validation only). */
+	/** An error message for a target this provider can't serve. Omitted by providers that accept any model. */
 	validateTarget?(config: ModelConfig): string | null;
 
-	/**
-	 * Run a single research call that returns a Zod-validated structured value.
-	 * Each direct API provider implements this using the most idiomatic combo.
-	 * Scraper providers don't implement this, and at least one direct api
-	 * provider is required.
-	 */
+	/** Direct API providers only; a deployment needs at least one. */
 	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>>;
 }
 

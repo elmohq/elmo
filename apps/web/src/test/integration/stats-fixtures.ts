@@ -8,10 +8,12 @@ import {
 	organization,
 	promptRuns,
 	prompts,
+	rollupCitationPages,
 	rollupCitationUrls,
 	rollupCompetitorMentions,
 	rollupDirty,
 	rollupPromptRuns,
+	rollupSentimentQuotes,
 	rollupWebQueries,
 } from "@workspace/lib/db/schema";
 import type { RunMentionAssessments } from "@workspace/lib/mentions";
@@ -37,7 +39,15 @@ export async function createBrand(opts: { name?: string; website?: string; addit
 }
 
 export async function deleteBrand(brandId: string) {
-	for (const table of [rollupPromptRuns, rollupCompetitorMentions, rollupWebQueries, rollupCitationUrls, rollupDirty]) {
+	for (const table of [
+		rollupPromptRuns,
+		rollupCompetitorMentions,
+		rollupWebQueries,
+		rollupCitationUrls,
+		rollupCitationPages,
+		rollupSentimentQuotes,
+		rollupDirty,
+	]) {
 		await db.delete(table).where(eq(table.brandId, brandId));
 	}
 	await db.delete(citations).where(eq(citations.brandId, brandId));
@@ -50,14 +60,7 @@ export async function deleteBrand(brandId: string) {
 
 export async function createPrompt(
 	brandId: string,
-	opts: {
-		value?: string;
-		tags?: string[];
-		systemTags?: string[];
-		enabled?: boolean;
-		country?: string;
-		language?: string;
-	} = {},
+	opts: { value?: string; tags?: string[]; systemTags?: string[]; enabled?: boolean } = {},
 ) {
 	const [row] = await db
 		.insert(prompts)
@@ -67,8 +70,6 @@ export async function createPrompt(
 			tags: opts.tags ?? [],
 			systemTags: opts.systemTags ?? ["unbranded"],
 			enabled: opts.enabled ?? true,
-			...(opts.country ? { country: opts.country } : {}),
-			...(opts.language ? { language: opts.language } : {}),
 		})
 		.returning({ id: prompts.id });
 	return row.id;

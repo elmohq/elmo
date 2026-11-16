@@ -5,6 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChartExportPreview, type ChartExportPreviewProps } from "@/components/chart-export-preview";
 
+const PORTAL_RENDER_WAIT_MS = 200;
+
 export function useChartExport(fileName: string) {
 	const [isExporting, setIsExporting] = useState(false);
 	const [exportData, setExportData] = useState<ChartExportPreviewProps | null>(null);
@@ -34,8 +36,7 @@ export function useChartExport(fileName: string) {
 
 			setExportData(exportProps);
 
-			// Wait for React to render the portal, then capture it
-			await new Promise((r) => setTimeout(r, 200));
+			await new Promise((r) => setTimeout(r, PORTAL_RENDER_WAIT_MS));
 
 			try {
 				if (!containerRef.current) throw new Error("Export container not mounted");

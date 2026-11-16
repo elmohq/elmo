@@ -8,18 +8,19 @@ import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import { countBrandsByOrg } from "@workspace/lib/entitlements";
 import { count } from "drizzle-orm";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { organizationListSchema } from "@/lib/api/schemas/organizations";
 import { organizationScopeCondition } from "@/lib/api/scope";
 
 export const Route = createFileRoute("/api/v1/organizations/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
-
+				response: organizationListSchema,
+				query: z.object(paging),
+				handle: async ({ query, auth }) => {
 					const where = organizationScopeCondition(auth, organization.id);
 
 					const [totals] = await db.select({ count: count() }).from(organization).where(where);
@@ -35,14 +36,14 @@ export const Route = createFileRoute("/api/v1/organizations/")({
 						.from(organization)
 						.where(where)
 						.orderBy(organization.createdAt, organization.id)
-						.limit(limit)
-						.offset(offset);
+						.limit(query.limit)
+						.offset(offsetOf(query));
 
 					const brandCounts = await countBrandsByOrg(rows.map((row) => row.id));
 
 					return {
 						data: rows.map((row) => ({ ...row, brandCount: brandCounts.get(row.id) ?? 0 })),
-						pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+						pagination: paginationOf(query, total),
 					};
 				},
 			}),

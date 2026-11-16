@@ -9,15 +9,11 @@
  * imported elsewhere, the bundler must keep it, which dragged `db` → pg →
  * `Buffer` into the visibility page's client bundle ("Buffer is not defined").
  * Keeping it here, imported only inside server-fn handlers, stays strippable.
- * See issue #68.
  */
-import { parseCountryFilter } from "@workspace/config/countries";
-import { parseLanguageFilter } from "@workspace/config/languages";
 import { db } from "@workspace/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { prompts } from "@workspace/lib/db/schema";
+import { effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
-import type { PromptScope } from "@/lib/prompt-scope";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -36,21 +32,16 @@ export interface ResolvedPrompt {
  * list into the GET request URL) keeps the request bounded regardless of how
  * many prompts a brand has. Shipping the id list overflowed the request URL for
  * brands with a few hundred prompts — 414 URI Too Long on Vercel, 431 Request
- * Header Fields Too Large in dev. See issue #68.
- *
- * NOTE: the tag-filter logic here must stay in sync with `getPromptsSummaryFn`
- * (apps/web/src/server/prompts.ts), which produces the displayed list.
+ * Header Fields Too Large in dev.
  */
 export async function resolveFilteredPrompts(
 	brandId: string,
-	opts: PromptScope & { search?: string },
+	opts: { tags?: string; search?: string },
 ): Promise<ResolvedPrompt[]> {
 	const allPrompts = await db
 		.select({
 			id: prompts.id,
 			value: prompts.value,
-			country: prompts.country,
-			language: prompts.language,
 			systemTags: prompts.systemTags,
 			tags: prompts.tags,
 		})
@@ -58,16 +49,10 @@ export async function resolveFilteredPrompts(
 		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
 
 	const tagFilter = parseTagFilter(opts.tags);
-	const market = parseMarketFilter(opts);
 	const search = opts.search?.toLowerCase();
 
 	return allPrompts
-		.filter(
-			(p) =>
-				matchesTagFilter(p, tagFilter) &&
-				matchesMarketFilter(p, market) &&
-				(!search || p.value.toLowerCase().includes(search)),
-		)
+		.filter((p) => matchesTagFilter(effectiveTags(p), tagFilter) && (!search || p.value.toLowerCase().includes(search)))
 		.map((p) => ({
 			id: p.id,
 			value: p.value,
@@ -76,41 +61,6 @@ export async function resolveFilteredPrompts(
 		}));
 }
 
-export interface MarketFilter {
-	countries: string[];
-	languages: string[];
-}
-
-export function parseMarketFilter(opts: { countries?: string; languages?: string }): MarketFilter {
-	return { countries: parseCountryFilter(opts.countries), languages: parseLanguageFilter(opts.languages) };
-}
-
-/** An empty list matches every country (or language), the same as an empty tag filter. */
-export function matchesMarketFilter(prompt: { country: string; language: string }, filter: MarketFilter): boolean {
-	return (
-		(filter.countries.length === 0 || filter.countries.includes(prompt.country)) &&
-		(filter.languages.length === 0 || filter.languages.includes(prompt.language))
-	);
-}
-
 export function parseTagFilter(tags: string | undefined): string[] {
 	return tags?.split(",").filter(Boolean) || [];
-}
-
-/**
- * Matches getPromptsSummaryFn: a prompt's effective tags are its user tags plus
- * exactly one system tag reflecting its effective branded status.
- */
-function matchesTagFilter(
-	prompt: { systemTags: string[] | null; tags: string[] | null },
-	tagFilter: string[],
-): boolean {
-	if (tagFilter.length === 0) return true;
-
-	const userTags = prompt.tags || [];
-	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
-	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-	const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
-
-	return tagFilter.some((t) => effectiveTags.includes(t));
 }

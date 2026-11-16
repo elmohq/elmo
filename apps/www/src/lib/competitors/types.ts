@@ -1,5 +1,18 @@
 export type FeatureKey =
 	| "multiLlmTracking"
+	| "chatgpt"
+	| "googleAiOverviews"
+	| "googleAiMode"
+	| "gemini"
+	| "perplexity"
+	| "copilot"
+	| "claude"
+	| "grok"
+	| "deepseek"
+	| "metaAi"
+	| "anyModel"
+	| "uiCapture"
+	| "byoKeys"
 	| "visibilityScore"
 	| "citationAnalytics"
 	| "competitorBenchmarking"
@@ -39,6 +52,8 @@ interface FeatureDefinition {
 	label: string;
 	description: string;
 	searchTerm?: string;
+	/** Mid-sentence phrasing, for labels whose proper nouns must keep their case. */
+	phrase?: string;
 }
 
 export interface FeatureCategory {
@@ -56,7 +71,23 @@ export interface Competitor {
 	category: CompetitorCategory;
 	ahrefsDR: number;
 	ahrefsTraffic?: number;
-	status: "active" | "shutting-down" | "acquired" | "beta";
+	status: "active" | "beta" | "acquired" | "shutting-down" | "defunct" | "pivoted";
+	/** ISO date this entry was last checked against the tool's own site. Bump it whenever you re-verify, even if nothing changed. */
+	checkedAt: string;
+	/** What happened to a tool that shut down, pivoted, or was acquired. Shown in the AEO Graveyard. */
+	fate?: { date: string; summary: string; source?: string };
+	/** Set when the screenshot is mostly dark, so the graveyard inverts it to read as engraved. */
+	darkScreenshot?: true;
+	/** Set when no usable capture of the tool's site exists, so pages skip the screenshot. */
+	noScreenshot?: true;
+	/** SPDX identifier of the open-source license, for tools whose code is public. */
+	license?: string;
+	/**
+	 * The one-line reason to pick Elmo over this tool, shown up top on the
+	 * comparison page. Hand-written for tools where the generated one would miss
+	 * the real difference; keep it fair and checkable.
+	 */
+	soundbite?: string;
 	features: Partial<Record<FeatureKey, boolean>>;
 	pricing?: {
 		hasFree: boolean;
@@ -107,12 +138,92 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 			},
 		},
 	},
+	engines: {
+		label: "AI Engines",
+		features: {
+			chatgpt: {
+				label: "ChatGPT",
+				description: "Track answers from OpenAI's ChatGPT",
+				searchTerm: "ChatGPT Rank Trackers",
+				phrase: "ChatGPT tracking",
+			},
+			googleAiOverviews: {
+				label: "Google AI Overviews",
+				description: "Track the AI Overviews shown above Google search results",
+				searchTerm: "AI Overview Trackers",
+				phrase: "Google AI Overviews tracking",
+			},
+			googleAiMode: {
+				label: "Google AI Mode",
+				description: "Track answers from Google's conversational AI Mode",
+				searchTerm: "Google AI Mode Trackers",
+				phrase: "Google AI Mode tracking",
+			},
+			gemini: {
+				label: "Gemini",
+				description: "Track answers from Google's Gemini app",
+				searchTerm: "Gemini Visibility Trackers",
+				phrase: "Gemini tracking",
+			},
+			perplexity: {
+				label: "Perplexity",
+				description: "Track answers from Perplexity",
+				searchTerm: "Perplexity Rank Trackers",
+				phrase: "Perplexity tracking",
+			},
+			copilot: {
+				label: "Microsoft Copilot",
+				description: "Track answers from Microsoft Copilot",
+				searchTerm: "Copilot Visibility Trackers",
+				phrase: "Microsoft Copilot tracking",
+			},
+			claude: {
+				label: "Claude",
+				description: "Track answers from Anthropic's Claude",
+				searchTerm: "Claude Visibility Trackers",
+				phrase: "Claude tracking",
+			},
+			grok: {
+				label: "Grok",
+				description: "Track answers from xAI's Grok",
+				searchTerm: "Grok Visibility Trackers",
+				phrase: "Grok tracking",
+			},
+			deepseek: {
+				label: "DeepSeek",
+				description: "Track answers from DeepSeek",
+				searchTerm: "DeepSeek Visibility Trackers",
+				phrase: "DeepSeek tracking",
+			},
+			metaAi: {
+				label: "Meta AI",
+				description: "Track answers from Meta AI",
+				searchTerm: "Meta AI Visibility Trackers",
+				phrase: "Meta AI tracking",
+			},
+			anyModel: {
+				label: "Any Model",
+				description: "Add models beyond a fixed list, such as any model available through OpenRouter",
+				phrase: "tracking for any model",
+			},
+			uiCapture: {
+				label: "Real UI Answers",
+				description: "Capture answers from the consumer apps people use, not only from model APIs",
+				phrase: "answers captured from the real consumer apps",
+			},
+			byoKeys: {
+				label: "Bring Your Own Keys",
+				description: "Plug in your own scraper and model API accounts and pay providers directly",
+				phrase: "bring-your-own-key support",
+			},
+		},
+	},
 	platform: {
 		label: "Platform",
 		features: {
 			whiteLabelAgency: {
-				label: "White-Label / Agency",
-				description: "Multi-client dashboards and custom branding",
+				label: "White-Label",
+				description: "Custom-branded dashboards or reports for agency clients",
 				searchTerm: "White-Label AI Visibility Tools",
 			},
 			openSource: {
@@ -235,6 +346,13 @@ export function getFeatureSearchTerm(key: FeatureKey): string | undefined {
 	return undefined;
 }
 
+export function getFeaturePhrase(key: FeatureKey): string | undefined {
+	for (const cat of Object.values(FEATURE_CATEGORIES)) {
+		if (key in cat.features) return cat.features[key].phrase;
+	}
+	return undefined;
+}
+
 export function getFeatureDescription(key: FeatureKey): string {
 	for (const cat of Object.values(FEATURE_CATEGORIES)) {
 		if (key in cat.features) return cat.features[key].description;
@@ -244,6 +362,19 @@ export function getFeatureDescription(key: FeatureKey): string {
 
 export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	multiLlmTracking: true,
+	chatgpt: true,
+	googleAiOverviews: true,
+	googleAiMode: true,
+	gemini: true,
+	perplexity: true,
+	copilot: false,
+	claude: true,
+	grok: true,
+	deepseek: true,
+	metaAi: true,
+	anyModel: true,
+	uiCapture: true,
+	byoKeys: true,
 	visibilityScore: true,
 	citationAnalytics: true,
 	competitorBenchmarking: true,
@@ -258,7 +389,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	multiLanguage: false,
 	actionRecommendations: true,
 	contentGapAnalysis: true,
-	siteAudits: false,
+	siteAudits: true,
 	keywordResearch: true,
 	emailAlerts: false,
 	dataExportApi: true,
@@ -282,6 +413,11 @@ export const CATEGORY_LABELS: Record<CompetitorCategory, string> = {
 };
 
 const LOW_DR_THRESHOLD = 25;
+
+/** Tools that no longer exist as AI visibility products. */
+export function isRetired(competitor: Competitor): boolean {
+	return competitor.status === "shutting-down" || competitor.status === "defunct" || competitor.status === "pivoted";
+}
 
 export function isLowDR(competitor: Competitor): boolean {
 	return competitor.ahrefsDR < LOW_DR_THRESHOLD;

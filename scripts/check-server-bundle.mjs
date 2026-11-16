@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 /**
- * Fails when a server bundle still expects to resolve a package from disk at
- * request time.
- *
- * The bundlers turn an unresolved CommonJS `require("x")` into a `__require("x")`
- * that only runs when that module is first needed. Nothing complains at build
- * time, the output looks complete, and the app dies on the first render in any
- * environment that ships the bundle without a `node_modules` beside it — the
- * Docker image and the Vercel function both do. Worse, whether it fires depends
- * on which chunk the module lands in: the same unresolved require can sit
- * harmlessly in a route nobody hits and then start taking down every page after
- * an unrelated dependency change.
+ * Fails when a server bundle still resolves a package from disk at request time.
+ * An unresolved `require("x")` builds cleanly and only throws when first run,
+ * and the Docker image and the Vercel function ship no `node_modules` beside the
+ * bundle. Which chunk it lands in decides when it fires, so an unrelated
+ * dependency change can move it onto every page.
  *
  * Usage: node scripts/check-server-bundle.mjs <app-dir> [...]
  */
@@ -19,6 +13,13 @@ import { builtinModules } from "node:module";
 import { join, relative } from "node:path";
 
 const BUILTINS = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
+
+/**
+ * Packages that are only ever required inside a try/catch as an optional
+ * enhancement, so a missing copy at runtime falls back instead of crashing.
+ * `@acemir/cssom` (via linkedom) probes for `cssstyle` this way.
+ */
+const OPTIONAL = new Set(["cssstyle"]);
 
 /** Rolldown emits this for a `require()` it could not link at build time. */
 const RUNTIME_REQUIRE = /__require\("([^"]+)"\)/g;
@@ -94,7 +95,7 @@ function unresolved(bundleDir) {
       const pkg = specifier.startsWith("@")
         ? specifier.split("/").slice(0, 2).join("/")
         : specifier.split("/")[0];
-      if (traced.has(pkg)) continue;
+      if (traced.has(pkg) || OPTIONAL.has(pkg)) continue;
       problems.push({ file: relative(bundleDir, file), specifier });
     }
   }

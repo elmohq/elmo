@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { externalRel } from "@/lib/external-link";
 
-const DEMO_URL = demoSiteUrl("marketing-demo-frame");
+const DEMO_BRAND_PATH = "/app/org/elmo-demo/brand/nike";
 
 /*
  * Each slide is a real screenshot. `y` is where that page's link sits in the
@@ -14,48 +14,56 @@ const SLIDES = [
 	{
 		src: "/screenshots/overview.png",
 		label: "Overview",
+		path: "",
 		caption: "Visibility, share of voice, sentiment, and position at a glance",
 		y: 0.141,
 	},
 	{
 		src: "/screenshots/visibility.png",
 		label: "Visibility",
+		path: "/visibility",
 		caption: "How often AI names you, per prompt and model",
 		y: 0.181,
 	},
 	{
 		src: "/screenshots/share-of-voice.png",
 		label: "Share of Voice",
+		path: "/share-of-voice",
 		caption: "Who AI recommends instead of you",
 		y: 0.221,
 	},
 	{
 		src: "/screenshots/sentiment.png",
 		label: "Sentiment",
+		path: "/sentiment",
 		caption: "How AI describes you when it mentions you",
 		y: 0.261,
 	},
 	{
 		src: "/screenshots/responses.png",
 		label: "Responses",
+		path: "/responses",
 		caption: "Every AI answer, with each brand's rank and tone",
 		y: 0.301,
 	},
 	{
 		src: "/screenshots/query-fan-out.png",
 		label: "Query Fan-Out",
+		path: "/query-fan-out",
 		caption: "The searches AI runs behind each answer",
 		y: 0.341,
 	},
 	{
 		src: "/screenshots/citations.png",
 		label: "Citations",
+		path: "/citations",
 		caption: "The sources AI trusts in your category",
 		y: 0.381,
 	},
 	{
 		src: "/screenshots/opportunities.png",
 		label: "Opportunities",
+		path: "/opportunities",
 		caption: "What to do next, ranked by impact",
 		y: 0.421,
 	},
@@ -169,30 +177,17 @@ export function ProductDemo() {
 	};
 
 	const slide = SLIDES[index];
+	const demoUrl = demoSiteUrl("marketing-demo-frame", `${DEMO_BRAND_PATH}${slide.path}`);
 
 	return (
 		<div ref={ref} className="mx-auto max-w-4xl">
-			<div className="overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_2px_4px_rgb(24_24_27/0.04),0_32px_64px_-24px_rgb(37_99_235/0.28)]">
-				<a
-					href={DEMO_URL}
-					target="_blank"
-					rel={externalRel(DEMO_URL)}
-					className="group flex h-10 items-center gap-3 border-b border-zinc-200/80 bg-zinc-50/80 px-3.5 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-600"
-				>
-					<span aria-hidden="true" className="flex gap-1.5">
-						<span className="size-2.5 rounded-full bg-zinc-300" />
-						<span className="size-2.5 rounded-full bg-zinc-300" />
-						<span className="size-2.5 rounded-full bg-zinc-300" />
-					</span>
-					<span className="mx-auto inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-blue-600 group-hover:text-blue-700">
-						<span className="truncate">View the Live Demo</span>
-						<ArrowUpRight
-							className="size-4 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-							aria-hidden="true"
-						/>
-					</span>
-					<span aria-hidden="true" className="w-[42px]" />
-				</a>
+			<a
+				href={demoUrl}
+				target="_blank"
+				rel={externalRel(demoUrl)}
+				aria-label={`View the live demo: ${slide.label}`}
+				className="group relative block overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgb(24_24_27/0.08),0_2px_4px_rgb(24_24_27/0.04),0_32px_64px_-24px_rgb(37_99_235/0.28)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+			>
 				<div className="relative aspect-[5/3] bg-zinc-50">
 					{SLIDES.map((s, i) => (
 						<Shot
@@ -205,7 +200,16 @@ export function ProductDemo() {
 					))}
 					{auto ? <Cursor y={cursorY} clicking={clicking} /> : null}
 				</div>
-			</div>
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-zinc-950/0 transition-colors duration-200 group-hover:bg-zinc-950/10 group-focus-visible:bg-zinc-950/10"
+				>
+					<span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_0_0_4px_rgb(37_99_235/0.2),0_0_24px_4px_rgb(59_130_246/0.55),0_0_64px_16px_rgb(96_165_250/0.35)] transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+						View Live Demo
+						<ArrowUpRight className="size-4" />
+					</span>
+				</div>
+			</a>
 
 			<div className="mt-5 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
 				<p className="text-center text-[15px] text-zinc-600 sm:text-left" aria-live="polite">

@@ -1,13 +1,8 @@
 /**
- * Provision a Stripe account (test or live) with the Elmo Cloud catalog:
- * one product per plan plus the extra premium slots add-on, with monthly and
- * annual prices carrying the lookup keys the app resolves at checkout.
- *
- * Idempotent: existing lookup keys are left untouched, so re-running after
- * editing packages/config/src/plans.ts only creates what's missing. Stripe
- * prices are immutable — to change an amount, this creates a NEW price and
- * moves the lookup key to it (transfer_lookup_key), which is Stripe's intended
- * flow; existing subscriptions keep their old price until changed.
+ * Provisions a Stripe account (test or live) with the plans.ts catalog. Safe to
+ * re-run: only missing lookup keys are created. Stripe prices are immutable, so
+ * a changed amount gets a new price and the lookup key moves to it; existing
+ * subscriptions keep their old price.
  *
  * Usage:
  *   STRIPE_SECRET_KEY=sk_test_... pnpm -C packages/deployment exec tsx scripts/bootstrap-stripe.ts

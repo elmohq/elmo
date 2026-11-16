@@ -1,28 +1,11 @@
 #!/usr/bin/env node
 
-/**
- * License compliance checker for the Elmo monorepo.
- *
- * Ensures every dependency uses a license compatible with distributing
- * Elmo itself under MIT. Runs `pnpm licenses list --json` and validates
- * the output against an allow-list of SPDX identifiers plus a set of
- * per-package exceptions for known-safe outliers. The allow-list is
- * limited to permissive licenses so that nothing we ship pulls in
- * copyleft terms that would conflict with MIT redistribution.
- *
- * Exit codes:
- *   0 – all packages pass
- *   1 – one or more packages have disallowed licenses
- */
+/** Fails when a dependency's license would conflict with distributing Elmo under MIT. */
 
 import { execSync } from "node:child_process";
 
-// ── Allowed SPDX license identifiers ────────────────────────────────
-// Permissive licenses compatible with MIT redistribution, plus MPL-2.0.
-// MPL-2.0 is file-level copyleft: used as an unmodified dependency it places no
-// obligations on Elmo's own MIT-licensed code (e.g. lightningcss for CSS).
-// Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT added — its terms would
-// conflict with shipping Elmo under MIT.
+// MPL-2.0 is file-level copyleft, so as an unmodified dependency it puts no
+// obligations on Elmo's code. GPL, LGPL and AGPL stay out: they conflict with MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
@@ -36,7 +19,6 @@ const ALLOWED_LICENSES = new Set([
   "CC0-1.0",
   "Unlicense",
   "MPL-2.0",
-  // Compound expressions where every component is permissive
   "(MIT OR Apache-2.0)",
   "MIT OR Apache-2.0",
   "(MIT OR CC0-1.0)",
@@ -46,17 +28,14 @@ const ALLOWED_LICENSES = new Set([
   "(AFL-2.1 OR BSD-3-Clause)",
   "(BSD-3-Clause OR GPL-2.0)", // dual-licensed – we use BSD-3-Clause
   "(MPL-2.0 OR Apache-2.0)", // dual-licensed – we use Apache-2.0
-  // Transitive deps of @usebruno/cli (e2e API tests); every component permissive.
+  // Via @usebruno/cli (e2e API tests).
   "(BSD-3-Clause AND Apache-2.0)", // google-protobuf
   "(Public Domain OR MIT)", // tv4 – we use MIT
-  // Parenthesized OR-expressions where every alternative is permissive.
   "(MIT OR WTFPL)", // expand-template
   "(BSD-2-Clause OR MIT OR Apache-2.0)", // rc
 ]);
 
-// ── Per-package exceptions ───────────────────────────────────────────
-// Packages whose licenses are NOT in the allow-list above but are
-// acceptable for documented reasons. Keep this list small and justified.
+// Each one needs its reason beside it.
 const PACKAGE_EXCEPTIONS = new Map([
   // Sentry CLI – build-time tooling only, never distributed with Elmo.
   // FSL-1.1-MIT converts to MIT after two years.
@@ -105,8 +84,6 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["@yuku-analyzer/binding-win32-x64", "Unknown"],
 ]);
 
-// ─────────────────────────────────────────────────────────────────────
-
 function run() {
   console.log("Running pnpm licenses list --json ...\n");
 
@@ -139,11 +116,7 @@ function run() {
         continue;
       }
 
-      // OR-expressions: if every alternative is itself an allowed license,
-      // the package as a whole is fine (the consumer picks whichever
-      // alternative suits them). For example "MIT OR WTFPL" is fine because
-      // MIT is in the allow-list; "BSD-2-Clause OR MIT OR Apache-2.0" is
-      // fine because all three components are.
+      // An OR-expression passes when every alternative is allowed.
       if (/^(\w[\w.-]*)(?: OR (\w[\w.-]*))+$/.test(license)) {
         const parts = license.split(/\s+OR\s+/);
         if (parts.every((p) => ALLOWED_LICENSES.has(p))) {

@@ -1,19 +1,5 @@
-/**
- * Shared prompts table — used by the settings/prompts page (manages a brand's
- * full prompt list) and the prompt wizard's Review step (picks from
- * AI-suggested prompts + custom additions).
- *
- * Controlled component: the caller owns the `prompts` array and the change
- * callback. The settings page wraps it with save/server logic; the wizard
- * keeps it inline. The `showSystemTags` prop hides the System Tags column
- * in the wizard since onboarding hasn't yet computed any system tags.
- */
-
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { DEFAULT_COUNTRY } from "@workspace/config/countries";
-import { DEFAULT_LANGUAGE } from "@workspace/config/languages";
-import type { Market } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -22,7 +8,7 @@ import {
 	premiumSlotsUsed,
 	selectPremiumModels,
 } from "@workspace/config/plans";
-import { describeSkipped, parseBulkPromptsInMarkets } from "@workspace/lib/bulk-prompts";
+import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
@@ -35,23 +21,19 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
+import { CopyPlus, CornerDownRight, Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { MarketsPicker } from "@/components/market-picker";
-import { PromptMarketChips } from "@/components/prompt-market-chips";
 import { useOrganizationParams } from "@/hooks/use-route-params";
+import { countVariants, groupLeads, insertIntoGroup } from "@/lib/prompt-variants";
 
 export interface EditablePrompt {
 	id?: string;
 	_key: string;
+	/** Shared by a prompt and its variants. */
+	groupId: string;
 	value: string;
 	enabled: boolean;
-	/** Editable until the prompt is saved; after that it's part of what the prompt measures. */
-	country: string;
-	language: string;
-	/** Prompts sharing one are the same question in other markets, edited as one row. */
-	groupId: string;
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
@@ -66,11 +48,9 @@ export interface PremiumAllowance {
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
 		_key: uuidv4(),
+		groupId: partial?.groupId ?? uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
-		country: partial?.country ?? DEFAULT_COUNTRY,
-		language: partial?.language ?? DEFAULT_LANGUAGE,
-		groupId: partial?.groupId ?? uuidv4(),
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
@@ -183,38 +163,25 @@ const GRID_COLS: Record<string, string> = {
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
 	onChange: (next: EditablePrompt[]) => void;
-	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
-	/** The market new prompts start in. Omit to hide markets and add every
-	 *  prompt in the default one (the onboarding wizard). */
-	newPromptMarket?: Market;
+	/** Lets a prompt gain variants. Off where prompts are only being drafted, like onboarding. */
+	variants?: boolean;
 	leading?: ReactNode;
 	pendingRows?: number;
 }
 
-/**
- * The bulk-paste box's state. The parse is pure and lives in @workspace/lib so
- * the rules (trim, dedupe, cap) are tested without a DOM; it runs on every
- * keystroke only to label the button and warn about what will be dropped.
- */
-function useBulkPaste(
-	filled: (Market & { value: string })[],
-	defaultMarket: Market,
-	onAdd: (prompts: { value: string; country: string; language: string }[]) => void,
-) {
+function useBulkPaste(filledValues: string[], onAdd: (values: string[]) => void) {
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
-	const [bulkMarkets, setBulkMarkets] = useState<Market[] | null>(null);
-	const markets = useMemo(() => bulkMarkets ?? [defaultMarket], [bulkMarkets, defaultMarket]);
 
 	const bulkPreview = useMemo(
-		() => parseBulkPromptsInMarkets(bulkText, { existing: filled, markets, limit: MAX_PROMPTS }),
-		[bulkText, filled, markets],
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
+		[bulkText, filledValues],
 	);
 
 	// Over capacity blocks the whole paste rather than quietly taking the lines
@@ -223,7 +190,6 @@ function useBulkPaste(
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
-		setBulkMarkets(null);
 	};
 
 	return {
@@ -231,8 +197,6 @@ function useBulkPaste(
 		setBulkOpen,
 		bulkText,
 		setBulkText,
-		bulkMarkets: markets,
-		setBulkMarkets,
 		bulkPreview,
 		bulkNotice: bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null,
 		bulkError:
@@ -248,10 +212,7 @@ function useBulkPaste(
 	};
 }
 
-/**
- * Which rows are ticked. Counted against the current prompts so stale keys
- * (e.g. after the wizard regenerates suggestions) don't linger in the tally.
- */
+/** Counted against the current prompts, so keys from regenerated suggestions don't linger. */
 function useRowSelection(prompts: EditablePrompt[]) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 	const liveSelectedCount = prompts.reduce((count, p) => (selectedKeys.has(p._key) ? count + 1 : count), 0);
@@ -261,15 +222,11 @@ function useRowSelection(prompts: EditablePrompt[]) {
 		selectedKeys,
 		liveSelectedCount,
 		allSelected,
-		/** Toggles a row, which is every market of its prompt together. */
-		toggleSelect: (keys: string[]) =>
+		toggleSelect: (key: string) =>
 			setSelectedKeys((prev) => {
 				const next = new Set(prev);
-				const on = keys.every((key) => next.has(key));
-				for (const key of keys) {
-					if (on) next.delete(key);
-					else next.add(key);
-				}
+				if (next.has(key)) next.delete(key);
+				else next.add(key);
 				return next;
 			}),
 		toggleSelectAll: () => setSelectedKeys(allSelected ? new Set() : new Set(prompts.map((p) => p._key))),
@@ -356,48 +313,85 @@ function ColumnHeader({
 	);
 }
 
+const VARIANT_HELP =
+	"Add another wording of this question. A variant is tracked as its own prompt: it runs on every model and counts toward your prompt limit.";
+
+const FIELD_ACTION_CLASS =
+	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
+
 function PromptTextField({
 	prompt,
+	lead,
 	onValueChange,
 	onRemove,
+	onAddVariant,
 	className,
 }: {
 	prompt: EditablePrompt;
+	/** The prompt this row is a variant of. */
+	lead?: EditablePrompt;
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
+	onAddVariant?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
+	const actions = Number(removable) + Number(Boolean(onAddVariant));
 	return (
-		<div className={cn("relative", className)}>
-			{prompt.suggested && (
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
-								<Sparkles className="size-3.5" aria-label="Suggested" />
-							</span>
-						}
-					/>
-					<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
-				</Tooltip>
-			)}
-			<Input
-				value={prompt.value}
-				onChange={(e) => onValueChange(e.target.value)}
-				placeholder="Enter prompt text..."
-				className={cn("min-w-0", prompt.suggested && "pl-8", removable && "pr-8")}
-			/>
-			{removable && (
-				<button
-					type="button"
-					onClick={onRemove}
-					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
-					className="absolute inset-y-0 right-1.5 my-auto flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-				>
-					<X className="size-3.5" />
-				</button>
-			)}
+		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
+			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+			<div className="relative min-w-0 flex-1">
+				{prompt.suggested && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+									<Sparkles className="size-3.5" aria-label="Suggested" />
+								</span>
+							}
+						/>
+						<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+					</Tooltip>
+				)}
+				<Input
+					value={prompt.value}
+					onChange={(e) => onValueChange(e.target.value)}
+					placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
+					aria-label={lead ? `Variant of "${lead.value}"` : undefined}
+					className={cn("min-w-0", prompt.suggested && "pl-8", actions === 1 && "pr-8", actions === 2 && "pr-14")}
+				/>
+				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
+					{onAddVariant && (
+						<Tooltip>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										onClick={onAddVariant}
+										aria-label={`Add a variant of "${prompt.value}"`}
+										className={FIELD_ACTION_CLASS}
+									/>
+								}
+							>
+								<CopyPlus className="size-3.5" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">{VARIANT_HELP}</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
+					{removable && (
+						<button
+							type="button"
+							onClick={onRemove}
+							aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+							className={FIELD_ACTION_CLASS}
+						>
+							<X className="size-3.5" />
+						</button>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -425,13 +419,14 @@ function PromptRow({
 	remove,
 	allTagOptions,
 	showSystemTags,
-	markets,
 	changedKeys,
 	premium,
 	premiumAtCapacity,
 	gridCols,
 	selected,
 	onToggleSelect,
+	lead,
+	onAddVariant,
 }: {
 	prompt: EditablePrompt;
 	index: number;
@@ -440,14 +435,14 @@ function PromptRow({
 	remove: (index: number) => void;
 	allTagOptions: { value: string }[];
 	showSystemTags: boolean;
-	/** The prompt's market chips, shown under its text. */
-	markets?: ReactNode;
 	changedKeys?: ReadonlySet<string>;
 	premium?: PremiumAllowance;
 	premiumAtCapacity: boolean;
 	gridCols: string;
 	selected: boolean;
 	onToggleSelect: () => void;
+	lead?: EditablePrompt;
+	onAddVariant?: () => void;
 }) {
 	return (
 		<div
@@ -458,14 +453,14 @@ function PromptRow({
 			)}
 		>
 			{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
-			{/* Mobile: stacked, no selection/bulk */}
 			<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < total - 1 ? "border-b" : ""}`}>
-				{markets}
 				<div className="flex items-start gap-2">
 					<PromptTextField
 						prompt={prompt}
+						lead={lead}
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
+						onAddVariant={onAddVariant}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -495,19 +490,17 @@ function PromptRow({
 				)}
 			</div>
 
-			{/* Desktop (md+): single-line grid */}
 			<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
 				<div className="flex justify-center pt-2">
 					<Checkbox checked={selected} onCheckedChange={onToggleSelect} aria-label="Select prompt" />
 				</div>
-				<div className="min-w-0 space-y-1.5">
-					<PromptTextField
-						prompt={prompt}
-						onValueChange={(value) => update(index, { value })}
-						onRemove={() => remove(index)}
-					/>
-					{markets}
-				</div>
+				<PromptTextField
+					prompt={prompt}
+					lead={lead}
+					onValueChange={(value) => update(index, { value })}
+					onRemove={() => remove(index)}
+					onAddVariant={onAddVariant}
+				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
 					value={prompt.tags}
@@ -539,30 +532,7 @@ function PromptRow({
 	);
 }
 
-type RowBlock = { prompt: EditablePrompt; index: number }[];
-
-/** Consecutive rows of one group: one prompt in several markets, shown as one row. */
-function rowBlocks(prompts: EditablePrompt[], grouped: boolean): RowBlock[] {
-	const blocks: RowBlock[] = [];
-	prompts.forEach((prompt, index) => {
-		const last = blocks.at(-1);
-		if (grouped && last && last[0].prompt.groupId === prompt.groupId) last.push({ prompt, index });
-		else blocks.push([{ prompt, index }]);
-	});
-	return blocks;
-}
-
-/** Inserts a row right after the last member of its group, so a group stays together on screen. */
-function placeInGroup(prompts: EditablePrompt[], entry: EditablePrompt): EditablePrompt[] {
-	let last = -1;
-	prompts.forEach((prompt, i) => {
-		if (prompt.groupId === entry.groupId) last = i;
-	});
-	if (last === -1) return [...prompts, entry];
-	return [...prompts.slice(0, last + 1), entry, ...prompts.slice(last + 1)];
-}
-
-function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPaste>; showMarket: boolean }) {
+function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	return (
 		<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 			<Textarea
@@ -572,15 +542,6 @@ function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPas
 				rows={6}
 				aria-label="Prompts to add, one per line"
 			/>
-			{showMarket && (
-				<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-					<span>Track in</span>
-					<MarketsPicker value={bulk.bulkMarkets} onChange={bulk.setBulkMarkets} />
-					{bulk.bulkMarkets.length > 1 && (
-						<span className="text-xs">Each line becomes one prompt in every market.</span>
-					)}
-				</div>
-			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					size="sm"
@@ -605,13 +566,63 @@ function BulkPasteBox({ bulk, showMarket }: { bulk: ReturnType<typeof useBulkPas
 	);
 }
 
+function SelectionBar({
+	count,
+	onSetEnabled,
+	onClear,
+}: {
+	count: number;
+	onSetEnabled: (enabled: boolean) => void;
+	onClear: () => void;
+}) {
+	return (
+		<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+			<span className="text-muted-foreground">
+				<strong className="text-foreground">{count}</strong> selected
+			</span>
+			<div className="flex items-center gap-2">
+				<Button type="button" size="sm" variant="outline" onClick={() => onSetEnabled(true)} className="cursor-pointer">
+					Enable
+				</Button>
+				<Button
+					type="button"
+					size="sm"
+					variant="outline"
+					onClick={() => onSetEnabled(false)}
+					className="cursor-pointer"
+				>
+					Disable
+				</Button>
+				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="cursor-pointer">
+					Clear
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
+	const tracked = prompts.filter((p) => p.enabled && p.value.trim().length > 0);
+	const variantCount = countVariants(tracked);
+	return (
+		<p className="text-xs text-muted-foreground">
+			<strong>
+				{tracked.length}/{MAX_PROMPTS}
+			</strong>{" "}
+			prompts configured
+			{variantCount > 0 &&
+				`, including ${variantCount} ${variantCount === 1 ? "variant" : "variants"}. Each variant is tracked as its own prompt.`}
+		</p>
+	);
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
 	showSystemTags = true,
 	changedKeys,
 	premium,
-	newPromptMarket,
+	variants = false,
 	leading,
 	pendingRows = 0,
 }: PromptsListEditorProps) {
@@ -627,52 +638,18 @@ export function PromptsListEditor({
 	const remove = (index: number) => onChange(prompts.filter((_, i) => i !== index));
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
-		onChange([...prompts, newPromptEntry(defaultMarket)]);
+		onChange([...prompts, newPromptEntry()]);
 	};
 
 	// A row only takes a slot once it has text. Blank rows are how this editor
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
-	const filled = useMemo(() => prompts.filter((p) => p.value.trim().length > 0), [prompts]);
-	const atCapacity = filled.length >= MAX_PROMPTS;
-	const showMarket = newPromptMarket !== undefined;
-	const defaultMarket = newPromptMarket ?? { country: DEFAULT_COUNTRY, language: DEFAULT_LANGUAGE };
+	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const atCapacity = filledValues.length >= MAX_PROMPTS;
 
-	// One paste line added in several countries becomes one group.
-	const bulk = useBulkPaste(filled, defaultMarket, (added) => {
-		const groupByValue = new Map<string, string>();
-		const entries = added.map((prompt) => {
-			const groupId = groupByValue.get(prompt.value) ?? uuidv4();
-			groupByValue.set(prompt.value, groupId);
-			return newPromptEntry({ ...prompt, groupId });
-		});
-		onChange([...prompts, ...entries]);
-	});
-
-	// Which market a multi-market prompt's row is showing; its first until another is picked.
-	const [activeByGroup, setActiveByGroup] = useState<Record<string, string>>({});
-	const activeMember = (block: RowBlock) =>
-		block.find(({ prompt }) => prompt._key === activeByGroup[prompt.groupId]) ?? block[0];
-	const showMember = (groupId: string, key: string) => setActiveByGroup((prev) => ({ ...prev, [groupId]: key }));
-
-	const marketChips = (block: RowBlock) => {
-		const active = activeMember(block).prompt;
-		return (
-			<PromptMarketChips
-				members={block.map(({ prompt }) => prompt)}
-				activeKey={active._key}
-				onSelect={(key) => showMember(active.groupId, key)}
-				onAdd={(market) => {
-					// Starts from the shown market's text, to be translated.
-					const entry = newPromptEntry({ value: active.value, tags: active.tags, groupId: active.groupId, ...market });
-					onChange(placeInGroup(prompts, entry));
-					showMember(active.groupId, entry._key);
-				}}
-				onChangeMarket={(key, market) => onChange(prompts.map((p) => (p._key === key ? { ...p, ...market } : p)))}
-				onRemove={(key) => onChange(prompts.filter((p) => p._key !== key))}
-			/>
-		);
-	};
+	const bulk = useBulkPaste(filledValues, (added) =>
+		onChange([...prompts, ...added.map((value) => newPromptEntry({ value }))]),
+	);
 
 	const { selectedKeys, liveSelectedCount, allSelected, toggleSelect, toggleSelectAll, clearSelection } =
 		useRowSelection(prompts);
@@ -682,49 +659,22 @@ export function PromptsListEditor({
 		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, enabled } : p)));
 	};
 
-	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
+	const leads = useMemo(() => groupLeads(prompts), [prompts]);
+	const addVariant = (lead: EditablePrompt) =>
+		onChange(insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags })));
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Desktop layout only — column order is
-	// [select] [text] [system?] [country?] [tags] [premium?] [switch]. Mobile
-	// renders a stacked per-prompt block instead (no selection, no bulk).
+	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
 	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
 
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-					<span className="text-muted-foreground">
-						<strong className="text-foreground">{liveSelectedCount}</strong> selected
-					</span>
-					<div className="flex items-center gap-2">
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => applyEnabledToSelection(true)}
-							className="cursor-pointer"
-						>
-							Enable
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => applyEnabledToSelection(false)}
-							className="cursor-pointer"
-						>
-							Disable
-						</Button>
-						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
-							Clear
-						</Button>
-					</div>
-				</div>
+				<SelectionBar count={liveSelectedCount} onSetEnabled={applyEnabledToSelection} onClear={clearSelection} />
 			)}
 
 			{premium && (
@@ -765,40 +715,30 @@ export function PromptsListEditor({
 				</div>
 			) : (
 				<div className="space-y-3">
-					{rowBlocks(prompts, showMarket).map((block) => {
-						const { prompt, index } = activeMember(block);
-						const keys = block.map((member) => member.prompt._key);
-						const changed = keys.some((key) => changedKeys?.has(key));
-						// Tags describe the question, so they follow it across markets;
-						// text, the switch, and premium pairings are per market.
-						const updateRow = (i: number, patch: Partial<EditablePrompt>) =>
-							patch.tags
-								? onChange(
-										prompts.map((p, at) =>
-											at === i ? { ...p, ...patch } : keys.includes(p._key) ? { ...p, tags: patch.tags ?? p.tags } : p,
-										),
-									)
-								: update(i, patch);
-						return (
-							<PromptRow
-								key={prompt.groupId + (showMarket ? "" : prompt._key)}
-								prompt={prompt}
-								index={index}
-								total={prompts.length}
-								update={updateRow}
-								remove={remove}
-								allTagOptions={allTagOptions}
-								showSystemTags={showSystemTags}
-								markets={showMarket ? marketChips(block) : undefined}
-								changedKeys={changed ? new Set([prompt._key]) : undefined}
-								premium={premium}
-								premiumAtCapacity={premiumAtCapacity}
-								gridCols={gridCols}
-								selected={keys.every((key) => selectedKeys.has(key))}
-								onToggleSelect={() => toggleSelect(keys)}
-							/>
-						);
-					})}
+					{prompts.map((prompt, index) => (
+						<PromptRow
+							key={prompt._key}
+							prompt={prompt}
+							index={index}
+							total={prompts.length}
+							update={update}
+							remove={remove}
+							allTagOptions={allTagOptions}
+							showSystemTags={showSystemTags}
+							changedKeys={changedKeys}
+							premium={premium}
+							premiumAtCapacity={premiumAtCapacity}
+							gridCols={gridCols}
+							selected={selectedKeys.has(prompt._key)}
+							onToggleSelect={() => toggleSelect(prompt._key)}
+							lead={leads.get(prompt.groupId) === prompt ? undefined : leads.get(prompt.groupId)}
+							onAddVariant={
+								variants && !atCapacity && leads.get(prompt.groupId) === prompt && prompt.value.trim()
+									? () => addVariant(prompt)
+									: undefined
+							}
+						/>
+					))}
 				</div>
 			)}
 
@@ -827,7 +767,7 @@ export function PromptsListEditor({
 				</div>
 			)}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} showMarket={showMarket} />}
+			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
 
 			{atCapacity && (
 				<p className="text-xs text-muted-foreground">
@@ -835,12 +775,7 @@ export function PromptsListEditor({
 				</p>
 			)}
 
-			<p className="text-xs text-muted-foreground">
-				<strong>
-					{validCount}/{MAX_PROMPTS}
-				</strong>{" "}
-				prompts configured
-			</p>
+			<PromptCount prompts={prompts} />
 		</div>
 	);
 }

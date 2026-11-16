@@ -43,7 +43,7 @@ export const Route = createFileRoute("/aeo-for/$slug")({
 					{ name: "AEO by industry", path: "/aeo-for" },
 					{ name: aeoHeadline(v), path },
 				]),
-				faqJsonLd(v.faqs),
+				faqJsonLd(v.faqs, { path, dateModified: v.updated }),
 				howToJsonLd({
 					name: `How to improve AI visibility for ${v.audience}`,
 					description: v.short,

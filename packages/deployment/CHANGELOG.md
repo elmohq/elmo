@@ -1,5 +1,96 @@
 # @workspace/deployment
 
+## 0.7.12
+
+### Patch Changes
+
+- @workspace/config@0.7.12
+  - @workspace/lib@0.7.12
+  - @workspace/ui@0.7.12
+
+## 0.7.11
+
+### Patch Changes
+
+- @workspace/config@0.7.11
+  - @workspace/lib@0.7.11
+  - @workspace/ui@0.7.11
+
+## 0.7.10
+
+### Patch Changes
+
+- Updated dependencies [3db9f08]
+  - @workspace/lib@0.7.10
+  - @workspace/config@0.7.10
+  - @workspace/ui@0.7.10
+
+## 0.7.9
+
+### Patch Changes
+
+- Updated dependencies [ed4432f]
+- Updated dependencies [ed4432f]
+  - @workspace/lib@0.7.9
+  - @workspace/config@0.7.9
+  - @workspace/ui@0.7.9
+
+## 0.7.8
+
+### Patch Changes
+
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- Updated dependencies [7a8a3a8]
+  - @workspace/lib@0.7.8
+  - @workspace/config@0.7.8
+  - @workspace/ui@0.7.8
+
+## 0.7.7
+
+### Patch Changes
+
+- 9139b0a: Added Cloudflare Turnstile bot protection to Elmo Cloud email sign-up, sign-in, and password reset.
+- Updated dependencies [0982452]
+  - @workspace/lib@0.7.7
+  - @workspace/config@0.7.7
+  - @workspace/ui@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- Updated dependencies [dfb4d72]
+- Updated dependencies [925390b]
+- Updated dependencies [98fc42e]
+  - @workspace/lib@0.7.6
+  - @workspace/config@0.7.6
+  - @workspace/ui@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+  - @workspace/lib@0.7.5
+  - @workspace/ui@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+  - @workspace/lib@0.7.4
+  - @workspace/ui@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [cacc8f9]
+  - @workspace/lib@0.7.3
+  - @workspace/config@0.7.3
+  - @workspace/ui@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes

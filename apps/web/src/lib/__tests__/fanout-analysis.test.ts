@@ -60,7 +60,7 @@ describe("computeFanoutAnalysis", () => {
 		const top = a.topQueries[0];
 		expect(top.query).toBe("best crm software 2026");
 		expect(top.count).toBe(5);
-		expect(top.brandMentionRate).toBe(80); // 4 of 5
+		expect(top.brandMentionPct).toBe(80); // 4 of 5
 	});
 
 	it("computes overall totals and coverage", () => {
@@ -69,7 +69,7 @@ describe("computeFanoutAnalysis", () => {
 		expect(a.coverageRate).toBe(0.4); // 4 brand mentions / 10 instances
 		expect(a.totalRuns).toBe(19);
 		expect(a.fanoutRuns).toBe(10);
-		expect(a.avgPerExecution).toBe(1); // 10 / 10
+		expect(a.avgQueriesPerFanoutRun).toBe(1); // 10 / 10
 	});
 
 	it("classifies words engines add, drop, and preserve vs the prompt", () => {
@@ -93,9 +93,9 @@ describe("computeFanoutAnalysis", () => {
 	it("breaks fan-out down per model, surfacing models that ran without fan-out as zero", () => {
 		const byModel = Object.fromEntries(a.byModel.map((m) => [m.model, m]));
 		expect(byModel.chatgpt.totalQueries).toBe(9);
-		expect(byModel.chatgpt.avgPerExecution).toBe(1);
+		expect(byModel.chatgpt.avgQueriesPerFanoutRun).toBe(1);
 		// google-ai-mode ran (runs > 0) but produced no fan-out — listed with zeros.
-		expect(byModel["google-ai-mode"]).toMatchObject({ totalQueries: 0, fanoutRuns: 0, avgPerExecution: 0 });
+		expect(byModel["google-ai-mode"]).toMatchObject({ totalQueries: 0, fanoutRuns: 0, avgQueriesPerFanoutRun: 0 });
 	});
 
 	it("ranks queries by how many distinct prompts they reach", () => {
@@ -132,14 +132,14 @@ describe("computeFanoutAnalysis", () => {
 		expect(a.topByRuns[0].query).toBe("best crm software 2026");
 	});
 
-	it("rolls up per-prompt fan-out volume and avg queries per prompt run", () => {
-		const promptRuns = new Map([["p1", 5]]);
-		const withRuns = computeFanoutAnalysis(breakdown, modelTotals, promptMap, { promptRuns });
+	it("rolls up per-prompt fan-out volume and avg queries per fan-out run", () => {
+		const promptFanoutRuns = new Map([["p1", 5]]);
+		const withRuns = computeFanoutAnalysis(breakdown, modelTotals, promptMap, { promptFanoutRuns });
 		const p1 = withRuns.byPrompt.find((p) => p.promptId === "p1")!;
 		expect(p1.totalQueries).toBe(7);
 		expect(p1.uniqueQueries).toBe(2);
-		expect(p1.runs).toBe(5);
-		expect(p1.avgPerExecution).toBe(1.4); // 7 / 5
+		expect(p1.fanoutRuns).toBe(5);
+		expect(p1.avgQueriesPerFanoutRun).toBe(1.4); // 7 / 5
 	});
 
 	it("honors limit overrides (single-prompt mode returns full lists)", () => {
@@ -197,7 +197,7 @@ describe("computeFanoutAnalysis: empty input", () => {
 		expect(a.uniqueQueries).toBe(0);
 		expect(a.totalRuns).toBe(0);
 		expect(a.fanoutRuns).toBe(0);
-		expect(a.avgPerExecution).toBe(0);
+		expect(a.avgQueriesPerFanoutRun).toBe(0);
 		expect(a.coverageRate).toBe(0);
 		expect(a.topQueries).toEqual([]);
 		expect(a.terms).toEqual([]);
@@ -213,9 +213,9 @@ describe("computeFanoutAnalysis: empty input", () => {
 		const a = computeFanoutAnalysis([], modelTotals, promptMap);
 		expect(a.totalRuns).toBe(6);
 		expect(a.totalQueries).toBe(0);
-		expect(a.avgPerExecution).toBe(0); // no divide-by-zero
+		expect(a.avgQueriesPerFanoutRun).toBe(0); // no divide-by-zero
 		expect(a.byModel).toEqual([
-			{ model: "chatgpt", runs: 6, fanoutRuns: 0, totalQueries: 0, avgPerExecution: 0, topQueries: [] },
+			{ model: "chatgpt", runs: 6, fanoutRuns: 0, totalQueries: 0, avgQueriesPerFanoutRun: 0, topQueries: [] },
 		]);
 	});
 });

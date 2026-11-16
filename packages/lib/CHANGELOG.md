@@ -1,5 +1,74 @@
 # @workspace/lib
 
+## 0.7.12
+
+### Patch Changes
+
+- @workspace/config@0.7.12
+
+## 0.7.11
+
+### Patch Changes
+
+- @workspace/config@0.7.11
+
+## 0.7.10
+
+### Patch Changes
+
+- 3db9f08: Answers and citations containing a stray NUL character are now processed instead of failing.
+- @workspace/config@0.7.10
+
+## 0.7.9
+
+### Patch Changes
+
+- ed4432f: The Microsoft Copilot app now requires a sign-in, so Elmo no longer scrapes it and tracks Bing AI Mode, the AI answer Bing still shows signed-out visitors, in its place. Brands that picked Copilot now track Bing AI Mode, which starts its own history. Past Copilot runs are kept and still count under "All models", but Copilot is no longer an option in the model filter. For self-hosted users, every `copilot` scrape target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do.
+- ed4432f: Perplexity now requires a sign-in, so no scraping provider can reach it and Elmo no longer scrapes it. On Elmo Cloud, Perplexity is no longer a scraped engine: brands that picked it have an open slot to fill under Settings → LLMs, and Perplexity is tracked through Sonar as a premium model instead. For self-hosted users, every scraped `perplexity` target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `perplexity:openrouter:perplexity/sonar:online` or `perplexity:dataforseo:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do. Sonar API runs cost 2-5x what a scrape did, and Sonar Pro and Sonar Reasoning Pro cost more still. Past Perplexity runs are kept.
+- @workspace/config@0.7.9
+
+## 0.7.8
+
+### Patch Changes
+
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- @workspace/config@0.7.8
+
+## 0.7.7
+
+### Patch Changes
+
+- 0982452: Additional citations and sentiment page speed optimizations.
+- @workspace/config@0.7.7
+
+## 0.7.6
+
+### Patch Changes
+
+- dfb4d72: Fixed sign-in and API requests failing until a server restart after a brief database connection error at startup.
+- 925390b: The citations page loads faster for long date ranges.
+- 98fc42e: Dropped unused database indexes, reducing disk usage and speeding up writes for runs and citations.
+- @workspace/config@0.7.6
+
+## 0.7.5
+
+### Patch Changes
+
+- @workspace/config@0.7.5
+
+## 0.7.4
+
+### Patch Changes
+
+- @workspace/config@0.7.4
+
+## 0.7.3
+
+### Patch Changes
+
+- cacc8f9: Show ChatGPT's web search queries again for ChatGPT tracked through Cloro.
+- @workspace/config@0.7.3
+
 ## 0.7.2
 
 ### Patch Changes

@@ -16,6 +16,7 @@ import { AppShell, PageContent } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { useShellScope } from "@/hooks/use-shell-scope";
+import { attributionParams } from "@/lib/attribution";
 import { identifyCrispUser } from "@/lib/crisp";
 import { identifyUser, setPersonProperties } from "@/lib/posthog";
 import { viewerQuery } from "@/lib/viewer/queries";
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/_authed")({
 			context.queryClient.removeQueries({ queryKey: viewerQuery.queryKey });
 			throw redirect({
 				to: "/auth/login",
-				search: { returnTo: location.href },
+				search: { returnTo: location.href, ...attributionParams(location.search) },
 			});
 		}
 
@@ -40,13 +41,15 @@ export const Route = createFileRoute("/_authed")({
 function AuthedLayout() {
 	const context = useRouteContext({ strict: false }) as {
 		session?: { user: { id: string; name?: string; email?: string } } | null;
+		impersonating?: boolean;
 		clientConfig?: ClientConfig;
 	};
 	const identifiedRef = useRef<string | null>(null);
+	const impersonating = context.impersonating ?? false;
 
 	useEffect(() => {
 		const user = context.session?.user;
-		if (!user || identifiedRef.current === user.id) return;
+		if (!user || impersonating || identifiedRef.current === user.id) return;
 		identifiedRef.current = user.id;
 
 		identifyUser(user.id, {
@@ -58,7 +61,7 @@ function AuthedLayout() {
 			deployment_mode: context.clientConfig?.mode,
 		});
 		identifyCrispUser({ id: user.id, email: user.email, name: user.name });
-	}, [context.session?.user, context.clientConfig?.mode]);
+	}, [context.session?.user, context.clientConfig?.mode, impersonating]);
 
 	return <Shell />;
 }

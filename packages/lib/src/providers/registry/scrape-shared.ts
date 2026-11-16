@@ -5,6 +5,15 @@ export function sleep(ms: number): Promise<void> {
 const POLL_BASE_DELAY_MS = 2000;
 const POLL_MAX_DELAY_MS = 10_000;
 
+/** ChatGPT is the one scraped surface whose web search can be switched off; the rest always search. */
+export function hasWebSearchToggle(model: string): boolean {
+	return model === "chatgpt";
+}
+
+export function searchesWeb(model: string, webSearch: boolean | undefined): boolean {
+	return !hasWebSearchToggle(model) || (webSearch ?? false);
+}
+
 /** Answers take anywhere from seconds to minutes, so the delay widens and then holds. */
 export function pollDelay(attempt: number): number {
 	return Math.min(POLL_BASE_DELAY_MS * 2 ** Math.floor(attempt / 5), POLL_MAX_DELAY_MS);

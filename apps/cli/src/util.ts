@@ -12,7 +12,7 @@ const ELMO_ASCII = [
 ].join("\n");
 
 export function printBanner(): void {
-	// text-blue-600 ≈ #2563EB → RGB(37, 99, 235)
+	// Tailwind's blue-600.
 	const blue = "\x1b[38;2;37;99;235m";
 	const reset = "\x1b[0m";
 	console.log(`${blue}${ELMO_ASCII}${reset}`);
@@ -38,8 +38,7 @@ export function generateSecret(bytes = 32, encoding: BufferEncoding = "base64url
 }
 
 export function link(text: string, url: string): string {
-	// OSC 8 hyperlink: clickable in iTerm2, Windows Terminal, GNOME Terminal, etc.
-	// Falls back to plain text in unsupported terminals.
+	// OSC 8 hyperlink; terminals without support show plain text.
 	return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
 }
 

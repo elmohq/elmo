@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
@@ -6,6 +7,7 @@ import { getBrand, getCompetitors } from "@/server/brands";
 
 type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
+	trackingState: BrandTrackingState;
 	/**
 	 * What this brand's results can be broken down by, resolved server-side so
 	 * the UI never hardcodes a model list. A model appears twice when the brand
@@ -14,19 +16,11 @@ type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	trackedTargets: TrackedTarget[];
 };
 
-// ============================================================================
-// Query keys
-// ============================================================================
-
 export const brandKeys = {
 	all: ["brands"] as const,
 	detail: (brandId: string) => [...brandKeys.all, "detail", brandId] as const,
 	competitors: (brandId: string) => [...brandKeys.all, "competitors", brandId] as const,
 };
-
-// ============================================================================
-// Hooks
-// ============================================================================
 
 /**
  * Get a single brand by ID.
@@ -58,9 +52,6 @@ export function useBrand(brandId?: string) {
 	};
 }
 
-/**
- * Get competitors for a brand
- */
 export function useCompetitors(brandId?: string) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 

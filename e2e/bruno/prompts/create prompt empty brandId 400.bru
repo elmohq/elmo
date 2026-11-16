@@ -1,0 +1,24 @@
+meta {
+  name: create prompt empty brandId 400
+  type: http
+  seq: 35
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "",
+    "value": "x"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: eq brandId: brandId is required
+}

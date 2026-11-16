@@ -1,17 +1,8 @@
 /**
- * Worker Job Processing E2E Test
- *
- * Proves the background worker is wired up end to end: submitting a prompt
- * through the public API enqueues a `process-prompt` pg-boss job, and the
- * worker (running the no-network `stub` provider) dequeues it and records the
- * run. We assert on the `prompt_runs` side effect rather than the job's own
- * state so the test only passes if the handler actually did its work.
- *
- * This spec is the `worker` Playwright project and runs in its own phase,
- * after the worker is started. The fixture-dependent specs (the `fixtures`
- * project) run earlier while the worker is still down, so the worker's
- * self-healing scheduler can't re-enqueue the seeded prompts and mutate data
- * they assert on (see .github/workflows/e2e.yaml).
+ * Runs after the mode projects, once the worker is up, so the worker's
+ * scheduler can't re-enqueue the seeded prompts they assert on. Asserts on
+ * `prompt_runs` rather than job state, so it passes only if the handler did its
+ * work.
  */
 import { expect, test } from "../test";
 import pg from "pg";
@@ -19,7 +10,6 @@ import { DATABASE_URL, TEST_API_KEY, TEST_BRAND_ID, TEST_BRAND_NAME } from "../f
 
 test.describe("Worker job processing", () => {
   test("a submitted prompt is dequeued and processed by the worker", async ({ request }) => {
-    // Submit: creating a prompt enqueues an immediate process-prompt job.
     const value = "worker e2e — does a submitted job get processed?";
     const createRes = await request.post("/api/v1/prompts", {
       headers: { Authorization: `Bearer ${TEST_API_KEY}` },
@@ -29,12 +19,7 @@ test.describe("Worker job processing", () => {
     const prompt = (await createRes.json()) as { id: string };
     expect(prompt.id).toBeTruthy();
 
-    // Assert: poll until the worker records a run for this prompt. The stub
-    // provider is the worker's only configured target, so the run must carry
-    // its version — proof the job ran, not a stray write. The job is durable
-    // in pg-boss, so the poll budget absorbs worker startup (there is no
-    // separate readiness wait in CI) and covers one retry cycle of the
-    // process-prompt queue (retryDelay 60s).
+    // The budget absorbs worker startup (CI has no readiness wait) and one 60s retry.
     const client = new pg.Client({ connectionString: DATABASE_URL });
     await client.connect();
     try {
@@ -54,9 +39,7 @@ test.describe("Worker job processing", () => {
         )
         .toBe("stub");
 
-      // Volume contract: one firing = RUNS_PER_PROMPT (5) replicated runs of
-      // the single stub target — no more (duplicate fires are metered away by
-      // the run policy), no fewer. Poll to settle, then pin the exact count.
+      // One firing records RUNS_PER_PROMPT runs; the pause catches a duplicate firing overshooting.
       await expect
         .poll(
           async () => {

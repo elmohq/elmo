@@ -11,8 +11,10 @@ import { db } from "@workspace/lib/db/db";
 import { brands, organization } from "@workspace/lib/db/schema";
 import { assertCanCreateBrand, withQuotaLock } from "@workspace/lib/entitlements";
 import { count, desc, eq } from "drizzle-orm";
-import { clampedPaging } from "@/lib/api/analytics-range";
+import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { brandSchema, brandsListSchema } from "@/lib/api/schemas/brands";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
 	apiCreateInputToInternal,
@@ -27,24 +29,22 @@ export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: brandsListSchema,
+				query: z.object(paging),
 				scopes: ["read"],
-				handle: async ({ request, auth }) => {
-					const { searchParams } = new URL(request.url);
-					const { page, limit, offset } = clampedPaging(searchParams);
-
+				handle: async ({ query, auth }) => {
 					const where = await brandScopeCondition(auth, brands.id);
 
 					const [totalCountResult] = await db.select({ count: count() }).from(brands).where(where);
 					const totalCount = totalCountResult?.count || 0;
-					const totalPages = Math.ceil(totalCount / limit);
 
 					const rows = await db
 						.select()
 						.from(brands)
 						.where(where)
 						.orderBy(desc(brands.createdAt))
-						.limit(limit)
-						.offset(offset);
+						.limit(query.limit)
+						.offset(offsetOf(query));
 
 					// Both keys hold the same array while callers move to `data`, which
 					// every other list in this API answers with.
@@ -52,12 +52,13 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					return {
 						data: results,
 						brands: results,
-						pagination: { page, limit, total: totalCount, totalPages },
+						pagination: paginationOf(query, totalCount),
 					};
 				},
 			}),
 
 			POST: createApiHandler({
+				response: brandSchema,
 				body: createBrandInputSchema,
 				status: 201,
 				scopes: ["write"],
