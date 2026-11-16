@@ -9,7 +9,10 @@ describe("chunked", () => {
 	});
 
 	it("does not add an empty trailing chunk when the input divides evenly", () => {
-		expect(chunked([1, 2, 3, 4], 2)).toEqual([[1, 2], [3, 4]]);
+		expect(chunked([1, 2, 3, 4], 2)).toEqual([
+			[1, 2],
+			[3, 4],
+		]);
 	});
 
 	it("returns one chunk when the input is shorter than the requested size", () => {
