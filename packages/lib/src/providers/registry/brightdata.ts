@@ -1,4 +1,5 @@
 import { bdclient } from "@brightdata/sdk";
+import { DEFAULT_MARKET, googleLanguageCode, type Market } from "@workspace/config/markets";
 import { getCredential } from "../../secrets";
 import { extractCitationsFromBrightdata } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -20,6 +21,28 @@ const BD_BASE_URL: Record<string, string> = {
 	gemini: "https://gemini.google.com/",
 };
 
+/** Europe, where BrightData's Gemini collector takes no country. */
+const GEMINI_UNSERVED_COUNTRIES = [
+	..."GB IE DE AT CH FR BE NL LU ES PT IT GR CY MT SE NO DK FI PL CZ SK HU RO BG HR RS LT UA TR".split(" "),
+];
+
+/** Countries in Elmo's list that a collector's own country list leaves out. */
+const BD_UNSERVED_COUNTRIES: Record<string, readonly string[]> = {
+	chatgpt: ["CZ", "HK"],
+	gemini: GEMINI_UNSERVED_COUNTRIES,
+};
+
+/** The surfaces that are Google Search, which take an interface language. */
+const BD_LANGUAGE_MODELS = new Set([AI_OVERVIEW_MODEL, "google-ai-mode"]);
+
+/** Only the collectors Elmo ships with: one named by a custom dataset id takes inputs nobody has checked. */
+function takesCountry(model: string, datasetId: string | undefined, country: string): boolean {
+	if (BD_UNSERVED_COUNTRIES[model]?.includes(country)) return false;
+	if (model === AI_OVERVIEW_MODEL) return true;
+	const shipped = BD_DATASET_IDS[model];
+	return shipped !== undefined && (datasetId ?? shipped) === shipped;
+}
+
 function createClient(): bdclient {
 	return new bdclient({ apiKey: getCredential("BRIGHTDATA_API_TOKEN") });
 }
@@ -31,9 +54,9 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  * `brd_ai_overview=2` the overview appears in only a fraction of SERPs. The
  * default `sdk_serp` zone is the one the BrightData SDK auto-provisions.
  */
-function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+function runGoogleAiOverview(prompt: string, market: Market = DEFAULT_MARKET): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
-	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${market.country.toLowerCase()}&hl=${googleLanguageCode(market)}`;
 
 	return retryTransient(
 		() => attemptGoogleAiOverview(zone, url),
@@ -147,9 +170,17 @@ export const brightdata: Provider = {
 		return null;
 	},
 
+	localizes(config: ModelConfig, country: string) {
+		return takesCountry(config.model, config.version, country);
+	},
+
+	sendsLanguage(config: ModelConfig) {
+		return BD_LANGUAGE_MODELS.has(config.model);
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, options?.market);
 		}
 
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];
@@ -165,7 +196,7 @@ export const brightdata: Provider = {
 		let snapshotId: string | undefined;
 		let consumed = false;
 		try {
-			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false);
+			snapshotId = await triggerSnapshot(datasetId, model, prompt, options?.webSearch ?? false, options?.market);
 			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 			consumed = true;
@@ -198,7 +229,14 @@ export const brightdata: Provider = {
 	},
 };
 
-async function triggerSnapshot(datasetId: string, model: string, prompt: string, webSearch: boolean): Promise<string> {
+async function triggerSnapshot(
+	datasetId: string,
+	model: string,
+	prompt: string,
+	webSearch: boolean,
+	market: Market | undefined,
+): Promise<string> {
+	const localized = market && takesCountry(model, datasetId, market.country);
 	const response = await fetch(
 		`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
 		{
@@ -213,6 +251,8 @@ async function triggerSnapshot(datasetId: string, model: string, prompt: string,
 					prompt,
 					index: 1,
 					...(hasWebSearchToggle(model) ? { web_search: webSearch } : {}),
+					...(localized ? { country: market.country } : {}),
+					...(localized && BD_LANGUAGE_MODELS.has(model) ? { hl: googleLanguageCode(market) } : {}),
 				},
 			]),
 		},

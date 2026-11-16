@@ -1,4 +1,5 @@
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
+import { DEFAULT_MARKET, type Market } from "@workspace/config/markets";
 import { anthropicApi } from "./registry/anthropic-api";
 import { brightdata } from "./registry/brightdata";
 import { cloro } from "./registry/cloro";
@@ -65,6 +66,49 @@ export function resolveProviderAccess(config: ModelConfig): ProviderAccess {
  */
 export function isGroundedApiTarget(config: ModelConfig): boolean {
 	return config.webSearch && resolveProviderAccess(config) === "api";
+}
+
+/**
+ * - `localized`: the provider is told the country and answers from it.
+ * - `location-free`: a model called without web search, whose answer has no location.
+ * - `provider-default`: the provider can't be told, and the prompt is in the
+ *   default market, which is where it answers from anyway.
+ * - `unsupported`: the provider can't answer from the country, so the target
+ *   skips the prompt rather than record another country's answer under it.
+ */
+export type CountryHandling = "localized" | "location-free" | "provider-default" | "unsupported";
+
+export interface MarketHandling {
+	runs: boolean;
+	country: CountryHandling;
+	/** Whether the language reaches the provider as a parameter, beyond the prompt being written in it. */
+	sendsLanguage: boolean;
+}
+
+/** The one answer the run policy, the worker, and the UI share about what a target does with a market. */
+export function describeMarketHandling(config: ModelConfig, market: Market): MarketHandling {
+	const provider = getProvider(config.provider);
+	const country = countryHandling(provider, config, market.country);
+	return {
+		runs: country !== "unsupported",
+		country,
+		sendsLanguage: country !== "unsupported" && (provider.sendsLanguage?.(config) ?? false),
+	};
+}
+
+function countryHandling(provider: Provider, config: ModelConfig, country: string): CountryHandling {
+	if (provider.localizes?.(config, country)) return "localized";
+	if (!config.webSearch && resolveProviderAccess(config) === "api") return "location-free";
+	return country === DEFAULT_MARKET.country ? "provider-default" : "unsupported";
+}
+
+/** What a run should record as sent: null for whichever half the provider wasn't given. */
+export function sentMarket(config: ModelConfig, market: Market): { country: string | null; language: string | null } {
+	const handling = describeMarketHandling(config, market);
+	return {
+		country: handling.country === "localized" ? market.country : null,
+		language: handling.sendsLanguage ? market.language : null,
+	};
 }
 
 /**

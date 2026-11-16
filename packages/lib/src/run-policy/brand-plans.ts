@@ -9,6 +9,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
+import { resolveMarket } from "@workspace/config/markets";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import { computePoolPositions } from "./maintenance";
 import { type PromptRunPlan, resolvePromptRunPlan } from "./policy";
@@ -23,8 +24,8 @@ export interface ResolveBrandPromptRunPlansInput {
 	 * nothing extra.
 	 */
 	orgPrompts: { id: string; createdAt: Date; premiumModels: string[] }[];
-	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
-	prompts: { id: string; premiumModels: string[] }[];
+	brand: { enabledModels: string[] | null; delayOverrideHours: number | null; country: string; language: string };
+	prompts: { id: string; premiumModels: string[]; country: string | null; language: string | null }[];
 }
 
 export function resolveBrandPromptRunPlans(input: ResolveBrandPromptRunPlansInput): Map<string, PromptRunPlan> {
@@ -44,7 +45,10 @@ export function resolveBrandPromptRunPlans(input: ResolveBrandPromptRunPlansInpu
 				brand: input.brand,
 				// Trimmed to what the pool covers, so the policy runs what the org has
 				// paid for without re-deciding it.
-				prompt: { premiumModels: pools ? (pools.premiumByPrompt.get(prompt.id) ?? []) : prompt.premiumModels },
+				prompt: {
+					premiumModels: pools ? (pools.premiumByPrompt.get(prompt.id) ?? []) : prompt.premiumModels,
+					market: resolveMarket(prompt, input.brand),
+				},
 				entitlements: input.entitlements,
 				defaultDelayHours: input.defaultDelayHours,
 				withinPromptPool: pools ? pools.withinPromptPool.has(prompt.id) : true,

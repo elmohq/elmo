@@ -137,3 +137,32 @@ describe("oxylabs provider", () => {
 		);
 	});
 });
+
+describe("oxylabs markets", () => {
+	async function submittedBody(model: string, country: string) {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ id: "job-1", status: "done" }, 202))
+			.mockResolvedValueOnce(jsonResponse({ id: "job-1", status: "done" }))
+			.mockResolvedValueOnce(jsonResponse(RESULT_PAYLOAD));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = oxylabs.run(model, "prompt", { webSearch: true, market: { country, language: "en" } });
+		await vi.runAllTimersAsync();
+		await promise;
+		return JSON.parse(fetchMock.mock.calls[0][1].body);
+	}
+
+	it("routes ChatGPT through the country by the name Oxylabs lists it under", async () => {
+		expect((await submittedBody("chatgpt", "KR")).geo_location).toBe("Korea");
+	});
+
+	it("names a country Oxylabs lists under its usual name as everyone does", async () => {
+		expect((await submittedBody("chatgpt", "DE")).geo_location).toBe("Germany");
+	});
+
+	it("gives the Google sources the country code", async () => {
+		expect((await submittedBody("google-ai-mode", "KR")).geo_location).toBe("KR");
+	});
+});

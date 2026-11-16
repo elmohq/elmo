@@ -1,7 +1,8 @@
+import { DEFAULT_MARKET, googleLanguageCode } from "@workspace/config/markets";
 import { getCredential } from "../../secrets";
 import { type Citation, cloroAnswer, extractCitationsFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
-import type { ModelConfig, Provider, ScrapeResult } from "../types";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { pollTask, type TaskState } from "./poll-task";
 import { failureDetails, isTransientStatus, queriesFromKeys, responseError } from "./scrape-shared";
 
@@ -12,6 +13,9 @@ type CloroTaskConfig = {
 	field: "prompt" | "query";
 	include: Record<string, unknown>;
 	params?: Record<string, unknown>;
+	/** The Google tasks take an interface language; the chatbots answer in the prompt's. */
+	takesLanguage?: boolean;
+	unservedCountries?: readonly string[];
 };
 
 const CLORO_TASKS: Record<string, CloroTaskConfig> = {
@@ -24,10 +28,20 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 		params: { legacy: true },
 	},
 	// bing.com/copilotsearch. Cloro's COPILOT task reads the Copilot app, which now requires a login.
-	"bing-ai-mode": { taskType: "BING_AIMODE", field: "prompt", include: { markdown: true } },
+	"bing-ai-mode": {
+		taskType: "BING_AIMODE",
+		field: "prompt",
+		include: { markdown: true },
+		unservedCountries: ["KR"],
+	},
 	gemini: { taskType: "GEMINI", field: "prompt", include: { markdown: true } },
-	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true } },
-	"google-ai-overview": { taskType: "GOOGLE", field: "query", include: { aioverview: { markdown: true } } },
+	"google-ai-mode": { taskType: "AIMODE", field: "prompt", include: { markdown: true }, takesLanguage: true },
+	"google-ai-overview": {
+		taskType: "GOOGLE",
+		field: "query",
+		include: { aioverview: { markdown: true } },
+		takesLanguage: true,
+	},
 };
 
 // Answers can take minutes, so tasks go through the async queue. It absorbs work
@@ -42,9 +56,6 @@ const CLORO_GENERATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 /** Sized past the deepest backlog one cycle can queue, so a queue that never drains can't pin a worker. */
 const CLORO_TOTAL_TIMEOUT_MS = 60 * 60 * 1000;
-
-// Cloro localizes every answer; default to a US audience.
-const CLORO_COUNTRY = "US";
 
 /** Statuses meaning "accepted, not started" — see CLORO_GENERATION_TIMEOUT_MS. */
 const CLORO_QUEUED_STATUSES = new Set(["QUEUED", "PENDING", "CREATED", "SCHEDULED"]);
@@ -145,15 +156,25 @@ export const cloro: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string): Promise<ScrapeResult> {
+	localizes(config: ModelConfig, country: string) {
+		return !CLORO_TASKS[config.model]?.unservedCountries?.includes(country);
+	},
+
+	sendsLanguage(config: ModelConfig) {
+		return CLORO_TASKS[config.model]?.takesLanguage ?? false;
+	},
+
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const task = CLORO_TASKS[model];
 		if (!task) {
 			throw new Error(`Cloro: no task mapping for model "${model}". Supported: ${Object.keys(CLORO_TASKS).join(", ")}`);
 		}
 
+		const market = options?.market ?? DEFAULT_MARKET;
 		const payload: Record<string, any> = {
 			[task.field]: prompt,
-			country: CLORO_COUNTRY,
+			country: market.country,
+			...(task.takesLanguage ? { hl: googleLanguageCode(market) } : {}),
 			include: task.include,
 			...task.params,
 		};

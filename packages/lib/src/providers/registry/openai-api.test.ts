@@ -175,3 +175,19 @@ describe("openai-api web queries", () => {
 		expect(res.webQueries).toEqual([]);
 	});
 });
+
+describe("openai-api markets", () => {
+	it("tells the search tool which country the prompt is asked from", async () => {
+		await openaiApi.run("chatgpt", "prompt", {
+			webSearch: true,
+			version: "gpt-5-mini",
+			market: { country: "JP", language: "ja" },
+		});
+
+		expect(sentArgs().tools.web_search.args.userLocation).toEqual({ type: "approximate", country: "JP" });
+	});
+
+	it("has nothing to localize without web search", () => {
+		expect(openaiApi.localizes?.({ model: "chatgpt", provider: "openai-api", webSearch: false }, "JP")).toBe(false);
+	});
+});

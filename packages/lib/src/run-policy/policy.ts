@@ -6,11 +6,12 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
+import type { Market } from "@workspace/config/markets";
 import { KNOWN_MODELS } from "@workspace/config/models";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
-import { isGroundedApiTarget } from "../providers";
+import { describeMarketHandling, isGroundedApiTarget } from "../providers";
 import { selectTargetsForBrand } from "../providers/runner";
 
 export interface TargetPlan {
@@ -32,8 +33,12 @@ export interface PromptRunPlan {
 export interface ResolveRunPlanInput {
 	scrapeTargets: ModelConfig[];
 	brand: { enabledModels: string[] | null; delayOverrideHours: number | null };
-	/** Already trimmed by the caller to what the org's pool covers. */
-	prompt: { premiumModels: string[] };
+	/**
+	 * `premiumModels` is already trimmed by the caller to what the org's pool covers.
+	 * A target that can't answer from `market` drops out of the plan; with no
+	 * market, none does, which is the brand-wide view of what could run.
+	 */
+	prompt: { premiumModels: string[]; market?: Market };
 	entitlements: Entitlements;
 	defaultDelayHours: number;
 	/** Unmetered callers omit it. */
@@ -77,6 +82,18 @@ function premiumTargets(input: ResolveRunPlanInput, intervalHours: number): Targ
 }
 
 export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
+	const plan = resolveRunPlanAcrossMarkets(input);
+	const { market } = input.prompt;
+	if (!market) return plan;
+	// Dropped here rather than skipped at run time, so maintenance never counts a
+	// target that can't run as overdue.
+	const targets = plan.targets.filter((target) => describeMarketHandling(target.config, market).runs);
+	if (targets.length === plan.targets.length) return plan;
+	if (targets.length === 0) return { targets, rescheduleHours: null };
+	return { targets, rescheduleHours: Math.min(...targets.map((target) => target.intervalHours)) };
+}
+
+function resolveRunPlanAcrossMarkets(input: ResolveRunPlanInput): PromptRunPlan {
 	const { entitlements } = input;
 
 	// Metering follows the entitlements, never a separately-passed deployment

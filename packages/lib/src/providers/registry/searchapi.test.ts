@@ -266,3 +266,33 @@ describe("searchapi provider", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe("searchapi markets", () => {
+	const market = { country: "BR", language: "pt" };
+
+	it("asks ChatGPT from the market's country, in the parameter that engine takes", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(CHATGPT_RESPONSE));
+		vi.stubGlobal("fetch", fetchMock);
+
+		await searchapi.run("chatgpt", "melhor alto-falante", { webSearch: true, market });
+
+		const params = requestedUrl(fetchMock).searchParams;
+		expect(params.get("country")).toBe("br");
+		expect(params.has("hl")).toBe(false);
+	});
+
+	it("leaves the request as it was for a run with no market", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(CHATGPT_RESPONSE));
+		vi.stubGlobal("fetch", fetchMock);
+
+		await searchapi.run("chatgpt", "best speaker", { webSearch: true });
+
+		expect(requestedUrl(fetchMock).searchParams.has("country")).toBe(false);
+	});
+
+	it("cannot place Bing's AI Mode in a country, so it only answers the default market", () => {
+		const bing = { model: "bing-ai-mode", provider: "searchapi", webSearch: true };
+		expect(searchapi.localizes?.(bing, "DE")).toBe(false);
+		expect(searchapi.sendsLanguage?.(bing)).toBe(false);
+	});
+});

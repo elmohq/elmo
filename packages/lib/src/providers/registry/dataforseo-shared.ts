@@ -1,3 +1,4 @@
+import { DEFAULT_MARKET, googleGeotargetId, googleLanguageCode, type Market } from "@workspace/config/markets";
 import * as client from "dataforseo-client";
 import { getCredential } from "../../secrets";
 import { configuredWhen } from "../config";
@@ -11,10 +12,20 @@ import { type Attempt, nonEmptyStrings } from "./scrape-shared";
 
 const MAX_PROMPT_CHARS = 500;
 
-// Country localization is intentionally not exposed via SCRAPE_TARGETS yet
-// because support differs by DataForSEO surface and underlying model.
-export const DFS_LOCATION_CODE = 2840;
-export const DFS_LANGUAGE_CODE = "en";
+export interface DfsLocale {
+	location_code: number;
+	language_code: string;
+}
+
+/**
+ * DataForSEO takes Google's location and language codes, except that it writes
+ * Hebrew `he` and its AI Mode endpoint lists no European Portuguese.
+ */
+export function dfsLocale(market: Market = DEFAULT_MARKET, surface: "ai-mode" | "other" = "other"): DfsLocale {
+	const google = googleLanguageCode(market);
+	const language = google === "iw" ? "he" : surface === "ai-mode" && google === "pt-PT" ? "pt-BR" : google;
+	return { location_code: googleGeotargetId(market.country), language_code: language };
+}
 
 export const isDataforseoConfigured = configuredWhen("DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD");
 
