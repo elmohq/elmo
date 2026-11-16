@@ -21,22 +21,17 @@ interface Row {
 	date: string;
 	series: string;
 	value: number;
-	/** Carried to the chart's edge for continuity rather than observed that day. */
 	extended: boolean;
 }
 
 const bump = d3Curve(curveBumpX);
 const MAX_DATE_LABELS = 16;
-const everyNth = (dates: string[], limit: number) => {
-	const step = Math.ceil(dates.length / limit);
-	return dates.filter((_, index) => index % step === 0);
-};
 /** The brand's own line is the one people are looking for, so it carries more
  *  weight than the competitors it's plotted against. */
 const BRAND_STROKE_WIDTH = 3;
 const COMPETITOR_STROKE_WIDTH = 2;
 /** How far the other series recede while one is singled out. */
-export const DIMMED_OPACITY = 0.25;
+const DIMMED_OPACITY = 0.25;
 /** Ring thickness on the hollow competitor dots. */
 const DOT_RING_WIDTH = 1.5;
 // The tooltip body below draws its own surface.
@@ -49,6 +44,7 @@ const BARE_TOOLTIP = {
 
 function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSeries: string | null) {
 	const dates = data.map((point) => point.date);
+	const labelEvery = Math.ceil(dates.length / MAX_DATE_LABELS);
 	const layers = series.map((line) => {
 		const rows: Row[] = data.flatMap((point) => {
 			const value = point[line.id];
@@ -104,7 +100,12 @@ function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSerie
 				scale: () => scalePoint<string>().domain(dates).padding(0.5),
 				axis: {
 					line: false,
-					ticks: { size: 0, padding: 8, format: formatShortDate, values: everyNth(dates, MAX_DATE_LABELS) },
+					ticks: {
+						size: 0,
+						padding: 8,
+						format: formatShortDate,
+						values: dates.filter((_, index) => index % labelEvery === 0),
+					},
 					tickLabels: { fontSize: 12, thin: { minGap: 32 } },
 				},
 			},
@@ -133,7 +134,6 @@ export function LineChart({
 }: {
 	data: ChartDataPoint[];
 	series: LineSeries[];
-	/** The series singled out by the legend; the others recede. */
 	activeSeries: string | null;
 }) {
 	return (
