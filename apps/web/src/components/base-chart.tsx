@@ -158,17 +158,7 @@ export function BaseChart({
 						return value !== null && value !== undefined;
 					});
 				})
-			: extendLinesToChartEdges(completeData, dataKeys).map((point) => {
-					const newPoint = { ...point };
-					for (const key of dataKeys) {
-						if (isExtendedDataPoint(point, key)) {
-							newPoint[`${key}_solid`] = null;
-						} else {
-							newPoint[`${key}_solid`] = point[key];
-						}
-					}
-					return newPoint;
-				});
+			: extendLinesToChartEdges(completeData, dataKeys);
 
 	return (
 		<div className="flex-1 space-y-2">
