@@ -13,6 +13,8 @@ let brandId: string;
 let otherBrandId: string;
 
 beforeAll(async () => {
+	// Self-hosted, so no plan limit stands between these tests and the group rules.
+	vi.stubEnv("DEPLOYMENT_MODE", "local");
 	brandId = await createBrand();
 	otherBrandId = await createBrand();
 });
@@ -20,6 +22,7 @@ beforeAll(async () => {
 afterAll(async () => {
 	await deleteBrand(brandId);
 	await deleteBrand(otherBrandId);
+	vi.unstubAllEnvs();
 });
 
 describe("prompt variants", () => {
