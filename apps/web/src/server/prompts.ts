@@ -521,7 +521,10 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
 
-		await assertGroupsUnclaimedElsewhere(data.brandId, data.prompts.flatMap((prompt) => prompt.groupId ?? []));
+		await assertGroupsUnclaimedElsewhere(
+			data.brandId,
+			data.prompts.flatMap((prompt) => prompt.groupId ?? []),
+		);
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
