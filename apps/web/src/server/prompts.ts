@@ -196,7 +196,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			.select()
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
-			.orderBy(desc(prompts.createdAt));
+			.orderBy(desc(prompts.createdAt), desc(prompts.id));
 
 		const promptIds = allPrompts.map((p) => p.id);
 
@@ -554,9 +554,13 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			);
 
 			if (inserts.length > 0) {
+				// A millisecond apart in the order submitted: the oldest prompt leads its group, and rows
+				// saved together would otherwise share a timestamp and leave the lead to chance.
+				const savedAt = Date.now();
 				await tx.insert(prompts).values(
-					inserts.map(({ prompt, after }) => ({
+					inserts.map(({ prompt, after }, index) => ({
 						brandId: data.brandId,
+						createdAt: new Date(savedAt + index),
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: prompt.tags || [],
