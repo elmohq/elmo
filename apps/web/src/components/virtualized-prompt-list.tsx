@@ -11,6 +11,7 @@ interface PromptItem {
 	firstEvaluatedAt?: Date | string | null;
 	variantOf?: string | null;
 	variantCount?: number;
+	marketLabel?: string | null;
 }
 
 interface VirtualizedPromptListProps {
@@ -103,6 +104,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 									hasEverBeenEvaluated={Boolean(prompt.firstEvaluatedAt)}
 									variantOf={prompt.variantOf}
 									variantCount={prompt.variantCount}
+									marketLabel={prompt.marketLabel}
 								/>
 							</div>
 						</div>

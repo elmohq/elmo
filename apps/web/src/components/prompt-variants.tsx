@@ -1,3 +1,4 @@
+import { type Market, marketName, sameMarket } from "@workspace/config/markets";
 import { Badge } from "@workspace/ui/components/badge";
 import { CornerDownRight } from "lucide-react";
 import { BrandPromptLink } from "@/components/brand-prompt-link";
@@ -7,10 +8,20 @@ export interface PromptVariant {
 	id: string;
 	value: string;
 	enabled: boolean;
+	market: Market;
 }
 
 /** The other wordings of the question a prompt asks, each linking to its own results. */
-export function PromptVariants({ variants, tab }: { variants: PromptVariant[]; tab?: PromptDetailTab }) {
+export function PromptVariants({
+	variants,
+	market,
+	tab,
+}: {
+	variants: PromptVariant[];
+	/** The market of the prompt being viewed; a variant asked elsewhere says where. */
+	market: Market;
+	tab?: PromptDetailTab;
+}) {
 	if (variants.length === 0) return null;
 	return (
 		<section aria-label="Variants" className="rounded-md border text-sm">
@@ -28,6 +39,11 @@ export function PromptVariants({ variants, tab }: { variants: PromptVariant[]; t
 						>
 							{variant.value}
 						</BrandPromptLink>
+						{!sameMarket(variant.market, market) && (
+							<Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+								{marketName(variant.market)}
+							</Badge>
+						)}
 						{!variant.enabled && (
 							<Badge variant="outline" className="text-xs font-normal text-muted-foreground">
 								Disabled

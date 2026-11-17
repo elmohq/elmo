@@ -57,6 +57,10 @@ const config: StorybookConfig = {
 						replacement: path.resolve(mocksDir, "server-prompt-suggestions.ts"),
 					},
 					{
+						find: /^@\/server\/market-support(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-market-support.ts"),
+					},
+					{
 						find: /^@\/server\/prompt-translation(\.ts)?$/,
 						replacement: path.resolve(mocksDir, "server-prompt-translation.ts"),
 					},

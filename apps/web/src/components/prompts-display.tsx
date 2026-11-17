@@ -1,5 +1,6 @@
 import { IconEditCircle } from "@tabler/icons-react";
 import { Link, useSearch } from "@tanstack/react-router";
+import { marketName } from "@workspace/config/markets";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
@@ -80,6 +81,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
+	const showMarkets = (brand?.markets.length ?? 0) > 1;
 
 	// Only the list uses this; the chart sections resolve the same prompts
 	// server-side from the filters.
@@ -89,8 +91,10 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		const filtered = search
 			? allPrompts.filter((p) => p.value.toLowerCase().includes(search.toLowerCase()))
 			: allPrompts;
-		return orderPrompts(filtered, order);
-	}, [promptsSummary, search, order]);
+		// With one market, naming it on every card says nothing.
+		const labeled = filtered.map((p) => ({ ...p, marketLabel: showMarkets ? marketName(p.market) : null }));
+		return orderPrompts(labeled, order);
+	}, [promptsSummary, search, order, showMarkets]);
 
 	const isInitialLoad = isLoadingSummary && !promptsSummary;
 
@@ -118,7 +122,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 			totalCount={promptsSummary?.prompts?.length}
 			filteredCount={sortedPrompts.length}
 			noMatchesTitle="No prompts match your filters."
-			noMatchesDescription="Try adjusting your search or tag filters."
+			noMatchesDescription="Try adjusting your search, tag, or market filters."
 			emptyState={
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
@@ -179,6 +183,7 @@ function ChartSection({
 		firstEvaluatedAt?: Date | string | null;
 		variantOf?: string | null;
 		variantCount?: number;
+		marketLabel?: string | null;
 	}[];
 	availableIndividualModels: string[];
 }) {

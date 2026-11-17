@@ -74,6 +74,7 @@ export async function enqueuePromptSuggestions(input: PromptSuggestionsInput): P
 		existingTags: [...new Set(brandPrompts.flatMap((p) => p.tags ?? []))].sort(),
 		competitors: brandCompetitors.map((c) => c.name),
 		count: SUGGESTIONS_PER_RUN,
+		market: { country: brand.country, language: brand.language },
 	});
 
 	return { remaining: PROMPT_SUGGESTION_RUNS_PER_DAY - used - 1 };

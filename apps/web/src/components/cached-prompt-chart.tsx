@@ -75,15 +75,22 @@ function PromptHeading({
 	highlight,
 	variantOf,
 	variantCount,
+	marketLabel,
 }: {
 	name: string;
 	highlight: string;
 	variantOf: string | null;
 	variantCount: number;
+	marketLabel: string | null;
 }) {
 	return (
 		<div className="flex min-w-0 items-center gap-2">
 			<PromptTitle name={name} highlight={highlight} />
+			{marketLabel && (
+				<Badge variant="outline" className="shrink-0 font-normal text-muted-foreground">
+					{marketLabel}
+				</Badge>
+			)}
 			<VariantBadge variantOf={variantOf} variantCount={variantCount} />
 		</div>
 	);
@@ -138,6 +145,8 @@ export interface CachedPromptChartProps {
 	variantOf?: string | null;
 	/** Other tracked prompts asking the same question. */
 	variantCount?: number;
+	/** The market the prompt is asked in, named only where the brand tracks more than one. */
+	marketLabel?: string | null;
 }
 
 // Memoized: when a sibling filter / react-query state change re-renders
@@ -154,6 +163,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	hasEverBeenEvaluated = false,
 	variantOf = null,
 	variantCount = 0,
+	marketLabel = null,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
 
@@ -187,7 +197,13 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	}, [handleExport, promptName, lastBrandVisibility, data, lookback, brand, competitors]);
 
 	const heading = (
-		<PromptHeading name={promptName} highlight={searchHighlight} variantOf={variantOf} variantCount={variantCount} />
+		<PromptHeading
+			name={promptName}
+			highlight={searchHighlight}
+			variantOf={variantOf}
+			variantCount={variantCount}
+			marketLabel={marketLabel}
+		/>
 	);
 
 	if (!chartContext || chartContext.isLoading || !chartData) {

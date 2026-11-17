@@ -1,6 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type Market, sameMarket } from "@workspace/config/markets";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
 import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
@@ -9,6 +10,7 @@ import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
+import { MarketPicker } from "@/components/market-picker";
 import { SlugField } from "@/components/slug-field";
 import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
@@ -16,15 +18,57 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useBrandParams } from "@/hooks/use-route-params";
+import type { MarketSupport } from "@/lib/market-support";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
+import { getMarketSupportFn } from "@/server/market-support";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
 	staticData: { crumb: "Brand" },
 	head: pageHead({ title: "Brand Settings", description: "Manage your brand name and website." }),
 	component: BrandSettingsPage,
 });
+
+function DefaultMarketField({
+	market,
+	onChange,
+	support,
+	saved,
+	following,
+	disabled,
+}: {
+	market: Market;
+	onChange: (market: Market) => void;
+	support: MarketSupport;
+	saved: Market;
+	/** Enabled prompts that follow the default, and so move with it. */
+	following: number;
+	disabled: boolean;
+}) {
+	return (
+		<div className="space-y-2">
+			<Label>Default Market</Label>
+			<MarketPicker
+				value={market}
+				onChange={(next) => next && onChange(next)}
+				support={support}
+				disabled={disabled}
+				className="max-w-sm"
+			/>
+			<p className="text-xs text-muted-foreground">
+				The country prompts are asked from and the language they are written in, unless a prompt sets its own.
+			</p>
+			{!sameMarket(market, saved) && (
+				<p className="text-xs text-amber-700">
+					Saving moves {following === 1 ? "the 1 prompt" : `all ${following} prompts`} that follow the default. Their
+					text is not translated, answers already recorded stay under the market they were asked in, and models that
+					can&apos;t answer from the new country stop running them.
+				</p>
+			)}
+		</div>
+	);
+}
 
 function BrandSettingsPage() {
 	const { data: brand, isLoading, refetch: refetchBrand } = useBrand();
@@ -40,6 +84,12 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 	const [slug, setSlug] = useState("");
+	const [market, setMarket] = useState<Market | null>(null);
+	const { data: marketSupport } = useQuery({
+		queryKey: ["market-support", brand?.id],
+		queryFn: () => getMarketSupportFn({ data: { brandId: brand!.id } }),
+		enabled: Boolean(brand?.id),
+	});
 
 	// Reseed the fields when the brand changes server-side, without discarding
 	// whatever is being typed in between.
@@ -49,6 +99,7 @@ function BrandSettingsPage() {
 		setAdditionalDomains(brand.additionalDomains || []);
 		setAliases(brand.aliases || []);
 		setSlug(brandSegment(brand));
+		setMarket({ country: brand.country, language: brand.language });
 	}
 
 	const validateDomain = useCallback(
@@ -100,12 +151,14 @@ function BrandSettingsPage() {
 					...(slugMoved && { slug: nextSlug }),
 					additionalDomains,
 					aliases,
+					...(market && { country: market.country, language: market.language }),
 				},
 			});
 
 			// Domain/alias changes affect citation categorization and mention detection
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			queryClient.invalidateQueries({ queryKey: ["market-support", brand.id] });
 
 			setSuccess("Brand details updated successfully!");
 			await refetchBrand();
@@ -171,6 +224,17 @@ function BrandSettingsPage() {
 						/>
 						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
 					</div>
+
+					{market && marketSupport && (
+						<DefaultMarketField
+							market={market}
+							onChange={setMarket}
+							support={marketSupport}
+							saved={{ country: brand.country, language: brand.language }}
+							following={brand.prompts.filter((prompt) => prompt.enabled && !prompt.country && !prompt.language).length}
+							disabled={isSubmitting}
+						/>
+					)}
 
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">

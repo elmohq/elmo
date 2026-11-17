@@ -1,5 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { Market } from "@workspace/config/markets";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -18,6 +20,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { PromptMarketInfo } from "@/components/prompt-market-info";
 import { type PromptVariant, PromptVariants } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
@@ -36,6 +39,7 @@ import { pageHead } from "@/lib/route-head";
 import type { SentimentFilterCounts } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
+import { getMarketSupportFn } from "@/server/market-support";
 import { getPromptMetadataFn } from "@/server/prompts";
 
 type PromptMetadata = {
@@ -46,6 +50,8 @@ type PromptMetadata = {
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
+	market: Market;
+	marketOverridden: boolean;
 	variants: PromptVariant[];
 };
 
@@ -108,6 +114,11 @@ function PromptHeader({
 	tab?: PromptDetailTab;
 }) {
 	const brandParams = useBrandParams();
+	const { data: marketSupport } = useQuery({
+		queryKey: ["market-support", promptMeta?.brandId],
+		queryFn: () => getMarketSupportFn({ data: { brandId: promptMeta!.brandId } }),
+		enabled: Boolean(promptMeta?.brandId),
+	});
 	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
 	const hasTags = systemTags.length > 0 || userTags.length > 0;
@@ -163,6 +174,17 @@ function PromptHeader({
 						</>
 					)}
 
+					{promptMeta && (
+						<>
+							<span className="text-border">|</span>
+							<PromptMarketInfo
+								market={promptMeta.market}
+								overridden={promptMeta.marketOverridden}
+								support={marketSupport}
+							/>
+						</>
+					)}
+
 					{hasTags && <span className="text-border">|</span>}
 
 					{hasTags && (
@@ -193,7 +215,7 @@ function PromptHeader({
 				</div>
 			)}
 
-			{promptMeta && <PromptVariants variants={promptMeta.variants} tab={tab} />}
+			{promptMeta && <PromptVariants variants={promptMeta.variants} market={promptMeta.market} tab={tab} />}
 		</div>
 	);
 }

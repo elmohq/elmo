@@ -15,6 +15,13 @@ const MOCK_BRAND = {
 	website: "https://acme.com",
 	additionalDomains: ["acme.co.uk", "acme.de"],
 	aliases: ["Acme Inc", "Acme Corporation"],
+	country: "US",
+	language: "en",
+	prompts: [
+		{ enabled: true, country: null, language: null },
+		{ enabled: true, country: null, language: null },
+		{ enabled: true, country: "DE", language: "de" },
+	],
 	updatedAt: new Date("2026-09-01T00:00:00Z"),
 };
 
@@ -114,5 +121,25 @@ export const PasteSkipsCoveredDomains: Story = {
 		expect(canvas.getByText("notacme.com")).toBeVisible();
 		expect(canvas.queryByText("blog.acme.com")).toBeNull();
 		expect(canvas.queryByText("shop.acme.io")).toBeNull();
+	},
+};
+
+/**
+ * Moving the default market says how many prompts move with it before anything
+ * is saved: the two that follow the default, not the one with a market of its own.
+ */
+export const ChangeDefaultMarket: Story = {
+	render: () => {
+		setMockBrand(MOCK_BRAND);
+		return <BrandSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		await userEvent.click(await canvas.findByRole("button", { name: "Market: United States · English" }));
+		await userEvent.click(await page.findByRole("option", { name: /France · French/ }));
+
+		await expect(await canvas.findByText(/Saving moves all 2 prompts that follow the default/)).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Market: France · French" })).toBeVisible();
 	},
 };
