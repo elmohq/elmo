@@ -141,9 +141,7 @@ export interface CachedPromptChartProps {
 	searchHighlight?: string;
 	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
-	/** The prompt this one is another wording of. */
 	variantOf?: string | null;
-	/** Other tracked prompts asking the same question. */
 	variantCount?: number;
 	marketLabel?: string | null;
 }
