@@ -110,7 +110,6 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
-	group: { lead: { id: string; value: string }; size: number },
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -131,10 +130,6 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
-		/** The prompt this one is another wording of; null for the lead of its group. */
-		variantOf: group.lead.id === prompt.id ? null : group.lead.value,
-		/** Other tracked prompts asking the same question. */
-		variantCount: group.size - 1,
 	};
 }
 
@@ -168,7 +163,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			.select()
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
-			.orderBy(desc(prompts.createdAt), desc(prompts.id));
+			.orderBy(desc(prompts.createdAt));
 
 		const promptIds = allPrompts.map((p) => p.id);
 
@@ -200,15 +195,9 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
-		// Newest first, so the last prompt seen for a group is its oldest: the lead.
-		const groups = new Map<string, { lead: { id: string; value: string }; size: number }>();
-		for (const p of allPrompts) {
-			groups.set(p.groupId, { lead: p, size: (groups.get(p.groupId)?.size ?? 0) + 1 });
-		}
-
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), groups.get(p.groupId)!);
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
 		});
 
 		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));

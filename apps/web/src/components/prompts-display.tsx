@@ -169,13 +169,7 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
-	sortedPrompts: {
-		id: string;
-		value: string;
-		firstEvaluatedAt?: Date | string | null;
-		variantOf?: string | null;
-		variantCount?: number;
-	}[];
+	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
 	availableIndividualModels: string[];
 }) {
 	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
