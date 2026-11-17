@@ -15,7 +15,7 @@ import {
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -469,6 +469,17 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
+/** The editor mints ids for new groups, so the only one to refuse is one another brand's prompts already share. */
+async function assertGroupsUnclaimedElsewhere(brandId: string, groupIds: string[]): Promise<void> {
+	if (groupIds.length === 0) return;
+	const [claimed] = await db
+		.select({ id: prompts.id })
+		.from(prompts)
+		.where(and(inArray(prompts.groupId, [...new Set(groupIds)]), ne(prompts.brandId, brandId)))
+		.limit(1);
+	if (claimed) throw new Error("A prompt can only be a variant of a prompt in the same brand.");
+}
+
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -509,6 +520,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
 		const existingById = new Map(existingRows.map((p) => [p.id, p]));
+
+		await assertGroupsUnclaimedElsewhere(data.brandId, data.prompts.flatMap((prompt) => prompt.groupId ?? []));
 
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
