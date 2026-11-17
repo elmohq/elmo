@@ -52,7 +52,6 @@ function describeTarget(target: MarketTarget, market: Market): string {
 	}
 }
 
-/** What each tracked model does with a prompt asked in `market`. */
 export function MarketSupportList({ support, market }: { support: MarketSupport; market: Market }) {
 	if (support.targets.length === 0) return null;
 	return (

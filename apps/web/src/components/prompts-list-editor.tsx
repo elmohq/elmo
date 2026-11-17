@@ -394,7 +394,6 @@ function FieldAction({
 	);
 }
 
-/** Why a row arrived without being typed: a suggestion, or a translation. */
 function DraftMarker({ prompt }: { prompt: EditablePrompt }) {
 	if (!prompt.suggested && !prompt.translated) return null;
 	const Icon = prompt.translated ? Languages : Sparkles;
@@ -791,7 +790,6 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 	);
 }
 
-/** Says what one prompt costs before anyone adds a variant or a market, in the terms the viewer pays in. */
 function MarketsNote({ support }: { support: MarketSupport }) {
 	const params = useBrandParams();
 	return (
@@ -888,7 +886,6 @@ export function PromptsListEditor({
 			),
 		);
 	const translatable = (rows: EditablePrompt[]) => rows.filter((row) => row.value.trim().length > 0);
-	/** The prompt a row is a variant of; undefined for the lead of its group. */
 	const leadOf = (prompt: EditablePrompt) => {
 		const lead = leads.get(prompt.groupId);
 		return lead === prompt ? undefined : lead;

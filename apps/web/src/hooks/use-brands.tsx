@@ -15,7 +15,6 @@ type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	 * runs it both scraped and grounded — see server/brands.ts.
 	 */
 	trackedTargets: TrackedTarget[];
-	/** The markets its enabled prompts are asked in. */
 	markets: MarketUse[];
 };
 

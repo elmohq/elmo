@@ -171,7 +171,6 @@ export interface ListPromptsFilters {
 	enabled?: boolean;
 	tags?: string[];
 	groupId?: string;
-	/** Comma-joined market ids. */
 	markets?: string;
 	q?: string;
 	limit: number;

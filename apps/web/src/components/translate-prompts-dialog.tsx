@@ -52,7 +52,6 @@ interface TranslatePromptsDialogProps {
 	/** Every row in the editor, so a market a question is already asked in isn't offered twice. */
 	existing: readonly TranslationSource[];
 	support: MarketSupport;
-	/** How many more prompts the list has room for. */
 	room: number;
 	translate: TranslateFn;
 	onTranslated: (drafts: TranslatedDraft[]) => void;

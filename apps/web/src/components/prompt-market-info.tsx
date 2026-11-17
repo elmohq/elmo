@@ -4,14 +4,12 @@ import { ChevronDown } from "lucide-react";
 import { coverageNote, MarketCostNote, MarketSupportList } from "@/components/market-picker";
 import type { MarketSupport } from "@/lib/market-support";
 
-/** Where a prompt is asked, and on request what each tracked model does with that market. */
 export function PromptMarketInfo({
 	market,
 	overridden,
 	support,
 }: {
 	market: Market;
-	/** False when the prompt follows the brand's market. */
 	overridden: boolean;
 	support: MarketSupport | undefined;
 }) {

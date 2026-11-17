@@ -40,13 +40,11 @@ export function targetsRunningIn(support: MarketSupport, country: string): Marke
 }
 
 export interface PromptCost {
-	/** Provider calls one prompt in this country makes in a day. */
 	callsPerDay: number;
 	/** Null when no target has a price estimate, which is everywhere but self-hosted. */
 	monthlyUsd: number | null;
 }
 
-/** What tracking one prompt asked from `country` adds. */
 export function promptCostIn(support: MarketSupport, country: string): PromptCost {
 	const running = targetsRunningIn(support, country);
 	const callsPerDay = running.reduce((total, target) => total + target.runsPerDay * target.replication, 0);

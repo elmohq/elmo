@@ -145,7 +145,6 @@ export interface CachedPromptChartProps {
 	variantOf?: string | null;
 	/** Other tracked prompts asking the same question. */
 	variantCount?: number;
-	/** The market the prompt is asked in, named only where the brand tracks more than one. */
 	marketLabel?: string | null;
 }
 
