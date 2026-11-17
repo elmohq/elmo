@@ -54,6 +54,27 @@
 						"format": "uuid",
 						"description": "Shared by the variants of one question: prompts that ask the same thing in different words. Each variant is tracked and billed as its own prompt. A prompt with no variants has a group to itself."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "The country this prompt sets for itself. Null follows the brand's country."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "The language this prompt sets for itself. Null follows the brand's language."
+					},
+					"market": {
+						"type": "object",
+						"description": "Where the prompt is asked from and in what language: its own `country` and `language`, each falling back to the brand's. Read-only.",
+						"properties": {
+							"country": {
+								"type": "string"
+							},
+							"language": {
+								"type": "string"
+							}
+						},
+						"required": ["country", "language"]
+					},
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
@@ -95,6 +116,9 @@
 					"brandId",
 					"value",
 					"groupId",
+					"country",
+					"language",
+					"market",
 					"enabled",
 					"tags",
 					"systemTags",
@@ -127,6 +151,14 @@
 						"type": "string",
 						"format": "uuid",
 						"description": "The `groupId` of an existing prompt in the same brand, to add this prompt as a variant of that question. Omit to start a new group."
+					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Omit or send null to follow the brand's market. Models that can't answer from the country skip the prompt."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the markets guide. Omit or send null to follow the brand's market. The text is sent as written; it is not translated."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -162,6 +194,14 @@
 						"type": ["string", "null"],
 						"format": "uuid",
 						"description": "Moves the prompt into the group of another prompt in the same brand. Null moves it into a group of its own."
+					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Null follows the brand's market."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the markets guide. Null follows the brand's market. The text is not translated."
 					}
 				}
 			},
@@ -504,6 +544,14 @@
 							"required": ["value"]
 						}
 					},
+					"country": {
+						"type": "string",
+						"description": "The country prompts are asked from unless they set their own. ISO 3166-1 alpha-2, from the supported list in the markets guide. Defaults to `US`."
+					},
+					"language": {
+						"type": "string",
+						"description": "The language prompts are written in unless they set their own. ISO 639-1, from the supported list in the markets guide. Defaults to `en`."
+					},
 					"organizationId": {
 						"type": "string",
 						"description": "Organization to create the brand in.\n\n| | Omitted | Present |\n| --- | --- | --- |\n| **Organization key** | creates in the key's own organization | must name the key's own organization; any other value is a `400` |\n| **Admin key** | provisions a new organization named after the brand id | creates in the named organization, which must already exist — `404` if it does not |\n\nAn admin key omitting this field is currently the only way to create an organization over the API.",
@@ -538,6 +586,14 @@
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the brand is sampled at all. **Modifiable only with an instance admin key**: setting it with an organization key is a `403`, because disabling ends tracking silently while the plan keeps being billed and no dashboard control does it at any role."
+					},
+					"country": {
+						"type": "string",
+						"description": "The brand's default country. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Changing it moves every prompt that sets none of its own."
+					},
+					"language": {
+						"type": "string",
+						"description": "The brand's default language. ISO 639-1 language, from the supported list in the markets guide. Changing it does not translate any prompt."
 					}
 				}
 			},
@@ -592,6 +648,14 @@
 					"delayOverrideHours": {
 						"type": ["integer", "null"],
 						"description": "Sampling cadence override in hours. Null means the plan cadence."
+					},
+					"country": {
+						"type": "string",
+						"description": "The country prompts are asked from unless they set their own. Defaults to `US`."
+					},
+					"language": {
+						"type": "string",
+						"description": "The language prompts are written in unless they set their own. Defaults to `en`."
 					}
 				},
 				"required": [
@@ -605,7 +669,9 @@
 					"updatedAt",
 					"organizationId",
 					"enabledModels",
-					"delayOverrideHours"
+					"delayOverrideHours",
+					"country",
+					"language"
 				]
 			},
 			"BrandsList": {
@@ -1516,6 +1582,14 @@
 						"type": "boolean",
 						"description": "Whether the engine answered with its own web search on."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "The country the provider was asked to answer from. Null where it was told none: a model called without web search, a provider answering from its own default location, or a run from before markets."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "The language the provider was sent as a parameter. Null where the prompt's own wording was all that carried it."
+					},
 					"brandMentioned": {
 						"type": "boolean"
 					},
@@ -1550,6 +1624,8 @@
 					"model",
 					"provider",
 					"webSearchEnabled",
+					"country",
+					"language",
 					"brandMentioned",
 					"competitorsMentioned",
 					"assessments",
@@ -2304,6 +2380,14 @@
 					"type": "string"
 				}
 			},
+			"MarketsFilter": {
+				"name": "markets",
+				"in": "query",
+				"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. Only prompts asked in one of them are counted.",
+				"schema": {
+					"type": "string"
+				}
+			},
 			"AnalyticsListLimit": {
 				"name": "limit",
 				"in": "query",
@@ -2643,6 +2727,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/MarketsFilter"
 					}
 				],
 				"responses": {
@@ -2703,6 +2790,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/MarketsFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -2780,6 +2870,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/MarketsFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -2911,6 +3004,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/MarketsFilter"
 					}
 				],
 				"responses": {
@@ -2971,6 +3067,9 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/MarketsFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3590,6 +3689,14 @@
 						"schema": {
 							"type": "string",
 							"format": "uuid"
+						}
+					},
+					{
+						"name": "markets",
+						"in": "query",
+						"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. A prompt matches if it is asked in any of them.",
+						"schema": {
+							"type": "string"
 						}
 					},
 					{

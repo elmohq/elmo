@@ -1,0 +1,23 @@
+meta {
+  name: move the brand back to its market
+  type: http
+  seq: 38
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "country": "US",
+    "language": "en"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.country: eq US
+}

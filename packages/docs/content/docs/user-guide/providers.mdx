@@ -1,7 +1,7 @@
 ---
 title: Providers
 description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
-updated: 2026-11-06
+updated: 2026-11-17
 ---
 
 Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
@@ -38,6 +38,10 @@ Perplexity and the Microsoft Copilot app (copilot.microsoft.com) now require a s
 
 Elmo skips a retired target left in `SCRAPE_TARGETS` and keeps running the rest. It logs a warning at startup, and the LLMs settings page lists each skipped target with its replacement.
 </Callout>
+
+### Countries and languages
+
+A prompt is asked from its [market](/docs/user-guide/markets): a country and a language set on the brand or on the prompt, not in `SCRAPE_TARGETS`. Providers differ in which countries they can answer from, and a target that can't answer from a prompt's country skips that prompt. The markets guide lists what each provider and surface supports.
 
 ### Query fan-out
 
@@ -210,7 +214,7 @@ That route is much faster and cheaper but doesn't reflect the real ChatGPT or Ge
 
 All DataForSEO targets require `:online`.
 
-DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
+DataForSEO prompt text is limited to 500 characters.
 
 ## Direct model APIs
 

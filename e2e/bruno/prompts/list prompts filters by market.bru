@@ -1,0 +1,28 @@
+meta {
+  name: list prompts filtered by market
+  type: http
+  seq: 40
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&markets=de-DE
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{brandId}}
+  markets: de-DE
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("only prompts asked in the market come back, the new one among them", function() {
+    const prompts = res.getBody().data;
+    expect(prompts.map((prompt) => prompt.id)).to.include(bru.getVar("marketPromptId"));
+    for (const prompt of prompts) expect(prompt.market).to.deep.equal({ country: "DE", language: "de" });
+  });
+}

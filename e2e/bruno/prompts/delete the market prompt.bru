@@ -1,0 +1,15 @@
+meta {
+  name: delete the market prompt
+  type: http
+  seq: 43
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{marketPromptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}
