@@ -36,7 +36,8 @@ function CitationsPage() {
 	const citationFilters = {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
-		markets: filters.markets,
+		countries: filters.countries,
+		languages: filters.languages,
 		model: modelParam,
 	};
 	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
@@ -49,14 +50,15 @@ function CitationsPage() {
 			filters: {
 				lookback: filters.lookback,
 				tags: tagsKey ? tagsKey.split(",") : undefined,
-				markets: filters.markets,
+				countries: filters.countries,
+				languages: filters.languages,
 				model: modelParam,
 			},
 			brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
 			competitorDomains: (competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
 			modelOrder: [...new Set((brand?.trackedTargets ?? []).map((target) => target.model))],
 		}),
-		[brandId, filters.lookback, tagsKey, filters.markets, modelParam, brand, competitors],
+		[brandId, filters.lookback, tagsKey, filters.countries, filters.languages, modelParam, brand, competitors],
 	);
 
 	const infoContent = (

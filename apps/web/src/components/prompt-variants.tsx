@@ -36,8 +36,8 @@ export function PromptVariantsMenu({
 	const navigate = useNavigate();
 	if (variants.length <= 1) return null;
 
-	// Variants all asked in one market are told apart by their wording alone.
-	const showMarkets = new Set(variants.map((variant) => marketId(variant.market))).size > 1;
+	// Variants all asked from one country in one language are told apart by their wording alone.
+	const showLocales = new Set(variants.map((variant) => marketId(variant.market))).size > 1;
 	const open = (id: string) =>
 		navigate({
 			to: "/app/org/$org/brand/$brand/prompts/$promptId",
@@ -61,7 +61,7 @@ export function PromptVariantsMenu({
 						{variants.map((variant) => (
 							<DropdownMenuRadioItem key={variant.id} value={variant.id} className="cursor-pointer gap-2">
 								<span className="min-w-0 flex-1 truncate">{variant.value}</span>
-								{showMarkets && (
+								{showLocales && (
 									<span className="shrink-0 text-xs text-muted-foreground">{marketName(variant.market)}</span>
 								)}
 								{!variant.enabled && <span className="shrink-0 text-xs text-muted-foreground">Disabled</span>}

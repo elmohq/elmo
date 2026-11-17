@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/query-fanout")({
 					const { queries, total, ...totals } = await getBrandFanoutQueries(
 						brand.id,
 						range,
-						{ model: query.model, tags: query.tags, markets: query.markets },
+						{ model: query.model, tags: query.tags, countries: query.countries, languages: query.languages },
 						{ search: query.q, limit: query.limit, offset: offsetOf(query) },
 					);
 					return {

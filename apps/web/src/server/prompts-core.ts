@@ -8,8 +8,8 @@ import {
 	countrySchema,
 	languageSchema,
 	type Market,
-	marketId,
-	parseMarketFilter,
+	parseCountryFilter,
+	parseLanguageFilter,
 	resolveMarket,
 } from "@workspace/config/markets";
 import { selectPremiumModels } from "@workspace/config/plans";
@@ -55,13 +55,13 @@ const VARIANT_COST = "A variant is tracked and billed as its own prompt.";
 const promptCountrySchema = countrySchema
 	.nullable()
 	.describe(
-		"ISO 3166-1 alpha-2 country to ask the prompt from, e.g. `DE`. Null follows the brand's market. Models that can't answer from the country skip the prompt.",
+		"ISO 3166-1 alpha-2 country to ask the prompt from, e.g. `DE`. Null follows the brand's country. Models that can't answer from the country skip the prompt.",
 	);
 
 const promptLanguageSchema = languageSchema
 	.nullable()
 	.describe(
-		"ISO 639-1 language the prompt is written in, e.g. `de`. Null follows the brand's market. The text is sent as written: Elmo does not translate it.",
+		"ISO 639-1 language the prompt is written in, e.g. `de`. Null follows the brand's language. The text is sent as written: Elmo does not translate it.",
 	);
 
 export const bulkPromptInputSchema = z.object({
@@ -141,9 +141,16 @@ const PROMPT_COLUMNS = {
 export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
 } & {
-	/** Where the prompt is asked from and in: its own `country` and `language`, falling back to the brand's. */
-	market: Market;
+	/** The prompt's own `country`, or the brand's where it sets none. */
+	effectiveCountry: string;
+	/** The prompt's own `language`, or the brand's where it sets none. */
+	effectiveLanguage: string;
 };
+
+function effectiveLocale(prompt: { country: string | null; language: string | null }, brand: Market) {
+	const market = resolveMarket(prompt, brand);
+	return { effectiveCountry: market.country, effectiveLanguage: market.language };
+}
 
 /** The public shape of a prompt. `listPrompts` selects these columns; a read
  *  that starts from the whole row projects onto them here, so every edge that
@@ -156,7 +163,7 @@ export function toPromptSummary(prompt: Prompt, brand: Market): PromptSummary {
 		groupId: prompt.groupId,
 		country: prompt.country,
 		language: prompt.language,
-		market: resolveMarket(prompt, brand),
+		...effectiveLocale(prompt, brand),
 		enabled: prompt.enabled,
 		tags: prompt.tags,
 		systemTags: prompt.systemTags,
@@ -171,7 +178,10 @@ export interface ListPromptsFilters {
 	enabled?: boolean;
 	tags?: string[];
 	groupId?: string;
-	markets?: string;
+	/** Comma-joined country codes. */
+	countries?: string;
+	/** Comma-joined language codes. */
+	languages?: string;
 	q?: string;
 	limit: number;
 	offset: number;
@@ -185,15 +195,10 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
 	if (filters.groupId) conditions.push(eq(prompts.groupId, filters.groupId));
-	const markets = parseMarketFilter(filters.markets).map(marketId);
-	if (markets.length > 0) {
-		conditions.push(
-			inArray(
-				sql`coalesce(${prompts.language}, ${brands.language}) || '-' || coalesce(${prompts.country}, ${brands.country})`,
-				markets,
-			),
-		);
-	}
+	const countries = parseCountryFilter(filters.countries);
+	if (countries.length > 0) conditions.push(inArray(sql`coalesce(${prompts.country}, ${brands.country})`, countries));
+	const languages = parseLanguageFilter(filters.languages);
+	if (languages.length > 0) conditions.push(inArray(sql`coalesce(${prompts.language}, ${brands.language})`, languages));
 	if (filters.q?.trim()) conditions.push(ilike(prompts.value, `%${filters.q.trim()}%`));
 
 	const where = and(...conditions.filter(Boolean));
@@ -213,7 +218,7 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 
 	const data = rows.map(({ brandCountry, brandLanguage, ...prompt }) => ({
 		...prompt,
-		market: resolveMarket(prompt, { country: brandCountry, language: brandLanguage }),
+		...effectiveLocale(prompt, { country: brandCountry, language: brandLanguage }),
 	}));
 	return { data, total: totals?.count ?? 0 };
 }

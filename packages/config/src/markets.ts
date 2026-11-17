@@ -186,46 +186,45 @@ export function marketId(market: Market): string {
 	return `${market.language}-${market.country}`;
 }
 
-export function parseMarketId(raw: string): Market | null {
-	const [language, country, ...rest] = raw.trim().split("-");
-	if (!language || !country || rest.length > 0) return null;
-	const normalized = { country: normalizeCountry(country), language: normalizeLanguage(language) };
-	return normalized.country && normalized.language
-		? { country: normalized.country, language: normalized.language }
-		: null;
+/** Comma-separated codes from a dashboard link. Unknown ones drop out, so a stale link still opens. */
+function parseCodes(raw: string | null | undefined, normalize: (code: string) => string | null): string[] {
+	if (!raw) return [];
+	const codes = raw.split(",").map(normalize);
+	return [...new Set(codes.filter((code): code is string => code !== null))];
 }
 
-/** Comma-separated market ids from a URL or API query. Unknown ones drop out, so a stale link still opens. */
-export function parseMarketFilter(raw: string | null | undefined): Market[] {
-	if (!raw) return [];
-	const seen = new Set<string>();
-	const markets: Market[] = [];
-	for (const part of raw.split(",")) {
-		const market = parseMarketId(part);
-		if (!market || seen.has(marketId(market))) continue;
-		seen.add(marketId(market));
-		markets.push(market);
-	}
-	return markets;
+export function parseCountryFilter(raw: string | null | undefined): string[] {
+	return parseCodes(raw, normalizeCountry);
+}
+
+export function parseLanguageFilter(raw: string | null | undefined): string[] {
+	return parseCodes(raw, normalizeLanguage);
 }
 
 /**
- * For API input. A dashboard link drops a market it can't read so a stale link
- * still opens; a caller gets told, since ignoring the filter would answer for
- * the whole brand as if that were what was asked.
+ * For API input. A dashboard link drops a code it can't read; a caller gets
+ * told, since ignoring the filter would answer for the whole brand as if that
+ * were what was asked.
  */
-export const marketFilterSchema = z.string().superRefine((raw, ctx) => {
-	const unknown = raw
-		.split(",")
-		.map((part) => part.trim())
-		.find((part) => part && !parseMarketId(part));
-	if (unknown !== undefined) {
-		ctx.addIssue({
-			code: "custom",
-			message: `Unknown market "${unknown}". Write each market as language-country, such as "de-DE".`,
-		});
-	}
-});
+function codeFilterSchema(normalize: (code: string) => string | null, describe: (code: string) => string) {
+	return z.string().superRefine((raw, ctx) => {
+		const unknown = raw
+			.split(",")
+			.map((part) => part.trim())
+			.find((part) => part && !normalize(part));
+		if (unknown !== undefined) ctx.addIssue({ code: "custom", message: describe(unknown) });
+	});
+}
+
+export const countryFilterSchema = codeFilterSchema(
+	normalizeCountry,
+	(code) => `Unsupported country "${code}". Use supported ISO 3166-1 alpha-2 codes such as "GB".`,
+);
+
+export const languageFilterSchema = codeFilterSchema(
+	normalizeLanguage,
+	(code) => `Unsupported language "${code}". Use supported ISO 639-1 codes such as "de".`,
+);
 
 export function sameMarket(a: Market, b: Market): boolean {
 	return a.country === b.country && a.language === b.language;

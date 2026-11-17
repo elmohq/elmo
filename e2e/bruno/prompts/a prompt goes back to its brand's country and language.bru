@@ -1,11 +1,11 @@
 meta {
-  name: a prompt goes back to its brand's market
+  name: a prompt goes back to its brand's country and language
   type: http
   seq: 41
 }
 
 patch {
-  url: {{baseUrl}}/api/v1/prompts/{{marketPromptId}}
+  url: {{baseUrl}}/api/v1/prompts/{{localePromptId}}
   body: json
   auth: inherit
 }
@@ -21,6 +21,6 @@ assert {
   res.status: eq 200
   res.body.country: isNull
   res.body.language: isNull
-  res.body.market.country: eq US
-  res.body.market.language: eq en
+  res.body.effectiveCountry: eq US
+  res.body.effectiveLanguage: eq en
 }

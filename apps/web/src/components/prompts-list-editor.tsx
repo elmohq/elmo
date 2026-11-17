@@ -1,6 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { type Market, marketName, resolveMarket } from "@workspace/config/markets";
+import { countryName, languageName } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -25,7 +25,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { CopyPlus, CornerDownRight, Inbox, Languages, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { MarketCostNote, MarketPicker } from "@/components/market-picker";
+import { CountryCostNote, CountryPicker } from "@/components/country-picker";
 import { type TranslatedDraft, type TranslateFn, TranslatePromptsDialog } from "@/components/translate-prompts-dialog";
 import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
 import type { MarketSupport } from "@/lib/market-support";
@@ -41,7 +41,7 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
-	/** Null follows the brand's market. */
+	/** Null follows the brand. */
 	country: string | null;
 	language: string | null;
 	suggested?: boolean;
@@ -49,8 +49,8 @@ export interface EditablePrompt {
 	translated?: boolean;
 }
 
-/** What the editor needs to offer markets. Omitted where prompts are only being drafted, like onboarding. */
-export interface PromptMarkets {
+/** What the editor needs to offer countries and languages. Omitted where prompts are only being drafted, like onboarding. */
+export interface PromptLocales {
 	support: MarketSupport;
 	translate: TranslateFn;
 }
@@ -176,16 +176,16 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-basic-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_2.75rem]",
-	"system-premium-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
-	"plain-basic-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_2.75rem]",
-	"plain-premium-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
+	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_2.75rem]",
+	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
+	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_2.75rem]",
+	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
 };
 
-/** Columns: [select] [text] [system?] [tags] [market?] [premium?] [switch]. */
-function gridColsFor(columns: { system: boolean; premium: boolean; market: boolean }): string {
+/** Columns: [select] [text] [system?] [tags] [country?] [premium?] [switch]. */
+function gridColsFor(columns: { system: boolean; premium: boolean; country: boolean }): string {
 	const key = `${columns.system ? "system" : "plain"}-${columns.premium ? "premium" : "basic"}`;
-	return GRID_COLS[columns.market ? `${key}-market` : key];
+	return GRID_COLS[columns.country ? `${key}-country` : key];
 }
 
 interface PromptsListEditorProps {
@@ -199,7 +199,7 @@ interface PromptsListEditorProps {
 	premium?: PremiumAllowance;
 	/** Lets a prompt gain variants. Off where prompts are only being drafted, like onboarding. */
 	variants?: boolean;
-	markets?: PromptMarkets;
+	locales?: PromptLocales;
 	leading?: ReactNode;
 	pendingRows?: number;
 }
@@ -267,7 +267,7 @@ function ColumnHeader({
 	gridCols,
 	showSystemTags,
 	premium,
-	showMarket,
+	showCountry,
 	allSelected,
 	onToggleSelectAll,
 	disabled,
@@ -275,7 +275,7 @@ function ColumnHeader({
 	gridCols: string;
 	showSystemTags: boolean;
 	premium?: PremiumAllowance;
-	showMarket: boolean;
+	showCountry: boolean;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
 	disabled: boolean;
@@ -321,16 +321,16 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
-			{showMarket && (
+			{showCountry && (
 				<div className="flex items-center gap-1">
-					Market
+					Country
 					<Tooltip>
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								The country a prompt is asked from and the language it is written in. Default follows the brand's
-								market; anything else is set on this prompt alone. Changing it does not translate the text, and the
-								prompt&apos;s history moves with it. To compare markets, translate the prompt instead.
+								The country a prompt is asked from. Default follows the brand. Its language is set in the same menu.
+								Changing either does not translate the text, and the prompt&apos;s history moves with it. To compare
+								countries, translate the prompt instead.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -363,7 +363,7 @@ const VARIANT_HELP =
 	"Add another wording of this question. A variant is tracked as its own prompt: it runs on every model and counts toward your prompt limit.";
 
 const TRANSLATE_HELP =
-	"Translate this prompt for another market. Each translation is added as a variant and tracked as its own prompt.";
+	"Add this prompt for other countries, translated where the language differs. Each is added as a variant and tracked as its own prompt.";
 
 const FIELD_ACTION_CLASS =
 	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
@@ -476,30 +476,23 @@ function PromptTextField({
 	);
 }
 
-/** A prompt that sets either half of its market shows the whole of what it resolves to. */
-function ownMarket(prompt: EditablePrompt, brandMarket: Market): Market | null {
-	if (prompt.country === null && prompt.language === null) return null;
-	return resolveMarket(prompt, brandMarket);
-}
-
-function PromptMarketField({
+function PromptCountryField({
 	prompt,
 	support,
 	onChange,
-	compact,
 }: {
 	prompt: EditablePrompt;
 	support: MarketSupport;
-	onChange: (patch: Pick<EditablePrompt, "country" | "language">) => void;
-	compact?: boolean;
+	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language">>) => void;
 }) {
 	return (
-		<MarketPicker
-			value={ownMarket(prompt, support.brandMarket)}
-			onChange={(market) => onChange({ country: market?.country ?? null, language: market?.language ?? null })}
+		<CountryPicker
+			country={prompt.country}
+			onCountryChange={(country) => onChange({ country })}
+			language={prompt.language}
+			onLanguageChange={(language) => onChange({ language })}
 			support={support}
 			allowDefault
-			compact={compact}
 			disabled={!prompt.enabled}
 		/>
 	);
@@ -593,7 +586,7 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
-				{support && <PromptMarketField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />}
+				{support && <PromptCountryField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />}
 				{premium && (
 					<PremiumModelsField
 						selected={prompt.premiumModels}
@@ -628,7 +621,7 @@ function PromptRow({
 				/>
 				{support && (
 					<div className="pt-0.5">
-						<PromptMarketField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} compact />
+						<PromptCountryField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
 					</div>
 				)}
 				{premium && (
@@ -791,18 +784,19 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 	);
 }
 
-function MarketsNote({ support }: { support: MarketSupport }) {
+function DefaultsNote({ support }: { support: MarketSupport }) {
 	const params = useBrandParams();
+	const { country, language } = support.brandMarket;
 	return (
 		<div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
 			<p>
-				Prompts are asked in <span className="font-medium">{marketName(support.brandMarket)}</span> unless a prompt sets
-				its own market.{" "}
+				Prompts are asked from <span className="font-medium">{countryName(country)}</span> in{" "}
+				<span className="font-medium">{languageName(language)}</span> unless a prompt sets its own.{" "}
 				<Link to="/app/org/$org/brand/$brand/settings/brand" params={params} className="underline">
-					Change the default
+					Change the defaults
 				</Link>
 			</p>
-			<MarketCostNote support={support} country={support.brandMarket.country} className="mt-1" />
+			<CountryCostNote support={support} country={country} className="mt-1" />
 			<p className="mt-1 text-xs text-muted-foreground">
 				Every variant and every translation is another prompt, tracked and paid for on its own.
 			</p>
@@ -828,7 +822,7 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 	variants = false,
-	markets,
+	locales,
 	leading,
 	pendingRows = 0,
 }: PromptsListEditorProps) {
@@ -899,7 +893,7 @@ export function PromptsListEditor({
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	const gridCols = gridColsFor({ system: showSystemTags, premium: Boolean(premium), market: Boolean(markets) });
+	const gridCols = gridColsFor({ system: showSystemTags, premium: Boolean(premium), country: Boolean(locales) });
 
 	return (
 		<div className="space-y-4">
@@ -908,7 +902,7 @@ export function PromptsListEditor({
 					count={liveSelectedCount}
 					onSetEnabled={applyEnabledToSelection}
 					onTranslate={
-						markets && !atCapacity
+						locales && !atCapacity
 							? () => translate(translatable(prompts.filter((p) => selectedKeys.has(p._key))))
 							: undefined
 					}
@@ -916,7 +910,7 @@ export function PromptsListEditor({
 				/>
 			)}
 
-			{markets && <MarketsNote support={markets.support} />}
+			{locales && <DefaultsNote support={locales.support} />}
 
 			{premium && (
 				<p className="text-sm text-muted-foreground">
@@ -938,7 +932,7 @@ export function PromptsListEditor({
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
 				premium={premium}
-				showMarket={Boolean(markets)}
+				showCountry={Boolean(locales)}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
 				disabled={prompts.length === 0}
@@ -975,8 +969,8 @@ export function PromptsListEditor({
 							onToggleSelect={() => toggleSelect(prompt._key)}
 							lead={leadOf(prompt)}
 							onAddVariant={canGrow(prompt) && variants && !leadOf(prompt) ? () => addVariant(prompt) : undefined}
-							onTranslate={canGrow(prompt) && markets ? () => translate([prompt]) : undefined}
-							support={markets?.support}
+							onTranslate={canGrow(prompt) && locales ? () => translate([prompt]) : undefined}
+							support={locales?.support}
 						/>
 					))}
 				</div>
@@ -986,15 +980,15 @@ export function PromptsListEditor({
 
 			<PromptCount prompts={prompts} />
 
-			{markets && (
+			{locales && (
 				<TranslatePromptsDialog
 					open={translation.open && translation.sources.length > 0}
 					onOpenChange={(open) => setTranslation((current) => ({ ...current, open }))}
 					sources={translation.sources}
 					existing={prompts}
-					support={markets.support}
+					support={locales.support}
 					room={MAX_PROMPTS - filledValues.length}
-					translate={markets.translate}
+					translate={locales.translate}
 					onTranslated={addTranslations}
 				/>
 			)}

@@ -4,7 +4,7 @@
  * a tool that writes is deliberate. There is no `adminOnly` and must not be:
  * operator-only verbs stay on `/api/v1`.
  */
-import { marketFilterSchema } from "@workspace/config/markets";
+import { countryFilterSchema, languageFilterSchema } from "@workspace/config/markets";
 import { z } from "zod";
 import { type AnalyticsFilters, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import type { ApiScope } from "@/lib/api/scopes";
@@ -68,11 +68,12 @@ export const windowArgs = {
 		),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
-	markets: marketFilterSchema
+	countries: countryFilterSchema
 		.optional()
-		.describe(
-			"Comma-separated markets as language-country, e.g. `de-DE,fr-CH`; only prompts asked in one are counted.",
-		),
+		.describe("Comma-separated ISO country codes, e.g. `DE,CH`; only prompts asked from one are counted."),
+	languages: languageFilterSchema
+		.optional()
+		.describe("Comma-separated ISO language codes, e.g. `de,fr`; only prompts written in one are counted."),
 };
 
 export type WindowArgs = z.output<z.ZodObject<typeof windowArgs>>;
@@ -82,5 +83,5 @@ export function windowFor(args: WindowArgs): AnalyticsWindow {
 }
 
 export function filtersFrom(args: WindowArgs): AnalyticsFilters {
-	return { model: args.model, tags: args.tags, markets: args.markets };
+	return { model: args.model, tags: args.tags, countries: args.countries, languages: args.languages };
 }

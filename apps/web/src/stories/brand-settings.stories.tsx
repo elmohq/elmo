@@ -125,10 +125,10 @@ export const PasteSkipsCoveredDomains: Story = {
 };
 
 /**
- * Moving the default market says how many prompts move with it before anything
- * is saved: the two that follow the default, not the one with a market of its own.
+ * Moving the default country says how many prompts move with it before anything
+ * is saved: the two that follow the default, not the one with a country of its own.
  */
-export const ChangeDefaultMarket: Story = {
+export const ChangeDefaultCountry: Story = {
 	render: () => {
 		setMockBrand(MOCK_BRAND);
 		return <BrandSettingsPage />;
@@ -136,10 +136,10 @@ export const ChangeDefaultMarket: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(canvasElement.ownerDocument.body);
-		await userEvent.click(await canvas.findByRole("button", { name: "Market: United States · English" }));
-		await userEvent.click(await page.findByRole("option", { name: /France · French/ }));
+		await userEvent.click(await canvas.findByRole("button", { name: "Country: United States" }));
+		await userEvent.click(await page.findByRole("option", { name: /^France/ }));
 
 		await expect(await canvas.findByText(/Saving moves all 2 prompts that follow the default/)).toBeVisible();
-		await expect(canvas.getByRole("button", { name: "Market: France · French" })).toBeVisible();
+		await expect(canvas.getByRole("button", { name: "Country: France" })).toBeVisible();
 	},
 };

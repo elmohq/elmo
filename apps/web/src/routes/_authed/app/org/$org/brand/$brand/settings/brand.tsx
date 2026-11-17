@@ -1,7 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type Market, sameMarket } from "@workspace/config/markets";
+import type { Market } from "@workspace/config/markets";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
 import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
@@ -10,7 +10,7 @@ import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
-import { MarketPicker } from "@/components/market-picker";
+import { CountryPicker, LanguageSelect } from "@/components/country-picker";
 import { SlugField } from "@/components/slug-field";
 import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
@@ -30,43 +30,67 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 	component: BrandSettingsPage,
 });
 
-function DefaultMarketField({
+function promptCount(count: number): string {
+	return count === 1 ? "the 1 prompt" : `all ${count} prompts`;
+}
+
+function DefaultLocaleFields({
 	market,
 	onChange,
 	support,
 	saved,
-	following,
+	prompts,
 	disabled,
 }: {
 	market: Market;
 	onChange: (market: Market) => void;
 	support: MarketSupport;
 	saved: Market;
-	/** Enabled prompts that follow the default, and so move with it. */
-	following: number;
+	prompts: { enabled: boolean; country: string | null; language: string | null }[];
 	disabled: boolean;
 }) {
+	const enabled = prompts.filter((prompt) => prompt.enabled);
+	const followingCountry = enabled.filter((prompt) => !prompt.country).length;
+	const followingLanguage = enabled.filter((prompt) => !prompt.language).length;
 	return (
-		<div className="space-y-2">
-			<Label>Default Market</Label>
-			<MarketPicker
-				value={market}
-				onChange={(next) => next && onChange(next)}
-				support={support}
-				disabled={disabled}
-				className="max-w-sm"
-			/>
-			<p className="text-xs text-muted-foreground">
-				The country prompts are asked from and the language they are written in, unless a prompt sets its own.
-			</p>
-			{!sameMarket(market, saved) && (
-				<p className="text-xs text-amber-700">
-					Saving moves {following === 1 ? "the 1 prompt" : `all ${following} prompts`} that follow the default. Their
-					text is not translated, their earlier answers stay in their history and count under the new market, and models
-					that can&apos;t answer from the new country stop running them.
+		<>
+			<div className="space-y-2">
+				<Label>Default Country</Label>
+				<CountryPicker
+					country={market.country}
+					onCountryChange={(country) => country && onChange({ ...market, country })}
+					support={support}
+					disabled={disabled}
+					className="max-w-sm"
+				/>
+				<p className="text-xs text-muted-foreground">Where prompts are asked from, unless a prompt sets its own.</p>
+				{market.country !== saved.country && (
+					<p className="text-xs text-amber-700">
+						Saving moves {promptCount(followingCountry)} that follow the default. Their earlier answers stay in their
+						history and count under the new country, and models that can&apos;t answer from it stop running them.
+					</p>
+				)}
+			</div>
+			<div className="space-y-2">
+				<Label htmlFor="default-language">Default Language</Label>
+				<LanguageSelect
+					id="default-language"
+					value={market.language}
+					onChange={(language) => language && onChange({ ...market, language })}
+					disabled={disabled}
+					className="w-full max-w-sm"
+				/>
+				<p className="text-xs text-muted-foreground">
+					The language prompts are written in, unless a prompt sets its own.
 				</p>
-			)}
-		</div>
+				{market.language !== saved.language && (
+					<p className="text-xs text-amber-700">
+						Saving changes the language recorded for {promptCount(followingLanguage)} that follow the default. Their
+						text is not translated.
+					</p>
+				)}
+			</div>
+		</>
 	);
 }
 
@@ -225,17 +249,6 @@ function BrandSettingsPage() {
 						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
 					</div>
 
-					{market && marketSupport && (
-						<DefaultMarketField
-							market={market}
-							onChange={setMarket}
-							support={marketSupport}
-							saved={{ country: brand.country, language: brand.language }}
-							following={brand.prompts.filter((prompt) => prompt.enabled && !prompt.country && !prompt.language).length}
-							disabled={isSubmitting}
-						/>
-					)}
-
 					<div className="space-y-2">
 						<Label className="flex items-center gap-1.5">
 							Additional Domains
@@ -279,6 +292,17 @@ function BrandSettingsPage() {
 							maxItems={10}
 						/>
 					</div>
+
+					{market && marketSupport && (
+						<DefaultLocaleFields
+							market={market}
+							onChange={setMarket}
+							support={marketSupport}
+							saved={{ country: brand.country, language: brand.language }}
+							prompts={brand.prompts}
+							disabled={isSubmitting}
+						/>
+					)}
 				</div>
 
 				{error && (

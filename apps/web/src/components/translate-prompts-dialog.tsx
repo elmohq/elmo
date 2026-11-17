@@ -27,7 +27,7 @@ import {
 } from "@workspace/ui/components/dialog";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { useMemo, useState } from "react";
-import { coverageNote, describeCost } from "@/components/market-picker";
+import { coverageNote, describeCost } from "@/components/country-picker";
 import { type MarketSupport, promptCostIn } from "@/lib/market-support";
 
 export interface TranslationSource {
@@ -49,7 +49,7 @@ interface TranslatePromptsDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	sources: TranslationSource[];
-	/** Every row in the editor, so a market a question is already asked in isn't offered twice. */
+	/** Every row in the editor, so a country and language a question is already asked in isn't offered twice. */
 	existing: readonly TranslationSource[];
 	support: MarketSupport;
 	room: number;
@@ -86,7 +86,7 @@ function AddedCost({
 }) {
 	const prompts = additions.reduce((total, addition) => total + addition.prompts, 0);
 	if (prompts === 0) {
-		return <p className="text-sm text-muted-foreground">Pick the markets to translate into.</p>;
+		return <p className="text-sm text-muted-foreground">Pick where else to ask this.</p>;
 	}
 	const noun = prompts === 1 ? "prompt" : "prompts";
 	if (support.promptAllowance) {
@@ -135,7 +135,7 @@ async function draftsFor(
 }
 
 /**
- * Turns prompts into drafts in other markets. Nothing is tracked or billed
+ * Turns prompts into drafts for other countries and languages. Nothing is tracked or billed
  * until the editor saves the rows this hands back.
  */
 export function TranslatePromptsDialog({
@@ -202,15 +202,15 @@ export function TranslatePromptsDialog({
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription>
-						{sources.length === 1 ? `“${sources[0].value}”` : "Each prompt"} is added as a variant in every market you
-						pick, translated once where the language differs. You can edit the wording before saving.
+						{sources.length === 1 ? `“${sources[0].value}”` : "Each prompt"} is added as a variant for every country and
+						language you pick, translated once where the language differs. You can edit the wording before saving.
 					</DialogDescription>
 				</DialogHeader>
 
 				<Command className="rounded-md border">
 					<CommandInput placeholder="Search countries and languages..." />
 					<CommandList className="max-h-60">
-						<CommandEmpty>No market matches.</CommandEmpty>
+						<CommandEmpty>No country or language matches.</CommandEmpty>
 						<CommandGroup>
 							{options.map(({ market, id, missing }) => {
 								const tracked = missing.length === 0;
@@ -240,7 +240,7 @@ export function TranslatePromptsDialog({
 				<AddedCost support={support} additions={additions} />
 				{overCapacity && (
 					<p role="alert" className="text-sm text-destructive">
-						That is {adding - room} more than the list has room for. Pick fewer markets or prompts.
+						That is {adding - room} more than the list has room for. Pick fewer countries or prompts.
 					</p>
 				)}
 				{error && (
@@ -255,9 +255,7 @@ export function TranslatePromptsDialog({
 					</Button>
 					<Button onClick={run} disabled={adding === 0 || overCapacity || working} className="cursor-pointer">
 						{working && <Spinner className="size-3.5" />}
-						{adding > 0
-							? `Translate Into ${additions.length} ${additions.length === 1 ? "Market" : "Markets"}`
-							: "Translate"}
+						{adding > 0 ? `Add ${adding} ${adding === 1 ? "Prompt" : "Prompts"}` : "Add Prompts"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

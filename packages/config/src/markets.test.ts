@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
 	COUNTRIES,
+	countryFilterSchema,
 	DEFAULT_MARKET,
 	googleGeotargetId,
 	googleLanguageCode,
 	LANGUAGES,
+	languageFilterSchema,
 	MARKETS,
-	marketFilterSchema,
 	marketId,
-	parseMarketFilter,
-	parseMarketId,
+	parseCountryFilter,
+	parseLanguageFilter,
 	resolveMarket,
 } from "./markets";
 
@@ -34,38 +35,24 @@ describe("market lists", () => {
 	});
 });
 
-describe("market ids", () => {
-	it("round-trips a market through its locale-style id", () => {
-		for (const market of MARKETS) expect(parseMarketId(marketId(market))).toEqual(market);
-		expect(marketId({ country: "CH", language: "fr" })).toBe("fr-CH");
+describe("country and language filters", () => {
+	it("reads codes from a link in either case, dropping unknown and repeated ones", () => {
+		expect(parseCountryFilter("de,US,zz,DE")).toEqual(["DE", "US"]);
+		expect(parseLanguageFilter("EN,xx,de")).toEqual(["en", "de"]);
+		expect(parseCountryFilter(undefined)).toEqual([]);
 	});
 
-	it("accepts either case and rejects anything outside the lists", () => {
-		expect(parseMarketId("DE-de")).toEqual({ country: "DE", language: "de" });
-		expect(parseMarketId("xx-US")).toBeNull();
-		expect(parseMarketId("en-ZZ")).toBeNull();
-		expect(parseMarketId("en")).toBeNull();
+	it("accepts a list of known codes from an API caller", () => {
+		expect(countryFilterSchema.safeParse("DE,ch").success).toBe(true);
+		expect(languageFilterSchema.safeParse("de,fr").success).toBe(true);
+		expect(countryFilterSchema.safeParse("").success).toBe(true);
 	});
 
-	it("drops unknown and repeated ids from a filter", () => {
-		expect(parseMarketFilter("en-US,nope,de-DE,en-us")).toEqual([
-			{ country: "US", language: "en" },
-			{ country: "DE", language: "de" },
-		]);
-		expect(parseMarketFilter(undefined)).toEqual([]);
-	});
-});
-
-describe("marketFilterSchema", () => {
-	it("accepts a list of known markets", () => {
-		expect(marketFilterSchema.safeParse("de-DE,fr-CH").success).toBe(true);
-		expect(marketFilterSchema.safeParse("").success).toBe(true);
-	});
-
-	it("names the entry it can't read rather than ignoring it", () => {
-		const result = marketFilterSchema.safeParse("de-DE,de_DE");
-		expect(result.success).toBe(false);
-		expect(result.error?.issues[0]?.message).toContain('"de_DE"');
+	it("names the code it can't read rather than ignoring it", () => {
+		const country = countryFilterSchema.safeParse("DE,Germany");
+		expect(country.success).toBe(false);
+		expect(country.error?.issues[0]?.message).toContain('"Germany"');
+		expect(languageFilterSchema.safeParse("de,xx").success).toBe(false);
 	});
 });
 

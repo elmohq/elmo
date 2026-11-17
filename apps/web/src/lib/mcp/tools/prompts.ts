@@ -2,7 +2,7 @@
  * No delete tool: deleting takes a prompt's runs and citations with it.
  * Disabling is the reversible way to stop a prompt costing runs.
  */
-import { marketFilterSchema } from "@workspace/config/markets";
+import { countryFilterSchema, languageFilterSchema } from "@workspace/config/markets";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { withPromptWriteErrors } from "@/lib/api/prompt-errors";
@@ -23,7 +23,7 @@ export const listPromptsTool = defineTool({
 	name: "list_prompts",
 	title: "List prompts",
 	description:
-		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. Prompts sharing a `groupId` are variants: different wordings of one question, each sampled on its own. `market` is the country and language a prompt is asked in; `country` and `language` are its own settings, null where it follows the brand. This is the one list that can get long, so it pages.",
+		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. Prompts sharing a `groupId` are variants: different wordings of one question, each sampled on its own. `country` and `language` are a prompt's own settings, null where it follows the brand; `effectiveCountry` and `effectiveLanguage` are what it is actually asked from and in. This is the one list that can get long, so it pages.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {
@@ -31,11 +31,12 @@ export const listPromptsTool = defineTool({
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		groupId: z.uuid().optional().describe("Restrict to the variants of one question."),
-		markets: marketFilterSchema
+		countries: countryFilterSchema
 			.optional()
-			.describe(
-				"Comma-separated markets as language-country, e.g. `de-DE,fr-CH`; a prompt asked in any of them matches.",
-			),
+			.describe("Comma-separated ISO country codes, e.g. `DE,CH`; a prompt asked from any of them matches."),
+		languages: languageFilterSchema
+			.optional()
+			.describe("Comma-separated ISO language codes, e.g. `de,fr`; a prompt written in any of them matches."),
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
@@ -50,7 +51,8 @@ export const listPromptsTool = defineTool({
 			enabled: args.enabled,
 			tags: (args.tags ?? "").split(","),
 			groupId: args.groupId,
-			markets: args.markets,
+			countries: args.countries,
+			languages: args.languages,
 			q: args.q,
 			limit,
 			offset: (page - 1) * limit,
@@ -92,7 +94,7 @@ export const updatePromptTool = defineTool({
 	name: "update_prompt",
 	title: "Update a prompt",
 	description:
-		"Change a prompt's text, tags, group, market, or whether it is being sampled. Changing `country` or `language` does not translate the text. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
+		"Change a prompt's text, tags, group, country, language, or whether it is being sampled. Changing `country` or `language` does not translate the text. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
 	scopes: ["write"],
 	readOnly: false,
 	// No `premiumModels`: pairing a prompt with one spends a metered pool, which

@@ -132,7 +132,7 @@ export function PromptsEditor({
 	);
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const markets = useMemo(() => {
+	const locales = useMemo(() => {
 		const translate: TranslateFn = (market, texts) => translatePromptsFn({ data: { brandId, market, texts } });
 		return { support: marketSupport, translate };
 	}, [brandId, marketSupport]);
@@ -222,7 +222,7 @@ export function PromptsEditor({
 				changedKeys={changedKeys}
 				premium={premium}
 				variants
-				markets={markets}
+				locales={locales}
 				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
 				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
 			/>

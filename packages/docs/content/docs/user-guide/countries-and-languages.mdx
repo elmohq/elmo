@@ -1,70 +1,72 @@
 ---
-title: Markets
-description: Track prompts in the countries and languages your customers search in.
+title: Countries and Languages
+description: Track prompts from the countries and in the languages your customers search in.
 updated: 2026-11-17
 ---
 
-AI answers change with where a question is asked from and the language it is asked in. A market is those two things together: a country and a language, such as **Germany · German** or **Switzerland · French**.
+AI answers change with where a question is asked from and the language it is asked in. Elmo tracks the two separately: every prompt has a **country** it is asked from and a **language** it is written in.
 
-## The Brand's Default Market
+## The Brand's Defaults
 
-Every brand has a default market, which starts as **United States · English**. Prompts are asked in it unless they set their own. Change it under **Settings → Brand → Default Market**.
+Every brand has a default country and a default language, which start as **United States** and **English**. Prompts use them unless they set their own. Change them under **Settings → Brand**.
 
-Changing the default moves every prompt that follows it, from the next run on. It does not translate their text. Each answer keeps the country it was asked from, but a prompt's history stays with the prompt, so after the change a market filter shows its earlier answers under the new market.
+Changing the default country moves every prompt that follows it, from the next run on. Each answer keeps the country it was asked from, but a prompt's history stays with the prompt, so after the change a country filter shows its earlier answers under the new country. Changing the default language does not translate any prompt.
 
-## A Prompt's Own Market
+## A Prompt's Own Country and Language
 
-In **Settings → Prompts**, the **Market** column shows where each prompt is asked:
+In **Settings → Prompts**, the **Country** column shows where each prompt is asked from:
 
-- **Default** — the prompt follows the brand's market.
-- A market such as **DE · DE** — the prompt is asked there whatever the brand's default is.
+- **Default** — the prompt follows the brand's country.
+- A country such as **Germany** — the prompt is asked from there whatever the brand's default is.
 
-Pick a market for a prompt to see, before you save, what each model you track does with it and what a prompt there costs.
+Open the menu to pick a country. Before you choose, it shows which of the models you track can't answer from the highlighted country and what a prompt there costs. The **Language** field in the same menu sets the prompt's language on its own, so a prompt can be asked from Germany in English, or from the United States in Spanish.
 
-Setting a prompt's market does not translate it, and the prompt's earlier answers move with it. To ask the same question in another market and compare the two, translate it instead.
+Changing a prompt's country or language does not translate it, and the prompt's earlier answers move with it. To ask the same question somewhere else and compare the two, translate it instead.
 
 ## Variants and Translations
 
-To track one question in several markets, click the translate icon on a prompt and pick the markets. Elmo adds a [variant](/docs/user-guide/settings#prompt-settings) under the original for each market, translated once where the market's language differs from the prompt's and copied as written where it is the same.
+To track one question in several countries, click the translate icon on a prompt and pick where else to ask it. Each choice is a country with a language, such as **Switzerland · French**. Elmo adds a [variant](/docs/user-guide/settings#prompt-settings) under the original for each one, translated once where the language differs from the prompt's and copied as written where it is the same.
 
-A translation is a draft until you save. Edit the wording first if it isn't how your customers would ask. Translations are stored, so translating the same text for the same market again costs nothing and returns the same wording.
+A translation is a draft until you save. Edit the wording first if it isn't how your customers would ask. Translations are stored, so translating the same text for the same country and language again costs nothing and returns the same wording.
 
 To translate many prompts at once, select them and click **Translate**.
 
 ## What It Costs
 
-Every prompt is tracked on its own: it runs on each model you track, on your schedule. A variant or a translation is another prompt, so asking one question in three markets costs three prompts.
+Every prompt is tracked on its own: it runs on each model you track, on your schedule. A variant or a translation is another prompt, so asking one question from three countries costs three prompts.
 
 - **Self-hosted** — you pay your providers for each run. The prompts page shows what one prompt adds in provider calls a day and an estimated monthly cost, and the translate dialog shows the total for what you are about to add. The estimates use each provider's published prices, not your invoices.
 - **Elmo Cloud** — each prompt counts toward your plan's prompt limit. The prompts page shows how many you have used.
 
-A model that can't answer from a prompt's country doesn't run that prompt, so a market fewer models cover costs less and tells you less.
+A model that can't answer from a prompt's country doesn't run that prompt, so a country fewer models cover costs less and tells you less.
 
-## How Models Handle a Market
+## How Models Handle a Country
 
-The country is sent to the provider, which answers as if the question came from there. The language is carried by the prompt's wording; Google's surfaces also take it as their interface language. For each model you track, one of three things happens:
+The country is sent to the provider, which answers as if the question came from there. For each model you track, one of three things happens:
 
 - **Asked from the country** — the provider is told the country, and the answer is recorded with it.
-- **No location** — a model called directly without web search has no location, so it answers the same question everywhere. The language still comes through in the prompt.
-- **Skipped** — the provider can't be told the country. Rather than record another country's answer as this one's, the model doesn't run the prompt. Outside the United States this applies to providers with no country setting, since the United States is where they answer from by default.
+- **No location** — a model called directly without web search has no location, so it answers the same question everywhere.
+- **Skipped** — the provider can't be told the country. Rather than record another country's answer as this one's, the model doesn't run the prompt. Outside the United States this applies to providers with no country setting, since the United States is where they are assumed to answer from by default.
 
 Elmo localizes by country because it is the one location every provider that localizes accepts. Cities and regions are supported by only a few.
 
-The prompt page shows the market a prompt is asked in. Click it to see whether the prompt sets it or follows the brand, and which models can't answer from there.
+The language reaches every model through the prompt's wording. Google's surfaces also take it as their interface language.
 
-## Filtering by Market
+The prompt page shows the country a prompt is asked from. Click it to see whether the prompt sets it or follows the brand, its language, and which models can't answer from there.
 
-Once a brand's prompts are asked in more than one market, a **Markets** filter appears next to **Tags** on the overview, Visibility, Sentiment, Citations, Share of Voice, Query Fan-Out, and Responses pages. Pick one or more markets to see only the prompts asked there.
+## Filtering by Country and Language
+
+Once a brand's prompts are asked from more than one country, a **Countries** filter appears next to **Tags** on the overview, Visibility, Sentiment, Citations, Share of Voice, Query Fan-Out, and Responses pages. A **Languages** filter appears the same way once they are written in more than one language. The two work independently: pick English to see every English prompt whatever its country, or combine it with a country to narrow further.
 
 ## API
 
-Prompts carry `country` and `language`, which are null where the prompt follows its brand, and `market`, which is where the prompt is actually asked. Brands carry the default `country` and `language`. The analytics endpoints and the prompt list take `markets`, a comma-separated list written as language-country, such as `de-DE,fr-CH`; a market that isn't in the supported list is a `400`. Runs report the `country` and `language` the provider was sent.
+Prompts carry `country` and `language`, which are null where the prompt follows its brand, and `effectiveCountry` and `effectiveLanguage`, which are what the prompt is actually asked from and in. Brands carry the default `country` and `language`. The analytics endpoints and the prompt list take `countries` and `languages`, each a comma-separated list of codes such as `DE,CH` and `de,fr`; a code that isn't in the supported lists is a `400`. Runs report the `country` and `language` the provider was sent.
 
-Requests that leave these fields out behave as they did before markets: prompts follow the brand, and a brand's market stays as it is.
+Requests that leave these fields out behave as they did before: prompts follow the brand, and a brand's country and language stay as they are.
 
-## Supported Markets
+## Supported Countries and Languages
 
-The tables below list what each provider is told about a market, and the countries and languages you can choose. A country is offered in its own languages and in English; the API accepts any listed country with any listed language.
+The tables below list what each provider is told, and the countries and languages you can choose. The translate dialog offers each country in its own languages and in English; the Country and Language fields, and the API, accept any listed country with any listed language.
 
 In the first table, **Country** means the provider is asked from the prompt's country, **+ language** means it is also sent the language, and **United States only** means it can't be told a country and so only runs prompts asked from the United States.
 

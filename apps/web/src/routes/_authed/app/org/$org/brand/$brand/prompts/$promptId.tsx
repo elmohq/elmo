@@ -20,7 +20,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { PromptMarketInfo } from "@/components/prompt-market-info";
+import { PromptCountryInfo } from "@/components/prompt-country-info";
 import { type PromptVariant, PromptVariantsMenu } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
@@ -51,7 +51,7 @@ type PromptMetadata = {
 	systemTags: string[];
 	nextRunAt?: string | null;
 	market: Market;
-	marketOverridden: boolean;
+	countryOverridden: boolean;
 	variants: PromptVariant[];
 };
 
@@ -136,9 +136,9 @@ function PromptHeader({
 				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
 					{promptMeta && <PromptVariantsMenu promptId={promptMeta.id} variants={promptMeta.variants} tab={tab} />}
 					{promptMeta && (
-						<PromptMarketInfo
+						<PromptCountryInfo
 							market={promptMeta.market}
-							overridden={promptMeta.marketOverridden}
+							overridden={promptMeta.countryOverridden}
 							support={marketSupport}
 						/>
 					)}

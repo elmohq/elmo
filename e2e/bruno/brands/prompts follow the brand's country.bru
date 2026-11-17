@@ -1,5 +1,5 @@
 meta {
-  name: prompts follow the brand's market
+  name: prompts follow the brand's country
   type: http
   seq: 37
 }
@@ -13,5 +13,5 @@ get {
 assert {
   res.status: eq 200
   res.body.country: isNull
-  res.body.market.country: eq GB
+  res.body.effectiveCountry: eq GB
 }

@@ -1,44 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { marketFilter, marketsInUse } from "../prompt-scope";
+import { localeFilter, localesInUse } from "../prompt-scope";
 
 const brand = { country: "DE", language: "de" };
 const prompt = (country: string | null, language: string | null, enabled = true) => ({ country, language, enabled });
 
-describe("marketsInUse", () => {
-	it("lists the brand's own market first, then the others by how many prompts they hold", () => {
-		const markets = marketsInUse(brand, [
+describe("localesInUse", () => {
+	it("lists the brand's own country and language first, then the others by how many prompts use them", () => {
+		const { countries, languages } = localesInUse(brand, [
 			prompt("FR", "fr"),
 			prompt("FR", "fr"),
 			prompt("US", "en"),
 			prompt(null, null),
 		]);
-		expect(markets).toEqual([
-			{ country: "DE", language: "de", prompts: 1 },
-			{ country: "FR", language: "fr", prompts: 2 },
-			{ country: "US", language: "en", prompts: 1 },
+		expect(countries).toEqual([
+			{ code: "DE", prompts: 1 },
+			{ code: "FR", prompts: 2 },
+			{ code: "US", prompts: 1 },
 		]);
+		expect(languages.map((entry) => entry.code)).toEqual(["de", "fr", "en"]);
 	});
 
-	it("leaves out markets only disabled prompts are in", () => {
-		expect(marketsInUse(brand, [prompt(null, null), prompt("FR", "fr", false)])).toEqual([
-			{ country: "DE", language: "de", prompts: 1 },
-		]);
+	it("counts a country and a language separately, so one language can span countries", () => {
+		const { countries, languages } = localesInUse(brand, [prompt("AT", null), prompt("CH", null), prompt(null, null)]);
+		expect(countries.map((entry) => entry.code)).toEqual(["DE", "AT", "CH"]);
+		expect(languages).toEqual([{ code: "de", prompts: 3 }]);
 	});
 
-	it("resolves a prompt that overrides only its country against the brand's language", () => {
-		expect(marketsInUse(brand, [prompt("AT", null)])).toEqual([{ country: "AT", language: "de", prompts: 1 }]);
+	it("leaves out what only disabled prompts use", () => {
+		expect(localesInUse(brand, [prompt(null, null), prompt("FR", "fr", false)]).countries).toEqual([
+			{ code: "DE", prompts: 1 },
+		]);
 	});
 });
 
-describe("marketFilter", () => {
-	it("matches every prompt when the filter names no known market", () => {
-		expect(marketFilter(undefined, brand)(prompt("FR", "fr"))).toBe(true);
-		expect(marketFilter("nonsense", brand)(prompt("FR", "fr"))).toBe(true);
+describe("localeFilter", () => {
+	it("matches every prompt when no filter names a known code", () => {
+		expect(localeFilter({}, brand)(prompt("FR", "fr"))).toBe(true);
+		expect(localeFilter({ countries: "nonsense" }, brand)(prompt("FR", "fr"))).toBe(true);
 	});
 
-	it("matches a prompt by the market it resolves to", () => {
-		const german = marketFilter("de-DE", brand);
-		expect(german(prompt(null, null))).toBe(true);
-		expect(german(prompt("FR", "fr"))).toBe(false);
+	it("matches a prompt by the country it resolves to, whatever its language", () => {
+		const germany = localeFilter({ countries: "DE" }, brand);
+		expect(germany(prompt(null, null))).toBe(true);
+		expect(germany(prompt(null, "en"))).toBe(true);
+		expect(germany(prompt("FR", "fr"))).toBe(false);
+	});
+
+	it("matches a language across countries", () => {
+		const german = localeFilter({ languages: "de" }, brand);
+		expect(german(prompt("AT", null))).toBe(true);
+		expect(german(prompt("CH", "fr"))).toBe(false);
+	});
+
+	it("requires both when a country and a language are filtered", () => {
+		const swissFrench = localeFilter({ countries: "CH", languages: "fr" }, brand);
+		expect(swissFrench(prompt("CH", "fr"))).toBe(true);
+		expect(swissFrench(prompt("CH", "de"))).toBe(false);
+		expect(swissFrench(prompt("FR", "fr"))).toBe(false);
 	});
 });

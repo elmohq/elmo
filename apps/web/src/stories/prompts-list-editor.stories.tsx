@@ -6,7 +6,7 @@ import {
 	type EditablePrompt,
 	newPromptEntry,
 	type PremiumAllowance,
-	type PromptMarkets,
+	type PromptLocales,
 	PromptsListEditor,
 } from "@/components/prompts-list-editor";
 import type { MarketSupport } from "@/lib/market-support";
@@ -25,13 +25,13 @@ function Harness({
 	showSystemTags = true,
 	premium,
 	variants,
-	markets,
+	locales,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
 	variants?: boolean;
-	markets?: PromptMarkets;
+	locales?: PromptLocales;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
@@ -43,7 +43,7 @@ function Harness({
 				showSystemTags={showSystemTags}
 				premium={premium}
 				variants={variants}
-				markets={markets}
+				locales={locales}
 			/>
 		</div>
 	);
@@ -172,7 +172,7 @@ export const Variants: StoryObj = {
 	},
 };
 
-const marketsFor = (support: MarketSupport): PromptMarkets => ({
+const localesFor = (support: MarketSupport): PromptLocales => ({
 	support,
 	translate: (market, texts) => translatePromptsFn({ data: { market, texts } }),
 });
@@ -191,27 +191,25 @@ const MARKET_PROMPTS = [
 
 /**
  * Self-hosted: the note above the list prices one prompt, a prompt with its own
- * market says so in the Market column, and a market some models can't answer
+ * country says so in the Country column, and a country some models can't answer
  * from carries a warning.
  */
-export const Markets: StoryObj = {
-	render: () => <Harness variants markets={marketsFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+export const Countries: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/roughly \$0\.90 a month at estimated provider prices/)).toBeVisible();
-		await expect(
-			canvas.getAllByRole("button", { name: /^Market: brand default, United States · English$/ }),
-		).not.toHaveLength(0);
-		await expect(canvas.getAllByRole("button", { name: "Market: Germany · German" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: "Country: brand default, United States" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: "Country: Germany" })).not.toHaveLength(0);
 	},
 };
 
 /**
- * Translating into two markets adds two drafts under the prompt, each in its
- * market, after the dialog has said what they add to the bill.
+ * Translating for two countries adds two drafts under the prompt, each set to
+ * its country and language, after the dialog has said what they add to the bill.
  */
-export const TranslateIntoMarkets: StoryObj = {
-	render: () => <Harness variants markets={marketsFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+export const TranslateForCountries: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(document.body);
@@ -228,39 +226,45 @@ export const TranslateIntoMarkets: StoryObj = {
 		await expect(dialog.getByText(/Adds/)).toHaveTextContent(
 			"Adds 2 prompts, each tracked on its own: 6 provider calls a day, roughly $1.50 a month at estimated provider prices.",
 		);
-		await userEvent.click(dialog.getByRole("button", { name: "Translate Into 2 Markets" }));
+		await userEvent.click(dialog.getByRole("button", { name: "Add 2 Prompts" }));
 
 		await expect(await canvas.findAllByDisplayValue("best crm for small business (fr-FR)")).not.toHaveLength(0);
 		await expect(canvas.getAllByDisplayValue("best crm for small business (ja-JP)")).not.toHaveLength(0);
-		await expect(canvas.getAllByRole("button", { name: "Market: France · French" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: "Country: France" })).not.toHaveLength(0);
 		await expect(await canvas.findByText(/including 3 variants\./)).toBeVisible();
 	},
 };
 
 /**
- * Before a market is chosen, the picker says what each tracked model does with
- * it and what a prompt there costs, including which models would skip it.
+ * Before a country is chosen, the picker says which tracked models can't answer
+ * from it and what a prompt there costs. A prompt's language is a second field
+ * in the same menu, changed without touching its country.
  */
-export const MarketPickerExplainsAMarket: StoryObj = {
-	render: () => <Harness variants markets={marketsFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+export const CountryPickerExplainsACountry: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(document.body);
-		await userEvent.click(canvas.getAllByRole("button", { name: "Market: Germany · German" }).at(-1)!);
+		await userEvent.click(canvas.getAllByRole("button", { name: "Country: Germany" }).at(-1)!);
 
 		await expect(await page.findByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 		await expect(
 			page.getByText(/One prompt here runs on 3 models: 3 provider calls a day, roughly \$0\.75 a month/),
 		).toBeVisible();
+
+		await userEvent.click(page.getByRole("combobox", { name: "Language" }));
+		await userEvent.click(await page.findByRole("option", { name: "French" }));
+		await userEvent.keyboard("{Escape}");
+		await expect(canvas.getAllByRole("button", { name: "Country: Germany" })).not.toHaveLength(0);
 	},
 };
 
 /**
- * Translating a selection adds one prompt per question and market: a prompt
+ * Translating a selection adds one prompt per question and country: a prompt
  * selected along with its own variant is translated once, not once from each.
  */
 export const TranslateSelectionOncePerQuestion: StoryObj = {
-	render: () => <Harness variants markets={marketsFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(document.body);
@@ -274,8 +278,8 @@ export const TranslateSelectionOncePerQuestion: StoryObj = {
 };
 
 /** Cloud: no prices, so the note and the dialog count prompts against the plan instead. */
-export const MarketsOnAPlan: StoryObj = {
-	render: () => <Harness variants markets={marketsFor(planMarketSupport)} initial={MARKET_PROMPTS} />,
+export const CountriesOnAPlan: StoryObj = {
+	render: () => <Harness variants locales={localesFor(planMarketSupport)} initial={MARKET_PROMPTS} />,
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/uses 1 of your plan's 100 prompts \(42 in use\)/)).toBeVisible();

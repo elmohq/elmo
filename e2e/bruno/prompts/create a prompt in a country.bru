@@ -1,5 +1,5 @@
 meta {
-  name: create a prompt in a market
+  name: create a prompt in a country
   type: http
   seq: 39
 }
@@ -23,10 +23,10 @@ assert {
   res.status: eq 201
   res.body.country: eq DE
   res.body.language: eq de
-  res.body.market.country: eq DE
-  res.body.market.language: eq de
+  res.body.effectiveCountry: eq DE
+  res.body.effectiveLanguage: eq de
 }
 
 script:post-response {
-  bru.setVar("marketPromptId", res.getBody().id);
+  bru.setVar("localePromptId", res.getBody().id);
 }

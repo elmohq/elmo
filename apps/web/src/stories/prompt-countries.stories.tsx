@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "storybook/test";
-import { PromptMarketInfo } from "@/components/prompt-market-info";
+import { PromptCountryInfo } from "@/components/prompt-country-info";
 import { PromptVariantsMenu } from "@/components/prompt-variants";
 import { selfHostedMarketSupport } from "./_mocks/market-support";
 
 const meta = {
-	title: "Components/PromptMarkets",
+	title: "Components/PromptCountries",
 } satisfies Meta;
 
 export default meta;
@@ -22,26 +22,28 @@ function Controls() {
 	return (
 		<div className="flex items-center justify-end gap-1.5 p-8">
 			<PromptVariantsMenu promptId="2" variants={VARIANTS} />
-			<PromptMarketInfo market={germany} overridden support={selfHostedMarketSupport} />
+			<PromptCountryInfo market={germany} overridden support={selfHostedMarketSupport} />
 		</div>
 	);
 }
 
 /**
- * The prompt page's market control names the market like a filter would, and
- * opens to whose setting it is and which tracked models can't answer from there.
+ * The prompt page's country control names the country like a filter would, and
+ * opens to whose setting it is, the prompt's language, and which tracked models
+ * can't answer from there.
  */
-export const Market: StoryObj = {
+export const Country: StoryObj = {
 	render: () => <Controls />,
 	play: async ({ canvasElement }) => {
-		await userEvent.click(within(canvasElement).getByRole("button", { name: "Market: Germany · German" }));
+		await userEvent.click(within(canvasElement).getByRole("button", { name: "Country: Germany" }));
 		const page = within(document.body);
 		await expect(await page.findByText("Set on This Prompt")).toBeVisible();
+		await expect(page.getByText("Written in German.")).toBeVisible();
 		await expect(page.getByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 	},
 };
 
-/** The variants menu lists every wording of the question with the market each is asked in. */
+/** The variants menu lists every wording of the question with the country and language each is asked in. */
 export const Variants: StoryObj = {
 	render: () => <Controls />,
 	play: async ({ canvasElement }) => {

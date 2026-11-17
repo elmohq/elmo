@@ -8,7 +8,7 @@ export interface SubmittedPrompt {
 	premiumModels?: string[];
 	/** Omitted, an insert starts a group of its own and an update stays where it is. */
 	groupId?: string;
-	/** Null follows the brand's market; omitted, an update keeps what it has. */
+	/** Null follows the brand; omitted, an update keeps what it has. */
 	country?: string | null;
 	language?: string | null;
 }

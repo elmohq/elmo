@@ -14,7 +14,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { and, eq } from "drizzle-orm";
-import { marketFilter, type PromptScope } from "@/lib/prompt-scope";
+import { localeFilter, type PromptScope } from "@/lib/prompt-scope";
 
 export interface ResolvedPrompt {
 	id: string;
@@ -26,7 +26,7 @@ export interface ResolvedPrompt {
 /**
  * Resolve the in-scope prompts for a brand from filter criteria, entirely
  * server-side. Mirrors the filtering the visibility page applies to build its
- * prompt list — the tag and market filters from `getPromptsSummaryFn` plus the
+ * prompt list — the tag, country and language filters from `getPromptsSummaryFn` plus the
  * search box — so the chart and visibility aggregates cover the same prompts the
  * list shows.
  *
@@ -58,14 +58,14 @@ export async function resolveFilteredPrompts(
 	const tagFilter = parseTagFilter(opts.tags);
 	const search = opts.search?.toLowerCase();
 	const [first] = allPrompts;
-	const inMarket = first
-		? marketFilter(opts.markets, { country: first.brandCountry, language: first.brandLanguage })
+	const inLocale = first
+		? localeFilter(opts, { country: first.brandCountry, language: first.brandLanguage })
 		: () => true;
 
 	return allPrompts
 		.filter(
 			(p) =>
-				inMarket(p) &&
+				inLocale(p) &&
 				matchesTagFilter(effectiveTags(p), tagFilter) &&
 				(!search || p.value.toLowerCase().includes(search)),
 		)

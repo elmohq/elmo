@@ -3,7 +3,7 @@
  * each schema first reads the text the way the routes always have, and the
  * check after that is what the value is held to.
  */
-import { marketFilterSchema } from "@workspace/config/markets";
+import { countryFilterSchema, languageFilterSchema } from "@workspace/config/markets";
 import { z } from "zod";
 
 const INSTANT_EXAMPLE = "an ISO 8601 timestamp with an offset, e.g. 2026-01-01T00:00:00Z";
@@ -48,7 +48,8 @@ export const analyticsQuery = z.object({
 	end: instant,
 	model: z.string().optional(),
 	tags: z.string().optional(),
-	markets: marketFilterSchema.optional(),
+	countries: countryFilterSchema.optional(),
+	languages: languageFilterSchema.optional(),
 });
 
 /** What every list reads to page. */

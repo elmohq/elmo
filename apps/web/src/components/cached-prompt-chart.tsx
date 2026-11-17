@@ -52,8 +52,8 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 export interface PromptCardVariant {
 	id: string;
 	value: string;
-	/** Named when the variant is asked in a different market from the card's prompt. */
-	market?: string | null;
+	/** Where the variant is asked, named when it differs from the card's prompt. */
+	locale?: string | null;
 }
 
 const NO_VARIANTS: PromptCardVariant[] = [];
@@ -75,7 +75,7 @@ function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
 					{variants.map((variant) => (
 						<li key={variant.id}>
 							{variant.value}
-							{variant.market && <span className="opacity-70"> · {variant.market}</span>}
+							{variant.locale && <span className="opacity-70"> · {variant.locale}</span>}
 						</li>
 					))}
 				</ul>

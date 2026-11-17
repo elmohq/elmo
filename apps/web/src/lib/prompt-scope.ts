@@ -3,58 +3,75 @@
  * functions spread `promptScopeFields` into their validators and hand
  * `promptScopeOf` on, so a filter added here reaches every read at once.
  */
-import { type Market, marketId, parseMarketFilter, resolveMarket } from "@workspace/config/markets";
+import { parseCountryFilter, parseLanguageFilter, resolveMarket } from "@workspace/config/markets";
 import { z } from "zod";
 
 export const promptScopeFields = {
 	/** Comma-joined tags; a prompt carrying any of them matches. */
 	tags: z.string().optional(),
-	/** Comma-joined market ids such as `de-DE`; a prompt asked in any of them matches. */
-	markets: z.string().optional(),
+	/** Comma-joined country codes; a prompt asked from any of them matches. */
+	countries: z.string().optional(),
+	/** Comma-joined language codes; a prompt written in any of them matches. */
+	languages: z.string().optional(),
 };
 
 export interface PromptScope {
 	tags?: string;
-	markets?: string;
+	countries?: string;
+	languages?: string;
 }
 
 export function promptScopeOf(data: PromptScope): PromptScope {
-	return { tags: data.tags, markets: data.markets };
+	return { tags: data.tags, countries: data.countries, languages: data.languages };
 }
 
-/** Answers whether a prompt is asked in one of the filtered markets; with no filter, every prompt is. */
-export function marketFilter(
-	markets: string | undefined,
+/**
+ * Answers whether a prompt is asked from one of the filtered countries and in
+ * one of the filtered languages. Either filter left empty matches every prompt.
+ */
+export function localeFilter(
+	scope: Pick<PromptScope, "countries" | "languages">,
 	brand: { country: string; language: string },
 ): (prompt: { country: string | null; language: string | null }) => boolean {
-	const wanted = new Set(parseMarketFilter(markets).map(marketId));
-	if (wanted.size === 0) return () => true;
-	return (prompt) => wanted.has(marketId(resolveMarket(prompt, brand)));
+	const countries = new Set(parseCountryFilter(scope.countries));
+	const languages = new Set(parseLanguageFilter(scope.languages));
+	if (countries.size === 0 && languages.size === 0) return () => true;
+	return (prompt) => {
+		const market = resolveMarket(prompt, brand);
+		return (
+			(countries.size === 0 || countries.has(market.country)) &&
+			(languages.size === 0 || languages.has(market.language))
+		);
+	};
 }
 
-export interface MarketUse extends Market {
-	/** Enabled prompts asked in this market. */
+export interface LocaleUse {
+	code: string;
+	/** Enabled prompts asked from this country, or written in this language. */
 	prompts: number;
 }
 
-/** The markets a brand's enabled prompts are asked in, the brand's own first and then the busiest. */
-export function marketsInUse(
+function byUse(counts: Map<string, number>, own: string): LocaleUse[] {
+	return [...counts]
+		.map(([code, prompts]) => ({ code, prompts }))
+		.sort(
+			(a, b) =>
+				Number(b.code === own) - Number(a.code === own) || b.prompts - a.prompts || a.code.localeCompare(b.code),
+		);
+}
+
+/** The countries and languages a brand's enabled prompts use, the brand's own first and then the busiest. */
+export function localesInUse(
 	brand: { country: string; language: string },
 	prompts: readonly { enabled: boolean; country: string | null; language: string | null }[],
-): MarketUse[] {
-	const counts = new Map<string, MarketUse>();
+): { countries: LocaleUse[]; languages: LocaleUse[] } {
+	const countries = new Map<string, number>();
+	const languages = new Map<string, number>();
 	for (const prompt of prompts) {
 		if (!prompt.enabled) continue;
 		const market = resolveMarket(prompt, brand);
-		const entry = counts.get(marketId(market)) ?? { ...market, prompts: 0 };
-		entry.prompts += 1;
-		counts.set(marketId(market), entry);
+		countries.set(market.country, (countries.get(market.country) ?? 0) + 1);
+		languages.set(market.language, (languages.get(market.language) ?? 0) + 1);
 	}
-	const own = marketId(brand);
-	return [...counts.values()].sort(
-		(a, b) =>
-			Number(marketId(b) === own) - Number(marketId(a) === own) ||
-			b.prompts - a.prompts ||
-			marketId(a).localeCompare(marketId(b)),
-	);
+	return { countries: byUse(countries, brand.country), languages: byUse(languages, brand.language) };
 }

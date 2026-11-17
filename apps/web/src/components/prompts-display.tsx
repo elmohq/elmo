@@ -53,7 +53,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { data: brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
-	const { model, lookback, tags, markets, search } = filters;
+	const { model, lookback, tags, countries, languages, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
 	// rides outside `useListFilters` / `isFiltered`.
 	const order = useSearch({
@@ -76,7 +76,8 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		lookback,
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
-		markets,
+		countries,
+		languages,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -118,7 +119,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 			totalCount={promptsSummary?.prompts?.length}
 			filteredCount={sortedPrompts.length}
 			noMatchesTitle="No prompts match your filters."
-			noMatchesDescription="Try adjusting your search, tag, or market filters."
+			noMatchesDescription="Try adjusting your search, tag, country, or language filters."
 			emptyState={
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
@@ -143,7 +144,8 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				modelParam={modelParam}
 				searchQuery={search}
 				selectedTags={tags}
-				selectedMarkets={markets}
+				selectedCountries={countries}
+				selectedLanguages={languages}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -162,7 +164,8 @@ function ChartSection({
 	modelParam,
 	searchQuery,
 	selectedTags,
-	selectedMarkets,
+	selectedCountries,
+	selectedLanguages,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -172,7 +175,8 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
-	selectedMarkets: string[];
+	selectedCountries: string[];
+	selectedLanguages: string[];
 	sortedPrompts: {
 		id: string;
 		value: string;
@@ -185,7 +189,8 @@ function ChartSection({
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
-		markets: selectedMarkets,
+		countries: selectedCountries,
+		languages: selectedLanguages,
 		search: searchQuery || undefined,
 	});
 

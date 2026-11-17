@@ -41,7 +41,7 @@ import {
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
-import { type MarketUse, marketsInUse } from "@/lib/prompt-scope";
+import { type LocaleUse, localesInUse } from "@/lib/prompt-scope";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
@@ -128,7 +128,11 @@ async function getBrandWithPromptsFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
 ): Promise<
-	| (BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState; markets: MarketUse[] })
+	| (BrandWithPrompts & {
+			trackedTargets: TrackedTarget[];
+			trackingState: BrandTrackingState;
+			locales: { countries: LocaleUse[]; languages: LocaleUse[] };
+	  })
 	| undefined
 > {
 	try {
@@ -148,8 +152,8 @@ async function getBrandWithPromptsFromDb(
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
-			/** The markets its enabled prompts are asked in; more than one is what brings up the market filter. */
-			markets: marketsInUse(brand, brandPrompts),
+			/** What its enabled prompts use; more than one country or language is what brings up that filter. */
+			locales: localesInUse(brand, brandPrompts),
 			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {

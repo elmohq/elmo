@@ -62,18 +62,13 @@
 						"type": ["string", "null"],
 						"description": "The language this prompt sets for itself. Null follows the brand's language."
 					},
-					"market": {
-						"type": "object",
-						"description": "Where the prompt is asked from and in what language: its own `country` and `language`, each falling back to the brand's. Read-only.",
-						"properties": {
-							"country": {
-								"type": "string"
-							},
-							"language": {
-								"type": "string"
-							}
-						},
-						"required": ["country", "language"]
+					"effectiveCountry": {
+						"type": "string",
+						"description": "The country the prompt is asked from: its own `country`, or the brand's where it sets none. Read-only."
+					},
+					"effectiveLanguage": {
+						"type": "string",
+						"description": "The language the prompt is written in: its own `language`, or the brand's where it sets none. Read-only."
 					},
 					"enabled": {
 						"type": "boolean",
@@ -118,7 +113,8 @@
 					"groupId",
 					"country",
 					"language",
-					"market",
+					"effectiveCountry",
+					"effectiveLanguage",
 					"enabled",
 					"tags",
 					"systemTags",
@@ -154,11 +150,11 @@
 					},
 					"country": {
 						"type": ["string", "null"],
-						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Omit or send null to follow the brand's market. Models that can't answer from the country skip the prompt."
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Omit or send null to follow the brand. Models that can't answer from the country skip the prompt."
 					},
 					"language": {
 						"type": ["string", "null"],
-						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the markets guide. Omit or send null to follow the brand's market. The text is sent as written; it is not translated."
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Omit or send null to follow the brand. The text is sent as written; it is not translated."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -197,11 +193,11 @@
 					},
 					"country": {
 						"type": ["string", "null"],
-						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Null follows the brand's market."
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Null follows the brand."
 					},
 					"language": {
 						"type": ["string", "null"],
-						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the markets guide. Null follows the brand's market. The text is not translated."
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Null follows the brand. The text is not translated."
 					}
 				}
 			},
@@ -546,11 +542,11 @@
 					},
 					"country": {
 						"type": "string",
-						"description": "The country prompts are asked from unless they set their own. ISO 3166-1 alpha-2, from the supported list in the markets guide. Defaults to `US`."
+						"description": "The country prompts are asked from unless they set their own. ISO 3166-1 alpha-2, from the supported list in the countries and languages guide. Defaults to `US`."
 					},
 					"language": {
 						"type": "string",
-						"description": "The language prompts are written in unless they set their own. ISO 639-1, from the supported list in the markets guide. Defaults to `en`."
+						"description": "The language prompts are written in unless they set their own. ISO 639-1, from the supported list in the countries and languages guide. Defaults to `en`."
 					},
 					"organizationId": {
 						"type": "string",
@@ -589,11 +585,11 @@
 					},
 					"country": {
 						"type": "string",
-						"description": "The brand's default country. ISO 3166-1 alpha-2 country, from the supported list in the markets guide. Changing it moves every prompt that sets none of its own."
+						"description": "The brand's default country. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Changing it moves every prompt that sets none of its own."
 					},
 					"language": {
 						"type": "string",
-						"description": "The brand's default language. ISO 639-1 language, from the supported list in the markets guide. Changing it does not translate any prompt."
+						"description": "The brand's default language. ISO 639-1 language, from the supported list in the countries and languages guide. Changing it does not translate any prompt."
 					}
 				}
 			},
@@ -1584,7 +1580,7 @@
 					},
 					"country": {
 						"type": ["string", "null"],
-						"description": "The country the provider was asked to answer from. Null where it was told none: a model called without web search, a provider answering from its own default location, or a run from before markets."
+						"description": "The country the provider was asked to answer from. Null where it was told none: a model called without web search, a provider answering from its own default location, or a run from before prompts had a country."
 					},
 					"language": {
 						"type": ["string", "null"],
@@ -2380,10 +2376,18 @@
 					"type": "string"
 				}
 			},
-			"MarketsFilter": {
-				"name": "markets",
+			"CountriesFilter": {
+				"name": "countries",
 				"in": "query",
-				"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. Only prompts asked in one of them are counted. A market outside the supported list is a `400`.",
+				"description": "Comma-separated ISO 3166-1 alpha-2 country codes, e.g. `DE,CH`. Only prompts asked from one of them are counted. A code outside the supported list is a `400`.",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"LanguagesFilter": {
+				"name": "languages",
+				"in": "query",
+				"description": "Comma-separated ISO 639-1 language codes, e.g. `de,fr`. Only prompts written in one of them are counted. Combined with `countries`, a prompt must match both. A code outside the supported list is a `400`.",
 				"schema": {
 					"type": "string"
 				}
@@ -2729,7 +2733,10 @@
 						"$ref": "#/components/parameters/TagsFilter"
 					},
 					{
-						"$ref": "#/components/parameters/MarketsFilter"
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2792,7 +2799,10 @@
 						"$ref": "#/components/parameters/TagsFilter"
 					},
 					{
-						"$ref": "#/components/parameters/MarketsFilter"
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -2872,7 +2882,10 @@
 						"$ref": "#/components/parameters/TagsFilter"
 					},
 					{
-						"$ref": "#/components/parameters/MarketsFilter"
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3006,7 +3019,10 @@
 						"$ref": "#/components/parameters/TagsFilter"
 					},
 					{
-						"$ref": "#/components/parameters/MarketsFilter"
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -3069,7 +3085,10 @@
 						"$ref": "#/components/parameters/TagsFilter"
 					},
 					{
-						"$ref": "#/components/parameters/MarketsFilter"
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3692,9 +3711,17 @@
 						}
 					},
 					{
-						"name": "markets",
+						"name": "countries",
 						"in": "query",
-						"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. A prompt matches if it is asked in any of them. A market outside the supported list is a `400`.",
+						"description": "Comma-separated ISO 3166-1 alpha-2 country codes, e.g. `DE,CH`. A prompt matches if it is asked from any of them. A code outside the supported list is a `400`.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "languages",
+						"in": "query",
+						"description": "Comma-separated ISO 639-1 language codes, e.g. `de,fr`. A prompt matches if it is written in any of them. A code outside the supported list is a `400`.",
 						"schema": {
 							"type": "string"
 						}

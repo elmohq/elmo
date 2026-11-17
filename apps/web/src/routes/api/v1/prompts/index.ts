@@ -3,7 +3,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { countrySchema, languageSchema, marketFilterSchema } from "@workspace/config/markets";
+import { countryFilterSchema, countrySchema, languageFilterSchema, languageSchema } from "@workspace/config/markets";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
@@ -21,7 +21,8 @@ const listPromptsQuery = z.object({
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),
 	groupId: z.uuid().optional(),
-	markets: marketFilterSchema.optional(),
+	countries: countryFilterSchema.optional(),
+	languages: languageFilterSchema.optional(),
 	q: z.string().optional(),
 });
 
@@ -48,7 +49,8 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						enabled: query.enabled,
 						tags: (query.tags ?? "").split(","),
 						groupId: query.groupId,
-						markets: query.markets,
+						countries: query.countries,
+						languages: query.languages,
 						q: query.q,
 						limit: query.limit,
 						offset: offsetOf(query),

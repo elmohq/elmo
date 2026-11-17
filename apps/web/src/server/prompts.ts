@@ -30,7 +30,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
-import { marketFilter, promptScopeFields } from "@/lib/prompt-scope";
+import { localeFilter, promptScopeFields } from "@/lib/prompt-scope";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -109,8 +109,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
 			market: resolveMarket(prompt, brand),
-			/** False when the prompt follows the brand's market. */
-			marketOverridden: prompt.country !== null || prompt.language !== null,
+			/** False when the prompt follows the brand's country. */
+			countryOverridden: prompt.country !== null,
 			/** Every wording of this question, this one included, oldest first. */
 			variants: variants.map(({ country, language, ...variant }) => ({
 				...variant,
@@ -130,7 +130,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
-	variants: { id: string; value: string; market: string | null }[],
+	variants: { id: string; value: string; locale: string | null }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -151,7 +151,7 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
-		/** The other tracked wordings of this question, oldest first, each with its market when that differs from this prompt's. */
+		/** The other tracked wordings of this question, oldest first, each with its country and language when they differ from this prompt's. */
 		variants,
 	};
 }
@@ -239,15 +239,14 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 					return {
 						id: other.id,
 						value: other.value,
-						market: sameMarket(elsewhere, market) ? null : marketName(elsewhere),
+						locale: sameMarket(elsewhere, market) ? null : marketName(elsewhere),
 					};
 				});
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
 		});
 
-		const inMarket = marketFilter(data.markets, brand);
-		const inMarketIds = new Set(allPrompts.filter(inMarket).map((p) => p.id));
-		const filteredPrompts = promptSummaries.filter((p) => inMarketIds.has(p.id) && matchesTagFilter(p.tags, tagFilter));
+		const inLocaleIds = new Set(allPrompts.filter(localeFilter(data, brand)).map((p) => p.id));
+		const filteredPrompts = promptSummaries.filter((p) => inLocaleIds.has(p.id) && matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -499,7 +498,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					premiumModels: z.array(z.string()).optional(),
 					/** Client-minted for a new group, so a new prompt and its variants can be saved together. */
 					groupId: z.uuid().optional(),
-					/** Null follows the brand's market. */
+					/** Null follows the brand. */
 					country: countrySchema.nullable().optional(),
 					language: languageSchema.nullable().optional(),
 				}),

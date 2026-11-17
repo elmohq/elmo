@@ -1,6 +1,7 @@
 /**
- * The support tables in the markets guide, generated from the same market lists
- * and provider declarations the worker runs on so the page can't drift from them.
+ * The support tables in the countries and languages guide, generated from the
+ * same lists and provider declarations the worker runs on so the page can't drift
+ * from them.
  */
 import { COUNTRIES, countryName, DEFAULT_MARKET, LANGUAGES, languageName } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";

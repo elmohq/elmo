@@ -49,7 +49,7 @@ import {
 	pageGoogleList,
 } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
-import { marketFilter, promptScopeFields } from "@/lib/prompt-scope";
+import { localeFilter, promptScopeFields } from "@/lib/prompt-scope";
 import {
 	getPerPromptCitationDomains,
 	getPerPromptDailyCitationClasses,
@@ -297,8 +297,8 @@ async function resolveCitationScope(data: CitationFilters) {
 	const owned: OwnedDomains = { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] };
 
 	const tagFilter = parseTagFilter(data.tags);
-	const inMarket = allPrompts.filter(marketFilter(data.markets, brand ?? DEFAULT_MARKET));
-	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(inMarket, tagFilter) : inMarket.map((p) => p.id);
+	const inLocale = allPrompts.filter(localeFilter(data, brand ?? DEFAULT_MARKET));
+	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(inLocale, tagFilter) : inLocale.map((p) => p.id);
 	const scope = {
 		brandId: data.brandId,
 		from: window.fromDateStr,

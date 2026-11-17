@@ -56,7 +56,7 @@ export const createBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
-	/** The market prompts are asked in unless they set their own. Defaults to the United States in English. */
+	/** What prompts are asked from and in unless they set their own. Defaults to the United States in English. */
 	country: countrySchema.optional(),
 	language: languageSchema.optional(),
 	/** Omitted, an admin key provisions a new organization — the only way to
