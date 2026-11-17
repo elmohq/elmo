@@ -24,9 +24,10 @@ export function PromptVariants({
 	if (variants.length === 0) return null;
 	return (
 		<section aria-label="Variants" className="rounded-md border text-sm">
-			<h2 className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-				Variants: other wordings of this question, each tracked on its own
-			</h2>
+			<div className="flex items-baseline gap-2 border-b px-3 py-2 text-xs text-muted-foreground">
+				<h2 className="font-medium text-foreground">Variants</h2>
+				<p>Other wordings of this question, each tracked on its own.</p>
+			</div>
 			<ul className="divide-y">
 				{variants.map((variant) => (
 					<li key={variant.id} className="flex items-center gap-2 px-3 py-2">
