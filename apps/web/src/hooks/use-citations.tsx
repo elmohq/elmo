@@ -13,6 +13,7 @@ import {
 export interface CitationFilters {
 	lookback?: LookbackPeriod;
 	tags?: string[];
+	markets?: string[];
 	model?: string;
 }
 
@@ -57,6 +58,7 @@ export function useGoogleShopping(
 					brandId,
 					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
+					markets: filters?.markets?.join(","),
 					model: filters?.model,
 					...query,
 				},
@@ -73,6 +75,7 @@ function filterParams(brandId: string, filters: CitationFilters | undefined, que
 		brandId,
 		lookback: filters?.lookback ?? "1w",
 		tags: filters?.tags?.join(","),
+		markets: filters?.markets?.join(","),
 		model: filters?.model,
 		search: query.search || undefined,
 		category: query.category === "all" ? undefined : query.category,
@@ -91,6 +94,7 @@ export function useCitationChannels(source: { brandId: string; filters?: Citatio
 					brandId: source!.brandId,
 					lookback: source!.filters?.lookback ?? "1w",
 					tags: source!.filters?.tags?.join(","),
+					markets: source!.filters?.markets?.join(","),
 					model: source!.filters?.model,
 				},
 			}),
@@ -138,6 +142,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback ?? "1w",
 					tags: filters?.tags?.join(","),
+					markets: filters?.markets?.join(","),
 					model: filters?.model,
 				},
 			}),
@@ -166,6 +171,7 @@ export function useCitationFlow(brandId: string | undefined, filters: CitationFi
 					brandId: resolvedBrandId!,
 					lookback: filters.lookback ?? "1w",
 					tags: filters.tags?.join(","),
+					markets: filters.markets?.join(","),
 					model: filters.model,
 					domain: domain!,
 				},

@@ -53,7 +53,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 	const { data: brand } = useBrand(brandId);
 	const brandParams = useBrandParams();
 	const filters = useListFilters();
-	const { model, lookback, tags, search } = filters;
+	const { model, lookback, tags, markets, search } = filters;
 	// `order` is this route's own search key (not a narrowing filter), so it
 	// rides outside `useListFilters` / `isFiltered`.
 	const order = useSearch({
@@ -76,6 +76,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 		lookback,
 		model: modelParam,
 		tags: tags.length > 0 ? tags : undefined,
+		markets,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
@@ -142,6 +143,7 @@ function PromptsContent({ brandId }: { brandId: string | undefined }) {
 				modelParam={modelParam}
 				searchQuery={search}
 				selectedTags={tags}
+				selectedMarkets={markets}
 				sortedPrompts={sortedPrompts}
 				availableIndividualModels={availableIndividualModels}
 			/>
@@ -160,6 +162,7 @@ function ChartSection({
 	modelParam,
 	searchQuery,
 	selectedTags,
+	selectedMarkets,
 	sortedPrompts,
 	availableIndividualModels,
 }: {
@@ -169,6 +172,7 @@ function ChartSection({
 	modelParam: string | undefined;
 	searchQuery: string;
 	selectedTags: string[];
+	selectedMarkets: string[];
 	sortedPrompts: {
 		id: string;
 		value: string;
@@ -182,6 +186,7 @@ function ChartSection({
 		lookback,
 		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		markets: selectedMarkets,
 		search: searchQuery || undefined,
 	});
 

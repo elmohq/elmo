@@ -36,20 +36,27 @@ function CitationsPage() {
 	const citationFilters = {
 		lookback: filters.lookback,
 		tags: filters.tags.length > 0 ? filters.tags : undefined,
+		markets: filters.markets,
 		model: modelParam,
 	};
 	const { data: citationData, isLoading, error: citationsError } = useCitations(brandId, citationFilters);
 	const tagsKey = filters.tags.join(",");
+
 	const competitors = citationData?.competitors;
 	const flowSource = useMemo(
 		() => ({
 			brandId,
-			filters: { lookback: filters.lookback, tags: tagsKey ? tagsKey.split(",") : undefined, model: modelParam },
+			filters: {
+				lookback: filters.lookback,
+				tags: tagsKey ? tagsKey.split(",") : undefined,
+				markets: filters.markets,
+				model: modelParam,
+			},
 			brandDomains: [brand?.website ?? "", ...(brand?.additionalDomains ?? [])].map(extractDomain).filter(Boolean),
 			competitorDomains: (competitors ?? []).flatMap((c) => c.domains.map(extractDomain)),
 			modelOrder: [...new Set((brand?.trackedTargets ?? []).map((target) => target.model))],
 		}),
-		[brandId, filters.lookback, tagsKey, modelParam, brand, competitors],
+		[brandId, filters.lookback, tagsKey, filters.markets, modelParam, brand, competitors],
 	);
 
 	const infoContent = (

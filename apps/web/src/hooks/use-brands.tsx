@@ -3,6 +3,7 @@ import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
 import type { TrackedTarget } from "@/lib/model-filter";
+import type { MarketUse } from "@/lib/prompt-scope";
 import { getBrand, getCompetitors } from "@/server/brands";
 
 type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
@@ -14,6 +15,8 @@ type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	 * runs it both scraped and grounded — see server/brands.ts.
 	 */
 	trackedTargets: TrackedTarget[];
+	/** The markets its enabled prompts are asked in. */
+	markets: MarketUse[];
 };
 
 export const brandKeys = {

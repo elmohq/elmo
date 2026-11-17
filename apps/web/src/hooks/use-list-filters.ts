@@ -1,4 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { marketId, parseMarketFilter } from "@workspace/config/markets";
 import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useCallback, useMemo } from "react";
 import { useBrand } from "@/hooks/use-brands";
@@ -15,6 +16,8 @@ export type BrandFilterSearch = {
 	model?: string;
 	lookback?: string;
 	tags?: string;
+	/** Comma-joined market ids, like `tags`. */
+	markets?: string;
 	q?: string;
 };
 
@@ -32,6 +35,7 @@ export function validateBrandFilterSearch(search: Record<string, unknown>): Bran
 		model: asString(search.model),
 		lookback: asString(search.lookback),
 		tags: Array.isArray(search.tags) ? search.tags.map(String).join(",") : asString(search.tags),
+		markets: asString(search.markets),
 		q: asString(search.q),
 	};
 }
@@ -84,18 +88,21 @@ export function useListFilters() {
 
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
+	// Normalized through the market list, so a stale link can't filter on a market nothing is asked in.
+	const markets = useMemo(() => parseMarketFilter(urlFilters.markets).map(marketId), [urlFilters.markets]);
 	const search = urlFilters.q ?? "";
 
 	return {
 		model,
 		lookback: coerceLookback(urlFilters.lookback, defaultLookback),
 		tags,
+		markets,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
 		 *  zero on its own, so it doesn't count). Gates which empty state a
 		 *  page shows: "no data" vs "no matches for your filters". */
-		isFiltered: Boolean(search) || tags.length > 0 || model !== ALL_MODELS_VALUE,
-		clearFilters: () => setFilters({ q: undefined, tags: undefined, model: undefined }),
+		isFiltered: Boolean(search) || tags.length > 0 || markets.length > 0 || model !== ALL_MODELS_VALUE,
+		clearFilters: () => setFilters({ q: undefined, tags: undefined, markets: undefined, model: undefined }),
 	};
 }
 

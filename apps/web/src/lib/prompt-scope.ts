@@ -1,7 +1,7 @@
 /**
  * The filters that decide which prompts an analytics read covers. Server
- * functions spread `promptScopeFields` into their validators and hooks spread
- * `promptScopeParams`, so a filter added here reaches every page at once.
+ * functions spread `promptScopeFields` into their validators and hand
+ * `promptScopeOf` on, so a filter added here reaches every read at once.
  */
 import { type Market, marketId, parseMarketFilter, resolveMarket } from "@workspace/config/markets";
 import { z } from "zod";
@@ -20,18 +20,6 @@ export interface PromptScope {
 
 export function promptScopeOf(data: PromptScope): PromptScope {
 	return { tags: data.tags, markets: data.markets };
-}
-
-export interface PromptScopeFilters {
-	tags?: string[];
-	markets?: string[];
-}
-
-export function promptScopeParams(filters: PromptScopeFilters | undefined): PromptScope {
-	return {
-		tags: filters?.tags?.length ? filters.tags.join(",") : undefined,
-		markets: filters?.markets?.length ? filters.markets.join(",") : undefined,
-	};
 }
 
 /** Answers whether a prompt is asked in one of the filtered markets; with no filter, every prompt is. */

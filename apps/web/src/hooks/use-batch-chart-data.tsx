@@ -7,6 +7,7 @@ export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	markets?: string[];
 	search?: string;
 }
 
@@ -20,6 +21,7 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 			filters?.lookback,
 			filters?.model,
 			filters?.tags?.join(","),
+			filters?.markets?.join(","),
 			filters?.search,
 		],
 		queryFn: () =>
@@ -29,6 +31,7 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					markets: filters?.markets?.join(","),
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

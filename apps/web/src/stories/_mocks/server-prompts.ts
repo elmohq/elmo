@@ -16,7 +16,17 @@ export const getPromptRunsFn = noop;
 export const updatePromptsFn = async ({
 	data,
 }: {
-	data: { prompts: Array<{ id?: string; groupId?: string; value: string; enabled?: boolean; tags?: string[] }> };
+	data: {
+		prompts: Array<{
+			id?: string;
+			groupId?: string;
+			value: string;
+			enabled?: boolean;
+			tags?: string[];
+			country?: string | null;
+			language?: string | null;
+		}>;
+	};
 }) =>
 	data.prompts.map((p, i) => ({
 		id: p.id ?? `mock-new-${i}`,
@@ -27,5 +37,7 @@ export const updatePromptsFn = async ({
 		enabled: p.enabled ?? true,
 		tags: p.tags ?? [],
 		systemTags: [] as string[],
+		country: p.country ?? null,
+		language: p.language ?? null,
 	}));
 export const getPromptWebQueryFn = noop;

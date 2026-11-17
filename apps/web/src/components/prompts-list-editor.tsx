@@ -1,5 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { type Market, marketName, resolveMarket } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -21,10 +22,13 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { CopyPlus, CornerDownRight, Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
+import { CopyPlus, CornerDownRight, Inbox, Languages, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useOrganizationParams } from "@/hooks/use-route-params";
+import { MarketCostNote, MarketPicker } from "@/components/market-picker";
+import { type TranslatedDraft, type TranslateFn, TranslatePromptsDialog } from "@/components/translate-prompts-dialog";
+import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
+import type { MarketSupport } from "@/lib/market-support";
 import { countVariants, groupLeads, insertIntoGroup } from "@/lib/prompt-variants";
 
 export interface EditablePrompt {
@@ -37,7 +41,18 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
+	/** Null follows the brand's market. */
+	country: string | null;
+	language: string | null;
 	suggested?: boolean;
+	/** A machine translation nobody has saved yet. */
+	translated?: boolean;
+}
+
+/** What the editor needs to offer markets. Omitted where prompts are only being drafted, like onboarding. */
+export interface PromptMarkets {
+	support: MarketSupport;
+	translate: TranslateFn;
 }
 
 export interface PremiumAllowance {
@@ -54,8 +69,11 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
+		country: partial?.country ?? null,
+		language: partial?.language ?? null,
 		...(partial?.id ? { id: partial.id } : {}),
 		...(partial?.suggested ? { suggested: true } : {}),
+		...(partial?.translated ? { translated: true } : {}),
 	};
 }
 
@@ -158,7 +176,17 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"system-basic-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_2.75rem]",
+	"system-premium-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
+	"plain-basic-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_2.75rem]",
+	"plain-premium-market": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
 };
+
+/** Columns: [select] [text] [system?] [tags] [market?] [premium?] [switch]. */
+function gridColsFor(columns: { system: boolean; premium: boolean; market: boolean }): string {
+	const key = `${columns.system ? "system" : "plain"}-${columns.premium ? "premium" : "basic"}`;
+	return GRID_COLS[columns.market ? `${key}-market` : key];
+}
 
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
@@ -171,6 +199,7 @@ interface PromptsListEditorProps {
 	premium?: PremiumAllowance;
 	/** Lets a prompt gain variants. Off where prompts are only being drafted, like onboarding. */
 	variants?: boolean;
+	markets?: PromptMarkets;
 	leading?: ReactNode;
 	pendingRows?: number;
 }
@@ -238,6 +267,7 @@ function ColumnHeader({
 	gridCols,
 	showSystemTags,
 	premium,
+	showMarket,
 	allSelected,
 	onToggleSelectAll,
 	disabled,
@@ -245,6 +275,7 @@ function ColumnHeader({
 	gridCols: string;
 	showSystemTags: boolean;
 	premium?: PremiumAllowance;
+	showMarket: boolean;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
 	disabled: boolean;
@@ -290,6 +321,20 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
+			{showMarket && (
+				<div className="flex items-center gap-1">
+					Market
+					<Tooltip>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+						<TooltipContent>
+							<p className="max-w-xs">
+								The country a prompt is asked from and the language it is written in. Default follows the brand's
+								market; anything else is set on this prompt alone. Changing it does not translate the text.
+							</p>
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			)}
 			{premium && (
 				<div className="flex items-center justify-center gap-1">
 					Premium
@@ -316,8 +361,60 @@ function ColumnHeader({
 const VARIANT_HELP =
 	"Add another wording of this question. A variant is tracked as its own prompt: it runs on every model and counts toward your prompt limit.";
 
+const TRANSLATE_HELP =
+	"Translate this prompt for another market. Each translation is added as a variant and tracked as its own prompt.";
+
 const FIELD_ACTION_CLASS =
 	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
+
+const ACTIONS_PADDING = ["", "pr-8", "pr-14", "pr-20"];
+
+function FieldAction({
+	label,
+	help,
+	onClick,
+	children,
+}: {
+	label: string;
+	help: string;
+	onClick: () => void;
+	children: ReactNode;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={<button type="button" onClick={onClick} aria-label={label} className={FIELD_ACTION_CLASS} />}
+			>
+				{children}
+			</TooltipTrigger>
+			<TooltipContent>
+				<p className="max-w-xs">{help}</p>
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+/** Why a row arrived without being typed: a suggestion, or a translation. */
+function DraftMarker({ prompt }: { prompt: EditablePrompt }) {
+	if (!prompt.suggested && !prompt.translated) return null;
+	const Icon = prompt.translated ? Languages : Sparkles;
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+						<Icon className="size-3.5" aria-label={prompt.translated ? "Translated" : "Suggested"} />
+					</span>
+				}
+			/>
+			<TooltipContent>
+				{prompt.translated
+					? "Translated. Check the wording, then save to start tracking it, or remove it."
+					: "Suggested. Save to start tracking it, or remove it."}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
 
 function PromptTextField({
 	prompt,
@@ -325,6 +422,7 @@ function PromptTextField({
 	onValueChange,
 	onRemove,
 	onAddVariant,
+	onTranslate,
 	className,
 }: {
 	prompt: EditablePrompt;
@@ -333,52 +431,34 @@ function PromptTextField({
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
 	onAddVariant?: () => void;
+	onTranslate?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
-	const actions = Number(removable) + Number(Boolean(onAddVariant));
+	const actions = Number(removable) + Number(Boolean(onAddVariant)) + Number(Boolean(onTranslate));
+	const marked = prompt.suggested || prompt.translated;
 	return (
 		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
 			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
 			<div className="relative min-w-0 flex-1">
-				{prompt.suggested && (
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
-									<Sparkles className="size-3.5" aria-label="Suggested" />
-								</span>
-							}
-						/>
-						<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
-					</Tooltip>
-				)}
+				<DraftMarker prompt={prompt} />
 				<Input
 					value={prompt.value}
 					onChange={(e) => onValueChange(e.target.value)}
 					placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
 					aria-label={lead ? `Variant of "${lead.value}"` : undefined}
-					className={cn("min-w-0", prompt.suggested && "pl-8", actions === 1 && "pr-8", actions === 2 && "pr-14")}
+					className={cn("min-w-0", marked && "pl-8", ACTIONS_PADDING[actions])}
 				/>
 				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
 					{onAddVariant && (
-						<Tooltip>
-							<TooltipTrigger
-								render={
-									<button
-										type="button"
-										onClick={onAddVariant}
-										aria-label={`Add a variant of "${prompt.value}"`}
-										className={FIELD_ACTION_CLASS}
-									/>
-								}
-							>
-								<CopyPlus className="size-3.5" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">{VARIANT_HELP}</p>
-							</TooltipContent>
-						</Tooltip>
+						<FieldAction label={`Add a variant of "${prompt.value}"`} help={VARIANT_HELP} onClick={onAddVariant}>
+							<CopyPlus className="size-3.5" />
+						</FieldAction>
+					)}
+					{onTranslate && (
+						<FieldAction label={`Translate "${prompt.value}"`} help={TRANSLATE_HELP} onClick={onTranslate}>
+							<Languages className="size-3.5" />
+						</FieldAction>
 					)}
 					{removable && (
 						<button
@@ -393,6 +473,35 @@ function PromptTextField({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+/** A prompt that sets either half of its market shows the whole of what it resolves to. */
+function ownMarket(prompt: EditablePrompt, brandMarket: Market): Market | null {
+	if (prompt.country === null && prompt.language === null) return null;
+	return resolveMarket(prompt, brandMarket);
+}
+
+function PromptMarketField({
+	prompt,
+	support,
+	onChange,
+	compact,
+}: {
+	prompt: EditablePrompt;
+	support: MarketSupport;
+	onChange: (patch: Pick<EditablePrompt, "country" | "language">) => void;
+	compact?: boolean;
+}) {
+	return (
+		<MarketPicker
+			value={ownMarket(prompt, support.brandMarket)}
+			onChange={(market) => onChange({ country: market?.country ?? null, language: market?.language ?? null })}
+			support={support}
+			allowDefault
+			compact={compact}
+			disabled={!prompt.enabled}
+		/>
 	);
 }
 
@@ -427,6 +536,8 @@ function PromptRow({
 	onToggleSelect,
 	lead,
 	onAddVariant,
+	onTranslate,
+	support,
 }: {
 	prompt: EditablePrompt;
 	index: number;
@@ -443,6 +554,8 @@ function PromptRow({
 	onToggleSelect: () => void;
 	lead?: EditablePrompt;
 	onAddVariant?: () => void;
+	onTranslate?: () => void;
+	support?: MarketSupport;
 }) {
 	return (
 		<div
@@ -461,6 +574,7 @@ function PromptRow({
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
 						onAddVariant={onAddVariant}
+						onTranslate={onTranslate}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -479,6 +593,7 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
+				{support && <PromptMarketField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />}
 				{premium && (
 					<PremiumModelsField
 						selected={prompt.premiumModels}
@@ -500,6 +615,7 @@ function PromptRow({
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
 					onAddVariant={onAddVariant}
+					onTranslate={onTranslate}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -510,6 +626,11 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
+				{support && (
+					<div className="pt-0.5">
+						<PromptMarketField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} compact />
+					</div>
+				)}
 				{premium && (
 					<div className="flex justify-center pt-1">
 						<PremiumModelsField
@@ -566,13 +687,62 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	);
 }
 
+function AddControls({
+	atCapacity,
+	canAddRow,
+	onAdd,
+	bulk,
+}: {
+	atCapacity: boolean;
+	canAddRow: boolean;
+	onAdd: () => void;
+	bulk: ReturnType<typeof useBulkPaste>;
+}) {
+	if (atCapacity) {
+		return (
+			<p className="text-xs text-muted-foreground">
+				Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+			</p>
+		);
+	}
+	return (
+		<>
+			<div className="flex flex-wrap items-center gap-2">
+				{canAddRow && (
+					<Button
+						variant="outline"
+						size="sm"
+						type="button"
+						onClick={onAdd}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						<Plus className="h-4 w-4" /> Add Prompt
+					</Button>
+				)}
+				<Button
+					variant="outline"
+					size="sm"
+					type="button"
+					onClick={() => bulk.setBulkOpen((open) => !open)}
+					className="flex items-center gap-2 cursor-pointer"
+				>
+					<ListPlus className="h-4 w-4" /> Add Multiple
+				</Button>
+			</div>
+			{bulk.bulkOpen && <BulkPasteBox bulk={bulk} />}
+		</>
+	);
+}
+
 function SelectionBar({
 	count,
 	onSetEnabled,
+	onTranslate,
 	onClear,
 }: {
 	count: number;
 	onSetEnabled: (enabled: boolean) => void;
+	onTranslate?: () => void;
 	onClear: () => void;
 }) {
 	return (
@@ -593,6 +763,11 @@ function SelectionBar({
 				>
 					Disable
 				</Button>
+				{onTranslate && (
+					<Button type="button" size="sm" variant="outline" onClick={onTranslate} className="cursor-pointer">
+						<Languages className="size-3.5" /> Translate
+					</Button>
+				)}
 				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="cursor-pointer">
 					Clear
 				</Button>
@@ -616,6 +791,37 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 	);
 }
 
+/** Says what one prompt costs before anyone adds a variant or a market, in the terms the viewer pays in. */
+function MarketsNote({ support }: { support: MarketSupport }) {
+	const params = useBrandParams();
+	return (
+		<div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+			<p>
+				Prompts are asked in <span className="font-medium">{marketName(support.brandMarket)}</span> unless a prompt sets
+				its own market.{" "}
+				<Link to="/app/org/$org/brand/$brand/settings/brand" params={params} className="underline">
+					Change the default
+				</Link>
+			</p>
+			<MarketCostNote support={support} country={support.brandMarket.country} className="mt-1" />
+			<p className="mt-1 text-xs text-muted-foreground">
+				Every variant and every translation is another prompt, tracked and paid for on its own.
+			</p>
+		</div>
+	);
+}
+
+function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): EditablePrompt {
+	return newPromptEntry({
+		groupId: draft.source.groupId,
+		value: draft.value,
+		tags: lead?.tags ?? [],
+		country: draft.market.country,
+		language: draft.market.language,
+		translated: true,
+	});
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
@@ -623,9 +829,16 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 	variants = false,
+	markets,
 	leading,
 	pendingRows = 0,
 }: PromptsListEditorProps) {
+	// The sources outlive `open`, so the dialog still names them while it animates shut.
+	const [translation, setTranslation] = useState<{ open: boolean; sources: EditablePrompt[] }>({
+		open: false,
+		sources: [],
+	});
+	const translate = (sources: EditablePrompt[]) => setTranslation({ open: true, sources });
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of prompts) for (const t of p.tags) set.add(t);
@@ -661,21 +874,51 @@ export function PromptsListEditor({
 
 	const leads = useMemo(() => groupLeads(prompts), [prompts]);
 	const addVariant = (lead: EditablePrompt) =>
-		onChange(insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags })));
+		onChange(
+			insertIntoGroup(
+				prompts,
+				newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country, language: lead.language }),
+			),
+		);
+	const addTranslations = (drafts: TranslatedDraft[]) =>
+		onChange(
+			drafts.reduce(
+				(rows, draft) => insertIntoGroup(rows, toDraftRow(draft, leads.get(draft.source.groupId))),
+				prompts,
+			),
+		);
+	const translatable = (rows: EditablePrompt[]) => rows.filter((row) => row.value.trim().length > 0);
+	/** The prompt a row is a variant of; undefined for the lead of its group. */
+	const leadOf = (prompt: EditablePrompt) => {
+		const lead = leads.get(prompt.groupId);
+		return lead === prompt ? undefined : lead;
+	};
+	/** A blank row has nothing to reword or translate yet, and a full list has no room for the result. */
+	const canGrow = (prompt: EditablePrompt) => !atCapacity && prompt.value.trim().length > 0;
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
-	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
+	const gridCols = gridColsFor({ system: showSystemTags, premium: Boolean(premium), market: Boolean(markets) });
 
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<SelectionBar count={liveSelectedCount} onSetEnabled={applyEnabledToSelection} onClear={clearSelection} />
+				<SelectionBar
+					count={liveSelectedCount}
+					onSetEnabled={applyEnabledToSelection}
+					onTranslate={
+						markets && !atCapacity
+							? () => translate(translatable(prompts.filter((p) => selectedKeys.has(p._key))))
+							: undefined
+					}
+					onClear={clearSelection}
+				/>
 			)}
+
+			{markets && <MarketsNote support={markets.support} />}
 
 			{premium && (
 				<p className="text-sm text-muted-foreground">
@@ -697,6 +940,7 @@ export function PromptsListEditor({
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
 				premium={premium}
+				showMarket={Boolean(markets)}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
 				disabled={prompts.length === 0}
@@ -731,51 +975,31 @@ export function PromptsListEditor({
 							gridCols={gridCols}
 							selected={selectedKeys.has(prompt._key)}
 							onToggleSelect={() => toggleSelect(prompt._key)}
-							lead={leads.get(prompt.groupId) === prompt ? undefined : leads.get(prompt.groupId)}
-							onAddVariant={
-								variants && !atCapacity && leads.get(prompt.groupId) === prompt && prompt.value.trim()
-									? () => addVariant(prompt)
-									: undefined
-							}
+							lead={leadOf(prompt)}
+							onAddVariant={canGrow(prompt) && variants && !leadOf(prompt) ? () => addVariant(prompt) : undefined}
+							onTranslate={canGrow(prompt) && markets ? () => translate([prompt]) : undefined}
+							support={markets?.support}
 						/>
 					))}
 				</div>
 			)}
 
-			{!atCapacity && (
-				<div className="flex flex-wrap items-center gap-2">
-					{prompts.length < MAX_PROMPTS && (
-						<Button
-							variant="outline"
-							size="sm"
-							type="button"
-							onClick={add}
-							className="flex items-center gap-2 cursor-pointer"
-						>
-							<Plus className="h-4 w-4" /> Add Prompt
-						</Button>
-					)}
-					<Button
-						variant="outline"
-						size="sm"
-						type="button"
-						onClick={() => bulk.setBulkOpen((open) => !open)}
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						<ListPlus className="h-4 w-4" /> Add Multiple
-					</Button>
-				</div>
-			)}
-
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
-
-			{atCapacity && (
-				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
-				</p>
-			)}
+			<AddControls atCapacity={atCapacity} canAddRow={prompts.length < MAX_PROMPTS} onAdd={add} bulk={bulk} />
 
 			<PromptCount prompts={prompts} />
+
+			{markets && (
+				<TranslatePromptsDialog
+					open={translation.open && translation.sources.length > 0}
+					onOpenChange={(open) => setTranslation((current) => ({ ...current, open }))}
+					sources={translation.sources}
+					existing={prompts}
+					support={markets.support}
+					room={MAX_PROMPTS - filledValues.length}
+					translate={markets.translate}
+					onTranslated={addTranslations}
+				/>
+			)}
 		</div>
 	);
 }

@@ -9,6 +9,7 @@ export interface ResponseSearchFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	markets?: string[];
 	promptIds?: string[];
 	sentiment?: SentimentFilter;
 	sort?: ResponseSort;
@@ -26,6 +27,7 @@ const scopeParams = (brandId: string, filters?: ResponseSearchFilters) => ({
 	lookback: filters?.lookback ?? "1m",
 	model: filters?.model,
 	tags: filters?.tags?.join(","),
+	markets: filters?.markets?.join(","),
 	prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
 	timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });

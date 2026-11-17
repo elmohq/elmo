@@ -1,4 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
+import { marketId, marketName, parseMarketFilter } from "@workspace/config/markets";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -14,7 +15,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Globe, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -224,6 +225,80 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 	);
 }
 
+/**
+ * Only there once the brand's prompts are asked in more than one market, or a
+ * link arrives already filtered: with a single market there is nothing to choose.
+ */
+function MarketsDropdown() {
+	const { data: brand } = useBrand();
+	const urlMarkets = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.markets });
+	const setFilters = useFilterNavigate();
+	const selected = useMemo(() => parseMarketFilter(urlMarkets).map(marketId), [urlMarkets]);
+	const [open, setOpen] = useState(false);
+
+	const available = brand?.markets ?? [];
+	if (available.length <= 1 && selected.length === 0) return null;
+
+	const commit = (next: string[]) => setFilters({ markets: joinTags(next) });
+	const toggle = (id: string) => commit(selected.includes(id) ? selected.filter((m) => m !== id) : [...selected, id]);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen} modal={false}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<Globe className="size-3.5" />}
+						label="Markets"
+						active={selected.length > 0}
+						badgeCount={selected.length > 0 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-72 p-0" initialFocus={false}>
+				<div className="flex items-center justify-between px-3 h-10 border-b">
+					<span className="font-medium text-sm">Markets</span>
+					{selected.length > 0 && (
+						<button
+							type="button"
+							onClick={() => commit([])}
+							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+						>
+							Clear
+						</button>
+					)}
+				</div>
+				<div className="py-1 max-h-64 overflow-y-auto">
+					{available.map((market) => {
+						const id = marketId(market);
+						const checked = selected.includes(id);
+						return (
+							<button
+								key={id}
+								type="button"
+								onClick={(e) => {
+									// Keep the popover open so several markets can be picked at once.
+									e.preventDefault();
+									e.stopPropagation();
+									toggle(id);
+								}}
+								className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									checked ? "bg-accent" : "hover:bg-muted"
+								}`}
+							>
+								<Checkbox checked={checked} className="pointer-events-none" />
+								<span className="flex-1">{marketName(market)}</span>
+								<span className="text-xs text-muted-foreground tabular-nums">
+									{market.prompts} {market.prompts === 1 ? "prompt" : "prompts"}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 function SearchInput({
 	placeholder = "Search prompts...",
 	searching = false,
@@ -300,8 +375,9 @@ function SearchInput({
 // The count comes in as a prop so the prompts-summary query has a single owner.
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const markets = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.markets });
 	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
-	const active = Boolean(tags) || Boolean(q);
+	const active = Boolean(tags) || Boolean(markets) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
@@ -343,6 +419,7 @@ export function FilterBar({
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
+				<MarketsDropdown />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />

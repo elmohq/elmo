@@ -306,7 +306,7 @@ function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTracki
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
-	const { model, lookback, tags } = useListFilters();
+	const { model, lookback, tags, markets } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const { data: promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const {
@@ -317,9 +317,10 @@ function DashboardPage() {
 		lookback,
 		model: modelParam,
 		tags,
+		markets,
 	});
-	// A tag filter narrows the count, which would understate the brand's prompts.
-	useReportedPromptCount(tags.length === 0 ? summary?.totalPrompts : undefined);
+	// A tag or market filter narrows the count, which would understate the brand's prompts.
+	useReportedPromptCount(tags.length === 0 && markets.length === 0 ? summary?.totalPrompts : undefined);
 	const context = useRouteContext({ from: BRAND_ROUTE_ID }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 	// The footer reports what this brand actually runs, resolved server-side.

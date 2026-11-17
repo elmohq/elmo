@@ -9,11 +9,14 @@ import {
 	usePromptSuggestions,
 } from "@/components/prompt-suggestions";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
+import type { TranslateFn } from "@/components/translate-prompts-dialog";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import type { MarketSupport } from "@/lib/market-support";
 import { trackEvent } from "@/lib/posthog";
 import { orderByGroup } from "@/lib/prompt-variants";
 import { useWriteErrorMessage } from "@/lib/write-errors";
+import { translatePromptsFn } from "@/server/prompt-translation";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
@@ -25,6 +28,8 @@ interface PromptRow {
 	tags?: string[] | null;
 	systemTags?: string[] | null;
 	premiumModels?: string[] | null;
+	country: string | null;
+	language: string | null;
 }
 
 interface PromptsEditorProps {
@@ -33,6 +38,7 @@ interface PromptsEditorProps {
 	pageTitle: string;
 	pageDescription: string;
 	premium?: PremiumAllowance;
+	marketSupport: MarketSupport;
 }
 
 /** Order-insensitive, since the picker appends and the server returns catalog order. */
@@ -50,6 +56,8 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 		tags: p.tags || [],
 		systemTags: p.systemTags || [],
 		premiumModels: p.premiumModels ?? [],
+		country: p.country,
+		language: p.language,
 	}));
 }
 
@@ -71,6 +79,8 @@ function classifyPrompt(
 	const edited =
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
+		prompt.country !== prev.country ||
+		prompt.language !== prev.language ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -99,7 +109,14 @@ function diffPrompts(baseline: EditablePrompt[], prompts: EditablePrompt[]) {
 	};
 }
 
-export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
+export function PromptsEditor({
+	initialPrompts,
+	brandId,
+	pageTitle,
+	pageDescription,
+	premium,
+	marketSupport,
+}: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
@@ -115,6 +132,10 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	);
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const markets = useMemo(() => {
+		const translate: TranslateFn = (market, texts) => translatePromptsFn({ data: { brandId, market, texts } });
+		return { support: marketSupport, translate };
+	}, [brandId, marketSupport]);
 	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
@@ -147,6 +168,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					enabled: p.enabled,
 					tags: p.tags,
 					premiumModels: p.premiumModels,
+					country: p.country,
+					language: p.language,
 				})),
 				...removedPrompts,
 			];
@@ -199,6 +222,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				changedKeys={changedKeys}
 				premium={premium}
 				variants
+				markets={markets}
 				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
 				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
 			/>
