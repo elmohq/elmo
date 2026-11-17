@@ -204,6 +204,8 @@ function PromptHistoryPage() {
 	const lookback = useLookbackPeriod();
 
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
+	// Unset on the default tab, so switching variants doesn't write the default into the URL.
+	const tabInUrl = Route.useSearch({ select: (s) => s.tab });
 	const navigate = Route.useNavigate();
 	const setActiveTab = useCallback(
 		(tab: PromptDetailTab) =>
@@ -307,7 +309,7 @@ function PromptHistoryPage() {
 				promptMeta={promptMeta}
 				isMetaLoading={isMetaLoading}
 				onLookbackChange={handleLookbackChange}
-				tab={activeTab}
+				tab={tabInUrl}
 			/>
 
 			<div className="border-b border-border">
