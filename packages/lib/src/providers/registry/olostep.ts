@@ -46,7 +46,7 @@ const OLOSTEP_PARSERS: Record<string, OlostepParser> = {
 function requestUrl(parser: OlostepParser, prompt: string, market: Market | undefined): string {
 	const url = parser.urlTemplate(prompt);
 	if (!market || !parser.googleUrl) return url;
-	return `${url}&gl=${market.country.toLowerCase()}&hl=${googleLanguageCode(market)}`;
+	return `${url}&${new URLSearchParams({ gl: market.country.toLowerCase(), hl: googleLanguageCode(market) })}`;
 }
 
 let _client: Olostep | null = null;

@@ -56,7 +56,8 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  */
 function runGoogleAiOverview(prompt: string, market: Market = DEFAULT_MARKET): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
-	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=${market.country.toLowerCase()}&hl=${googleLanguageCode(market)}`;
+	const locale = new URLSearchParams({ gl: market.country.toLowerCase(), hl: googleLanguageCode(market) });
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&${locale}`;
 
 	return retryTransient(
 		() => attemptGoogleAiOverview(zone, url),
