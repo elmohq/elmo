@@ -57,7 +57,10 @@ interface TranslatePromptsDialogProps {
 	onTranslated: (drafts: TranslatedDraft[]) => void;
 }
 
-/** The sources a market would add a prompt for: those whose question isn't asked there yet. */
+/**
+ * The sources a market would add a prompt for: one per question that isn't asked
+ * there yet, so selecting a prompt along with its variants translates it once.
+ */
 function sourcesMissing(
 	market: Market,
 	sources: TranslationSource[],
@@ -67,7 +70,11 @@ function sourcesMissing(
 	const covered = new Set(
 		existing.filter((row) => marketId(resolveMarket(row, brandMarket)) === marketId(market)).map((row) => row.groupId),
 	);
-	return sources.filter((source) => !covered.has(source.groupId));
+	return sources.filter((source) => {
+		if (covered.has(source.groupId)) return false;
+		covered.add(source.groupId);
+		return true;
+	});
 }
 
 function AddedCost({

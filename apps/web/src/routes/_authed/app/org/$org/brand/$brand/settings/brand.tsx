@@ -62,8 +62,8 @@ function DefaultMarketField({
 			{!sameMarket(market, saved) && (
 				<p className="text-xs text-amber-700">
 					Saving moves {following === 1 ? "the 1 prompt" : `all ${following} prompts`} that follow the default. Their
-					text is not translated, answers already recorded stay under the market they were asked in, and models that
-					can&apos;t answer from the new country stop running them.
+					text is not translated, their earlier answers stay in their history and count under the new market, and models
+					that can&apos;t answer from the new country stop running them.
 				</p>
 			)}
 		</div>

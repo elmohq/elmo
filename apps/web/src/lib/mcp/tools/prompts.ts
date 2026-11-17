@@ -2,6 +2,7 @@
  * No delete tool: deleting takes a prompt's runs and citations with it.
  * Disabling is the reversible way to stop a prompt costing runs.
  */
+import { marketFilterSchema } from "@workspace/config/markets";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { withPromptWriteErrors } from "@/lib/api/prompt-errors";
@@ -30,8 +31,7 @@ export const listPromptsTool = defineTool({
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		groupId: z.uuid().optional().describe("Restrict to the variants of one question."),
-		markets: z
-			.string()
+		markets: marketFilterSchema
 			.optional()
 			.describe(
 				"Comma-separated markets as language-country, e.g. `de-DE,fr-CH`; a prompt asked in any of them matches.",

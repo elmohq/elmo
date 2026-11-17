@@ -10,7 +10,7 @@ AI answers change with where a question is asked from and the language it is ask
 
 Every brand has a default market, which starts as **United States · English**. Prompts are asked in it unless they set their own. Change it under **Settings → Brand → Default Market**.
 
-Changing the default moves every prompt that follows it, from the next run on. It does not translate their text, and answers already recorded stay under the market they were asked in.
+Changing the default moves every prompt that follows it, from the next run on. It does not translate their text. Each answer keeps the country it was asked from, but a prompt's history stays with the prompt, so after the change a market filter shows its earlier answers under the new market.
 
 ## A Prompt's Own Market
 
@@ -21,7 +21,7 @@ In **Settings → Prompts**, the **Market** column shows where each prompt is as
 
 Pick a market for a prompt to see, before you save, what each model you track does with it and what a prompt there costs.
 
-Setting a prompt's market does not translate it. To ask the same question in another language, translate it instead.
+Setting a prompt's market does not translate it, and the prompt's earlier answers move with it. To ask the same question in another market and compare the two, translate it instead.
 
 ## Variants and Translations
 
@@ -58,7 +58,7 @@ Once a brand's prompts are asked in more than one market, a **Markets** filter a
 
 ## API
 
-Prompts carry `country` and `language`, which are null where the prompt follows its brand, and `market`, which is where the prompt is actually asked. Brands carry the default `country` and `language`. The analytics endpoints and the prompt list take `markets`, a comma-separated list written as language-country, such as `de-DE,fr-CH`. Runs report the `country` and `language` the provider was sent.
+Prompts carry `country` and `language`, which are null where the prompt follows its brand, and `market`, which is where the prompt is actually asked. Brands carry the default `country` and `language`. The analytics endpoints and the prompt list take `markets`, a comma-separated list written as language-country, such as `de-DE,fr-CH`; a market that isn't in the supported list is a `400`. Runs report the `country` and `language` the provider was sent.
 
 Requests that leave these fields out behave as they did before markets: prompts follow the brand, and a brand's market stays as it is.
 

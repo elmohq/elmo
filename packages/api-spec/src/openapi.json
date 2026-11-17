@@ -2383,7 +2383,7 @@
 			"MarketsFilter": {
 				"name": "markets",
 				"in": "query",
-				"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. Only prompts asked in one of them are counted.",
+				"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. Only prompts asked in one of them are counted. A market outside the supported list is a `400`.",
 				"schema": {
 					"type": "string"
 				}
@@ -3694,7 +3694,7 @@
 					{
 						"name": "markets",
 						"in": "query",
-						"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. A prompt matches if it is asked in any of them.",
+						"description": "Comma-separated markets written as language-country, e.g. `de-DE,fr-CH`. A prompt matches if it is asked in any of them. A market outside the supported list is a `400`.",
 						"schema": {
 							"type": "string"
 						}

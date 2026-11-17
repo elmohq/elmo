@@ -6,6 +6,7 @@ import {
 	googleLanguageCode,
 	LANGUAGES,
 	MARKETS,
+	marketFilterSchema,
 	marketId,
 	parseMarketFilter,
 	parseMarketId,
@@ -52,6 +53,19 @@ describe("market ids", () => {
 			{ country: "DE", language: "de" },
 		]);
 		expect(parseMarketFilter(undefined)).toEqual([]);
+	});
+});
+
+describe("marketFilterSchema", () => {
+	it("accepts a list of known markets", () => {
+		expect(marketFilterSchema.safeParse("de-DE,fr-CH").success).toBe(true);
+		expect(marketFilterSchema.safeParse("").success).toBe(true);
+	});
+
+	it("names the entry it can't read rather than ignoring it", () => {
+		const result = marketFilterSchema.safeParse("de-DE,de_DE");
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]?.message).toContain('"de_DE"');
 	});
 });
 

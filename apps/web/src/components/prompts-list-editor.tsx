@@ -329,7 +329,8 @@ function ColumnHeader({
 						<TooltipContent>
 							<p className="max-w-xs">
 								The country a prompt is asked from and the language it is written in. Default follows the brand's
-								market; anything else is set on this prompt alone. Changing it does not translate the text.
+								market; anything else is set on this prompt alone. Changing it does not translate the text, and the
+								prompt&apos;s history moves with it. To compare markets, translate the prompt instead.
 							</p>
 						</TooltipContent>
 					</Tooltip>

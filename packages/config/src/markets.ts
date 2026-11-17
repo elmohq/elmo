@@ -209,6 +209,24 @@ export function parseMarketFilter(raw: string | null | undefined): Market[] {
 	return markets;
 }
 
+/**
+ * For API input. A dashboard link drops a market it can't read so a stale link
+ * still opens; a caller gets told, since ignoring the filter would answer for
+ * the whole brand as if that were what was asked.
+ */
+export const marketFilterSchema = z.string().superRefine((raw, ctx) => {
+	const unknown = raw
+		.split(",")
+		.map((part) => part.trim())
+		.find((part) => part && !parseMarketId(part));
+	if (unknown !== undefined) {
+		ctx.addIssue({
+			code: "custom",
+			message: `Unknown market "${unknown}". Write each market as language-country, such as "de-DE".`,
+		});
+	}
+});
+
 export function sameMarket(a: Market, b: Market): boolean {
 	return a.country === b.country && a.language === b.language;
 }

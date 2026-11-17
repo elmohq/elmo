@@ -5,7 +5,7 @@ import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts } from "@workspace/lib/db/schema";
+import { brands } from "@workspace/lib/db/schema";
 import { countOrgEnabledPrompts, getOrgEntitlements } from "@workspace/lib/entitlements";
 import { describeMarketHandling, isGroundedApiTarget } from "@workspace/lib/providers";
 import { resolvePromptRunPlan, type TargetPlan } from "@workspace/lib/run-policy";
@@ -46,16 +46,14 @@ export const getMarketSupportFn = createServerFn({ method: "GET" })
 		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 		if (!brand) throw new Error("Brand not found");
 
-		const [entitlements, brandPrompts] = await Promise.all([
-			getOrgEntitlements(brand.organizationId),
-			db.select({ premiumModels: prompts.premiumModels }).from(prompts).where(eq(prompts.brandId, data.brandId)),
-		]);
+		const entitlements = await getOrgEntitlements(brand.organizationId);
 
 		const targets = plannedTargets(() =>
 			resolvePromptRunPlan({
 				scrapeTargets: parseScrapeTargets(process.env.SCRAPE_TARGETS),
 				brand,
-				prompt: { premiumModels: [...new Set(brandPrompts.flatMap((prompt) => prompt.premiumModels))] },
+				// What every prompt runs on. A premium pairing is one prompt's own addition.
+				prompt: { premiumModels: [] },
 				entitlements,
 				defaultDelayHours: getDefaultDelayHours(),
 			}),

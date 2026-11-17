@@ -4,6 +4,7 @@
  * a tool that writes is deliberate. There is no `adminOnly` and must not be:
  * operator-only verbs stay on `/api/v1`.
  */
+import { marketFilterSchema } from "@workspace/config/markets";
 import { z } from "zod";
 import { type AnalyticsFilters, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import type { ApiScope } from "@/lib/api/scopes";
@@ -67,8 +68,7 @@ export const windowArgs = {
 		),
 	model: modelArg,
 	tags: z.string().optional().describe("Comma-separated prompt tags; only prompts carrying one are counted."),
-	markets: z
-		.string()
+	markets: marketFilterSchema
 		.optional()
 		.describe(
 			"Comma-separated markets as language-country, e.g. `de-DE,fr-CH`; only prompts asked in one are counted.",

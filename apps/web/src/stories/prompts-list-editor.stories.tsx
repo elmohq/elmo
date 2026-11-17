@@ -257,6 +257,24 @@ export const MarketPickerExplainsAMarket: StoryObj = {
 	},
 };
 
+/**
+ * Translating a selection adds one prompt per question and market: a prompt
+ * selected along with its own variant is translated once, not once from each.
+ */
+export const TranslateSelectionOncePerQuestion: StoryObj = {
+	render: () => <Harness variants markets={marketsFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(document.body);
+		await userEvent.click(canvas.getByRole("checkbox", { name: "Select all prompts" }));
+		await userEvent.click(canvas.getByRole("button", { name: "Translate" }));
+
+		const dialog = within(await page.findByRole("dialog"));
+		await userEvent.click(dialog.getByRole("option", { name: /France · French/ }));
+		await expect(dialog.getByText(/Adds/)).toHaveTextContent(/^Adds 2 prompts,/);
+	},
+};
+
 /** Cloud: no prices, so the note and the dialog count prompts against the plan instead. */
 export const MarketsOnAPlan: StoryObj = {
 	render: () => <Harness variants markets={marketsFor(planMarketSupport)} initial={MARKET_PROMPTS} />,
