@@ -18,7 +18,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { type PromptVariant, PromptVariants } from "@/components/prompt-variants";
+import { type PromptVariant, PromptVariantsMenu } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
@@ -122,7 +122,8 @@ function PromptHeader({
 						<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
 					)}
 				</div>
-				<div className="shrink-0">
+				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
+					{promptMeta && <PromptVariantsMenu promptId={promptMeta.id} variants={promptMeta.variants} tab={tab} />}
 					<LookbackSelector onLookbackChange={onLookbackChange} />
 				</div>
 			</div>
@@ -192,8 +193,6 @@ function PromptHeader({
 					</Link>
 				</div>
 			)}
-
-			{promptMeta && <PromptVariants variants={promptMeta.variants} tab={tab} />}
 		</div>
 	);
 }

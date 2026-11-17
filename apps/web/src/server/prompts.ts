@@ -83,7 +83,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		const variants = await db
 			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
 			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId), ne(prompts.id, prompt.id)))
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId)))
 			.orderBy(prompts.createdAt, prompts.id);
 
 		return {
@@ -94,7 +94,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
-			/** The other wordings of this question. */
+			/** Every wording of this question, this one included, oldest first. */
 			variants,
 		};
 	});
