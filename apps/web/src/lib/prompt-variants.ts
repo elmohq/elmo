@@ -32,7 +32,6 @@ export function orderByGroup<T extends StoredRow>(rows: readonly T[]): T[] {
 		.flat();
 }
 
-/** The first row of each group, keyed by group. */
 export function groupLeads<T extends GroupedRow>(rows: readonly T[]): Map<string, T> {
 	const leads = new Map<string, T>();
 	for (const row of rows) {

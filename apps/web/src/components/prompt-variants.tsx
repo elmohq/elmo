@@ -9,7 +9,6 @@ export interface PromptVariant {
 	enabled: boolean;
 }
 
-/** The other wordings of the question a prompt asks, each linking to its own results. */
 export function PromptVariants({ variants, tab }: { variants: PromptVariant[]; tab?: PromptDetailTab }) {
 	if (variants.length === 0) return null;
 	return (
@@ -24,7 +23,7 @@ export function PromptVariants({ variants, tab }: { variants: PromptVariant[]; t
 						<BrandPromptLink
 							promptId={variant.id}
 							search={tab ? { tab } : undefined}
-							className="min-w-0 flex-1 truncate underline-offset-2 hover:underline"
+							className="min-w-0 flex-1 truncate text-left underline-offset-2 hover:underline"
 						>
 							{variant.value}
 						</BrandPromptLink>
