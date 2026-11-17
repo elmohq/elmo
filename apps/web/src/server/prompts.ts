@@ -97,7 +97,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 				language: prompts.language,
 			})
 			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId), ne(prompts.id, prompt.id)))
+			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.groupId, prompt.groupId)))
 			.orderBy(prompts.createdAt, prompts.id);
 
 		return {
@@ -111,7 +111,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			market: resolveMarket(prompt, brand),
 			/** False when the prompt follows the brand's market. */
 			marketOverridden: prompt.country !== null || prompt.language !== null,
-			/** The other wordings of this question. */
+			/** Every wording of this question, this one included, oldest first. */
 			variants: variants.map(({ country, language, ...variant }) => ({
 				...variant,
 				market: resolveMarket({ country, language }, brand),

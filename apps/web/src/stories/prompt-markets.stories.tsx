@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "storybook/test";
 import { PromptMarketInfo } from "@/components/prompt-market-info";
-import { PromptVariants } from "@/components/prompt-variants";
+import { PromptVariantsMenu } from "@/components/prompt-variants";
 import { selfHostedMarketSupport } from "./_mocks/market-support";
 
 const meta = {
@@ -12,45 +12,49 @@ export default meta;
 
 const germany = { country: "DE", language: "de" };
 
-/**
- * The prompt page's market line: where the prompt is asked, whether that is its
- * own setting, and how many tracked models can answer from there. Opening it
- * says what each model does.
- */
-export const OwnMarket: StoryObj = {
-	render: () => (
-		<div className="space-y-4 p-8 text-sm">
+const VARIANTS = [
+	{ id: "1", value: "best crm for small business", enabled: true, market: { country: "US", language: "en" } },
+	{ id: "2", value: "welches CRM für Start-ups", enabled: true, market: germany },
+	{ id: "3", value: "meilleur CRM pour PME", enabled: false, market: { country: "FR", language: "fr" } },
+];
+
+function Controls() {
+	return (
+		<div className="flex items-center justify-end gap-1.5 p-8">
+			<PromptVariantsMenu promptId="2" variants={VARIANTS} />
 			<PromptMarketInfo market={germany} overridden support={selfHostedMarketSupport} />
-			<PromptVariants
-				market={germany}
-				variants={[
-					{ id: "1", value: "best crm for small business", enabled: true, market: { country: "US", language: "en" } },
-					{ id: "2", value: "welches CRM für Start-ups", enabled: true, market: germany },
-					{ id: "3", value: "meilleur CRM pour PME", enabled: false, market: { country: "FR", language: "fr" } },
-				]}
-			/>
 		</div>
-	),
+	);
+}
+
+/**
+ * The prompt page's market control names the market like a filter would, and
+ * opens to what each tracked model does with the prompt there.
+ */
+export const Market: StoryObj = {
+	render: () => <Controls />,
 	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		await userEvent.click(canvas.getByRole("button", { name: /Germany · German.*set on this prompt.*3 of 4 models/ }));
+		await userEvent.click(within(canvasElement).getByRole("button", { name: "Market: Germany · German" }));
+		const page = within(document.body);
+		await expect(await page.findByText(/Skips this prompt: it can't answer from Germany/)).toBeVisible();
 		await expect(
-			await within(document.body).findByText(/Skips this prompt: it can't answer from Germany/),
+			page.getByText(/This market is set on the prompt\. Only 3 of 4 models can answer from here\./),
 		).toBeVisible();
-		// A variant in the viewed prompt's market needs no label; the others say where they are asked.
-		await expect(canvas.getByText("United States · English")).toBeVisible();
-		await expect(canvas.queryByText("Germany · German", { selector: "[data-slot=badge]" })).toBeNull();
 	},
 };
 
-export const BrandDefault: StoryObj = {
-	render: () => (
-		<div className="p-8 text-sm">
-			<PromptMarketInfo
-				market={{ country: "US", language: "en" }}
-				overridden={false}
-				support={selfHostedMarketSupport}
-			/>
-		</div>
-	),
+/** The variants menu lists every wording of the question with the market each is asked in. */
+export const Variants: StoryObj = {
+	render: () => <Controls />,
+	play: async ({ canvasElement }) => {
+		await userEvent.click(within(canvasElement).getByRole("button", { name: /Variants/ }));
+		const page = within(document.body);
+		await expect(await page.findByRole("menuitemradio", { name: /welches CRM für Start-ups/ })).toHaveAttribute(
+			"aria-checked",
+			"true",
+		);
+		await expect(
+			page.getByRole("menuitemradio", { name: /meilleur CRM pour PME.*France · French.*Disabled/ }),
+		).toBeVisible();
+	},
 };
