@@ -2,6 +2,8 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Layers } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
@@ -44,6 +46,36 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 				),
 			)}
 		</CardTitle>
+	);
+}
+
+export interface PromptCardVariant {
+	id: string;
+	value: string;
+}
+
+const NO_VARIANTS: PromptCardVariant[] = [];
+
+/** A small mark beside the title of a prompt that has variants; hovering lists them. */
+function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
+	if (variants.length === 0) return null;
+	const label = variants.length === 1 ? "1 variant" : `${variants.length} variants`;
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={<span role="img" aria-label={label} className="shrink-0 cursor-help text-muted-foreground" />}
+			>
+				<Layers className="size-3.5" />
+			</TooltipTrigger>
+			<TooltipContent className="max-w-sm">
+				<p className="font-medium">Also Tracked As</p>
+				<ul className="mt-1 space-y-0.5">
+					{variants.map((variant) => (
+						<li key={variant.id}>{variant.value}</li>
+					))}
+				</ul>
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -92,6 +124,8 @@ export interface CachedPromptChartProps {
 	searchHighlight?: string;
 	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
+	/** The other tracked wordings of this question. */
+	variants?: PromptCardVariant[];
 }
 
 // Memoized: when a sibling filter / react-query state change re-renders
@@ -106,6 +140,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	availableModels,
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
+	variants = NO_VARIANTS,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
 
@@ -138,6 +173,13 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		});
 	}, [handleExport, promptName, lastBrandVisibility, data, lookback, brand, competitors]);
 
+	const heading = (
+		<div className="flex min-w-0 items-center gap-2">
+			<PromptTitle name={promptName} highlight={searchHighlight} />
+			<VariantsHint variants={variants} />
+		</div>
+	);
+
 	if (!chartContext || chartContext.isLoading || !chartData) {
 		return <PromptChartSkeleton />;
 	}
@@ -148,9 +190,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
-				</CardHeader>
+				<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 				<Separator className="py-0 my-0" />
 				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
 				   keeping overall card height consistent with data-filled cards for virtualization */}
@@ -188,9 +228,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 			<>
 				{exportPortal}
 				<Card className="py-3 gap-3">
-					<CardHeader className="flex justify-between items-center px-3">
-						<PromptTitle name={promptName} highlight={searchHighlight} />
-					</CardHeader>
+					<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 					<Separator className="py-0 my-0" />
 					<CardContent className="px-3">
 						<div className="h-[250px] flex items-center justify-center">
@@ -225,7 +263,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 			{exportPortal}
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
+					{heading}
 					{lastBrandVisibility !== null && (
 						<Badge
 							variant={visibilityBadgeProps(lastBrandVisibility).variant}

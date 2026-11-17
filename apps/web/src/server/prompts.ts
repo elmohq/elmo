@@ -110,6 +110,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	variants: { id: string; value: string }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -130,6 +131,8 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
+		/** The other tracked wordings of this question, oldest first. */
+		variants,
 	};
 }
 
@@ -195,9 +198,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
+		// Newest first, so each group is filled from the front to read oldest first.
+		const groups = new Map<string, typeof allPrompts>();
+		for (const p of allPrompts) groups.set(p.groupId, [p, ...(groups.get(p.groupId) ?? [])]);
+
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			const variants = (groups.get(p.groupId) ?? [])
+				.filter((other) => other.id !== p.id)
+				.map((other) => ({ id: other.id, value: other.value }));
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
 		});
 
 		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
