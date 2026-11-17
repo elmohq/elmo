@@ -248,9 +248,7 @@ export const MarketPickerExplainsAMarket: StoryObj = {
 		const page = within(document.body);
 		await userEvent.click(canvas.getAllByRole("button", { name: "Market: Germany · German" }).at(-1)!);
 
-		await expect(await page.findByText(/Skips this prompt: it can't answer from Germany/)).toBeVisible();
-		await expect(page.getByText(/Asked from Germany, with German as its language/)).toBeVisible();
-		await expect(page.getByText(/No web search, so the answer isn't tied to a country/)).toBeVisible();
+		await expect(await page.findByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 		await expect(
 			page.getByText(/One prompt here runs on 3 models: 3 provider calls a day, roughly \$0\.75 a month/),
 		).toBeVisible();

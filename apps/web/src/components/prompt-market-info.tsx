@@ -2,10 +2,10 @@ import { type Market, marketName } from "@workspace/config/markets";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { AlertTriangle, Globe } from "lucide-react";
 import { FilterTriggerButton } from "@/components/filter-bar";
-import { coverageNote, MarketCostNote, MarketSupportList } from "@/components/market-picker";
+import { coverageNote, MarketCoverage } from "@/components/market-picker";
 import type { MarketSupport } from "@/lib/market-support";
 
-/** The market a prompt is asked in; opened, how each tracked model runs the prompt there. */
+/** The market a prompt is asked in; opened, whose setting it is and which tracked models run it there. */
 export function PromptMarketInfo({
 	market,
 	overridden,
@@ -18,7 +18,7 @@ export function PromptMarketInfo({
 }) {
 	if (!support) return null;
 
-	const partial = coverageNote(support, market.country);
+	const partial = coverageNote(support, market.country) !== null;
 	return (
 		<Popover>
 			<PopoverTrigger
@@ -30,16 +30,9 @@ export function PromptMarketInfo({
 					/>
 				}
 			/>
-			<PopoverContent align="end" className="w-80 space-y-2">
-				<div>
-					<p className="text-xs font-medium">How Each Model Runs This Prompt</p>
-					<p className="text-xs text-muted-foreground">
-						{overridden ? "This market is set on the prompt." : "This prompt follows the brand's market."}
-						{partial && ` Only ${partial} can answer from here.`}
-					</p>
-				</div>
-				<MarketSupportList support={support} market={market} />
-				<MarketCostNote support={support} country={market.country} />
+			<PopoverContent align="end" className="w-72 space-y-1.5">
+				<p className="text-xs font-medium">{overridden ? "Set on This Prompt" : "Brand Default Market"}</p>
+				<MarketCoverage support={support} country={market.country} />
 			</PopoverContent>
 		</Popover>
 	);

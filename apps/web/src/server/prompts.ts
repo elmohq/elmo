@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { countrySchema, languageSchema, type Market, resolveMarket } from "@workspace/config/markets";
+import { countrySchema, languageSchema, marketName, resolveMarket, sameMarket } from "@workspace/config/markets";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
@@ -130,6 +130,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	variants: { id: string; value: string; market: string | null }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -150,6 +151,8 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
+		/** The other tracked wordings of this question, oldest first, each with its market when that differs from this prompt's. */
+		variants,
 	};
 }
 
@@ -221,9 +224,25 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
+		// Newest first, so each group is filled from the front to read oldest first.
+		const groups = new Map<string, typeof allPrompts>();
+		for (const p of allPrompts) groups.set(p.groupId, [p, ...(groups.get(p.groupId) ?? [])]);
+
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			const market = resolveMarket(p, brand);
+			const variants = (groups.get(p.groupId) ?? [])
+				.filter((other) => other.id !== p.id)
+				.map((other) => {
+					const elsewhere = resolveMarket(other, brand);
+					// Named only where it differs, which is what tells a translation from a rewording.
+					return {
+						id: other.id,
+						value: other.value,
+						market: sameMarket(elsewhere, market) ? null : marketName(elsewhere),
+					};
+				});
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
 		});
 
 		const inMarket = marketFilter(data.markets, brand);

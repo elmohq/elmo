@@ -39,36 +39,33 @@ export function coverageNote(support: MarketSupport, country: string): string | 
 	return `${running} of ${support.targets.length} models`;
 }
 
-function describeTarget(target: MarketTarget, market: Market): string {
-	switch (targetStatusIn(target, market.country)) {
-		case "skipped":
-			return `Skips this prompt: it can't answer from ${countryName(market.country)}`;
-		case "location-free":
-			return "No web search, so the answer isn't tied to a country";
-		case "localized":
-			return target.sendsLanguage
-				? `Asked from ${countryName(market.country)}, with ${languageName(market.language)} as its language`
-				: `Asked from ${countryName(market.country)}`;
+/** Which tracked models run prompts asked from a country, in a sentence or two. */
+export function MarketCoverage({ support, country }: { support: MarketSupport; country: string }) {
+	const total = support.targets.length;
+	if (total === 0) return null;
+	const skipped = support.targets.filter((target) => targetStatusIn(target, country) === "skipped");
+	const place = countryName(country);
+	if (skipped.length === 0) {
+		return (
+			<p className="text-xs text-muted-foreground">
+				All {total} models you track run prompts asked from {place}.
+			</p>
+		);
 	}
-}
-
-export function MarketSupportList({ support, market }: { support: MarketSupport; market: Market }) {
-	if (support.targets.length === 0) return null;
+	if (skipped.length === total) {
+		return (
+			<p className="text-xs text-amber-700">
+				None of the models you track can answer from {place}, so prompts asked there won&apos;t run.
+			</p>
+		);
+	}
 	return (
-		<ul className="space-y-1.5 text-xs">
-			{support.targets.map((target) => {
-				const skipped = targetStatusIn(target, market.country) === "skipped";
-				return (
-					<li key={target.value} className="flex items-start gap-2">
-						<ModelIcon iconId={iconIdForModelFilter(target.value)} className="mt-0.5 size-3.5 shrink-0" />
-						<span className={cn("min-w-0", skipped && "text-amber-700")}>
-							<span className="font-medium">{labelForModelFilter(target.value)}</span>
-							<span className={skipped ? undefined : "text-muted-foreground"}>: {describeTarget(target, market)}</span>
-						</span>
-					</li>
-				);
-			})}
-		</ul>
+		<p className="text-xs text-muted-foreground">
+			{total - skipped.length} of {total} models run prompts asked from {place}.{" "}
+			<span className="text-amber-700">
+				{skipped.map((target) => labelForModelFilter(target.value)).join(", ")} can&apos;t answer from there.
+			</span>
+		</p>
 	);
 }
 
@@ -165,7 +162,7 @@ function describeSelection(value: Market | null, support: MarketSupport): string
 
 /**
  * One choice for country and language together. Before committing, the footer
- * shows what each tracked model does with the highlighted market and what a
+ * says which tracked models can't answer from the highlighted market and what a
  * prompt there costs.
  */
 export function MarketPicker({
@@ -262,7 +259,7 @@ export function MarketPicker({
 				</Command>
 				<div className="space-y-2 border-t bg-muted/40 p-3">
 					<p className="text-xs font-medium">{marketName(previewed)}</p>
-					<MarketSupportList support={support} market={previewed} />
+					{coverageNote(support, previewed.country) && <MarketCoverage support={support} country={previewed.country} />}
 					<MarketCostNote support={support} country={previewed.country} />
 				</div>
 			</PopoverContent>

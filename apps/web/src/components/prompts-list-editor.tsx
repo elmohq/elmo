@@ -817,7 +817,7 @@ function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): E
 		tags: lead?.tags ?? [],
 		country: draft.market.country,
 		language: draft.market.language,
-		translated: true,
+		translated: draft.value !== draft.source.value,
 	});
 }
 

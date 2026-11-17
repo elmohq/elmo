@@ -110,6 +110,30 @@ function AddedCost({
 	);
 }
 
+/** A prompt already written in a market's language is asked there as it stands; the rest are translated. */
+async function draftsFor(
+	additions: { market: Market; missing: TranslationSource[] }[],
+	brandMarket: Market,
+	translate: TranslateFn,
+): Promise<TranslatedDraft[]> {
+	const drafts: TranslatedDraft[] = [];
+	for (const { market, missing } of additions) {
+		const foreign = missing.filter((source) => resolveMarket(source, brandMarket).language !== market.language);
+		const translated =
+			foreign.length > 0
+				? await translate(
+						market,
+						foreign.map((source) => source.value),
+					)
+				: [];
+		for (const source of missing) {
+			const index = foreign.indexOf(source);
+			drafts.push({ source, market, value: index === -1 ? source.value : translated[index].translation });
+		}
+	}
+	return drafts;
+}
+
 /**
  * Turns prompts into drafts in other markets. Nothing is tracked or billed
  * until the editor saves the rows this hands back.
@@ -159,16 +183,7 @@ export function TranslatePromptsDialog({
 		setWorking(true);
 		setError(null);
 		try {
-			const drafts: TranslatedDraft[] = [];
-			for (const { market, missing } of additions) {
-				const translated = await translate(
-					market,
-					missing.map((source) => source.value),
-				);
-				missing.forEach((source, index) => {
-					drafts.push({ source, market, value: translated[index].translation });
-				});
-			}
+			const drafts = await draftsFor(additions, support.brandMarket, translate);
 			onTranslated(drafts);
 			setSelected([]);
 			onOpenChange(false);
@@ -187,8 +202,8 @@ export function TranslatePromptsDialog({
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription>
-						{sources.length === 1 ? `“${sources[0].value}”` : "Each prompt"} is translated once and added as a variant
-						in every market you pick. You can edit the wording before saving.
+						{sources.length === 1 ? `“${sources[0].value}”` : "Each prompt"} is added as a variant in every market you
+						pick, translated once where the language differs. You can edit the wording before saving.
 					</DialogDescription>
 				</DialogHeader>
 

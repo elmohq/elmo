@@ -6,7 +6,7 @@ import { Card } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
 import { Inbox } from "lucide-react";
 import { useMemo } from "react";
-import { PromptChartSkeleton } from "@/components/cached-prompt-chart";
+import { type PromptCardVariant, PromptChartSkeleton } from "@/components/cached-prompt-chart";
 import { ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { PageHeader } from "@/components/page-header";
@@ -173,7 +173,12 @@ function ChartSection({
 	searchQuery: string;
 	selectedTags: string[];
 	selectedMarkets: string[];
-	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
+	sortedPrompts: {
+		id: string;
+		value: string;
+		firstEvaluatedAt?: Date | string | null;
+		variants?: PromptCardVariant[];
+	}[];
 	availableIndividualModels: string[];
 }) {
 	const { data: batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {

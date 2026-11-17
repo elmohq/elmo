@@ -29,17 +29,15 @@ function Controls() {
 
 /**
  * The prompt page's market control names the market like a filter would, and
- * opens to what each tracked model does with the prompt there.
+ * opens to whose setting it is and which tracked models can't answer from there.
  */
 export const Market: StoryObj = {
 	render: () => <Controls />,
 	play: async ({ canvasElement }) => {
 		await userEvent.click(within(canvasElement).getByRole("button", { name: "Market: Germany · German" }));
 		const page = within(document.body);
-		await expect(await page.findByText(/Skips this prompt: it can't answer from Germany/)).toBeVisible();
-		await expect(
-			page.getByText(/This market is set on the prompt\. Only 3 of 4 models can answer from here\./),
-		).toBeVisible();
+		await expect(await page.findByText("Set on This Prompt")).toBeVisible();
+		await expect(page.getByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 	},
 };
 

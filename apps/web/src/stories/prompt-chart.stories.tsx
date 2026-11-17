@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+import { expect, userEvent, within } from "storybook/test";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
 import { type ProcessedChartData, setMockChartDataContext } from "./_mocks/chart-data-context";
 import { type ClientConfig, setMockClientConfig } from "./_mocks/config-client";
@@ -241,4 +242,32 @@ export const SuccessStates = () => {
 			</Section>
 		</PageFrame>
 	);
+};
+
+/** A prompt with variants carries a small mark beside its title; hovering it lists the other wordings. */
+export const WithVariants: StoryObj = {
+	render: () => {
+		setupMocks();
+		return (
+			<PageFrame>
+				<Chart
+					contextData={{
+						chartData: { chartData: [], totalRuns: 0, hasVisibilityData: false, lastBrandVisibility: null },
+					}}
+					props={{
+						variants: [
+							{ id: "prompt-2", value: "which project management tool suits a remote team" },
+							{ id: "prompt-3", value: "top project tools for distributed teams" },
+						],
+					}}
+				/>
+			</PageFrame>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		await userEvent.hover(within(canvasElement).getByRole("img", { name: "2 variants" }));
+		const page = within(document.body);
+		await expect(await page.findByText("which project management tool suits a remote team")).toBeVisible();
+		await expect(page.getByText("top project tools for distributed teams")).toBeVisible();
+	},
 };
