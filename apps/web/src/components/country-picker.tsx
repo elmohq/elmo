@@ -180,10 +180,10 @@ function TriggerLabel({ country, language, support }: Pick<CountryPickerProps, "
 		);
 	}
 	return (
-		<>
+		<span className="flex min-w-0 items-center gap-1.5">
 			{coverageNote(support, country) && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />}
 			<span className="truncate">{countryName(country)}</span>
-		</>
+		</span>
 	);
 }
 
@@ -248,7 +248,7 @@ export function CountryPicker({
 									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}`}
 									className={cn(
 										"h-8 w-full justify-between gap-1 px-2 font-normal",
-										(country || language) && "border-foreground/30",
+										allowDefault && (country || language) && "border-foreground/30",
 										className,
 									)}
 								/>

@@ -176,10 +176,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_2.75rem]",
-	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
-	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_2.75rem]",
-	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_7rem_5.5rem_2.75rem]",
+	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_10rem_2.75rem]",
+	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_10rem_5.5rem_2.75rem]",
+	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_10rem_2.75rem]",
+	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_10rem_5.5rem_2.75rem]",
 };
 
 /** Columns: [select] [text] [system?] [tags] [country?] [premium?] [switch]. */
