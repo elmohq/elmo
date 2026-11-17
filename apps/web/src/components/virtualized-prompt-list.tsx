@@ -9,9 +9,6 @@ interface PromptItem {
 	// All-time first evaluation date (null if never evaluated)
 	// Note: Date objects are serialized to strings in JSON responses
 	firstEvaluatedAt?: Date | string | null;
-	variantOf?: string | null;
-	variantCount?: number;
-	marketLabel?: string | null;
 }
 
 interface VirtualizedPromptListProps {
@@ -102,9 +99,6 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 									availableModels={availableModels}
 									searchHighlight={searchHighlight}
 									hasEverBeenEvaluated={Boolean(prompt.firstEvaluatedAt)}
-									variantOf={prompt.variantOf}
-									variantCount={prompt.variantCount}
-									marketLabel={prompt.marketLabel}
 								/>
 							</div>
 						</div>
