@@ -15,7 +15,6 @@ type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	 * runs it both scraped and grounded — see server/brands.ts.
 	 */
 	trackedTargets: TrackedTarget[];
-	/** The countries and languages its enabled prompts use. */
 	locales: { countries: LocaleUse[]; languages: LocaleUse[] };
 };
 

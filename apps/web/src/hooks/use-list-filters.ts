@@ -18,7 +18,6 @@ export type BrandFilterSearch = {
 	tags?: string;
 	/** Comma-joined country codes, like `tags`. */
 	countries?: string;
-	/** Comma-joined language codes. */
 	languages?: string;
 	q?: string;
 };

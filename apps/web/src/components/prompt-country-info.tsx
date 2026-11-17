@@ -5,14 +5,12 @@ import { CountryCoverage, coverageNote } from "@/components/country-picker";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import type { MarketSupport } from "@/lib/market-support";
 
-/** The country a prompt is asked from; opened, whose setting it is, its language, and which tracked models run it there. */
 export function PromptCountryInfo({
 	market,
 	overridden,
 	support,
 }: {
 	market: Market;
-	/** False when the prompt follows the brand's country. */
 	overridden: boolean;
 	support: MarketSupport | undefined;
 }) {

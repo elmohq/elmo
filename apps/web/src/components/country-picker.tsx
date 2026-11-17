@@ -24,7 +24,6 @@ export function coverageNote(support: MarketSupport, country: string): string | 
 	return `${running} of ${support.targets.length} models`;
 }
 
-/** Which tracked models run prompts asked from a country, in a sentence or two. */
 export function CountryCoverage({ support, country }: { support: MarketSupport; country: string }) {
 	const total = support.targets.length;
 	if (total === 0) return null;
@@ -111,7 +110,6 @@ const DEFAULT_ITEM = "default";
 /** cmdk matches item values in lower case. */
 const itemValue = (country: string) => country.toLowerCase();
 
-/** A language, or where `defaultLanguage` is given, the choice to follow it. */
 export function LanguageSelect({
 	value,
 	onChange,
@@ -120,7 +118,6 @@ export function LanguageSelect({
 	disabled,
 	className,
 }: {
-	/** Null follows `defaultLanguage`. */
 	value: string | null;
 	onChange: (language: string | null) => void;
 	/** The brand's language. Omit where the brand's own language is being picked. */

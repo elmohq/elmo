@@ -178,9 +178,7 @@ export interface ListPromptsFilters {
 	enabled?: boolean;
 	tags?: string[];
 	groupId?: string;
-	/** Comma-joined country codes. */
 	countries?: string;
-	/** Comma-joined language codes. */
 	languages?: string;
 	q?: string;
 	limit: number;
