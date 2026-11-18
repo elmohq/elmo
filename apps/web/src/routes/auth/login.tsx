@@ -8,7 +8,7 @@
  */
 
 import { IconBrandGoogle } from "@tabler/icons-react";
-import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useRouteContext, useRouter } from "@tanstack/react-router";
 import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
@@ -28,6 +28,7 @@ import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile 
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { viewerQuery } from "@/lib/viewer/queries";
 
 /**
  * When the OAuth plugin sent the browser here mid-flow, handing the signed query
@@ -53,6 +54,14 @@ interface LoginSearch extends AttributionParams {
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: (search: Record<string, unknown>): LoginSearch => search,
+	beforeLoad: async ({ context, search }) => {
+		// The authorization endpoint can send a signed-in browser back here to
+		// sign in again, so forwarding to it could go round forever.
+		if (search.sig) return;
+		const viewer = await context.queryClient.fetchQuery({ ...viewerQuery, staleTime: 0 }).catch(() => null);
+		// A full page load, as after submitting the form.
+		if (viewer) throw redirect({ href: safeReturnTo(search.returnTo), reloadDocument: true });
+	},
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
@@ -73,6 +82,14 @@ function LoginPage() {
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
 	const hasUsers = context.clientConfig?.hasUsers ?? false;
+	const router = useRouter();
+
+	useEffect(() => {
+		// Signing in from another tab leaves this one on the form until it looks again.
+		const recheck = () => void router.invalidate();
+		window.addEventListener("focus", recheck);
+		return () => window.removeEventListener("focus", recheck);
+	}, [router]);
 
 	if (mode === "whitelabel") {
 		return <SSOLogin destination={destination} />;
