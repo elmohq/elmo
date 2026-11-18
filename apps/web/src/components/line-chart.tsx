@@ -24,7 +24,13 @@ interface Row {
 }
 
 const bump = d3Curve(curveBumpX);
-const MAX_DATE_LABELS = 16;
+const Y_AXIS_WIDTH = 60;
+const EDGE_MARGIN = 5;
+const X_AXIS_HEIGHT = 30;
+const TICK_LABEL_GAP = 14;
+const DATE_LABEL_SPACING = 70;
+const Y_INTERVALS = 5;
+const Y_STEPS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20];
 const BRAND_STROKE_WIDTH = 3;
 const COMPETITOR_STROKE_WIDTH = 2;
 const DIMMED_OPACITY = 0.25;
@@ -37,13 +43,27 @@ const BARE_TOOLTIP = {
 	"--ts-chart-tooltip-padding": "0",
 } as CSSProperties;
 
+const INTERACTION = {
+	focus: "group-x",
+	focusRing: false,
+	maxFocusDistance: Number.POSITIVE_INFINITY,
+	tooltip: {
+		use: tooltip,
+		anchor: "pointer",
+		placement: ["bottom-right", "bottom-left", "top-right", "top-left"],
+		offset: 10,
+	},
+} as const;
+
 function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSeries: string | null) {
 	const dates = data.map((point) => point.date);
-	const labelEvery = Math.ceil(dates.length / MAX_DATE_LABELS);
+	const lastDate = dates.length > 1 ? dates[dates.length - 1] : undefined;
 	const highest = Math.max(
-		1,
+		0,
 		...data.flatMap((point) => series.map((line) => point[line.id]).filter((value) => typeof value === "number")),
 	);
+	const yStep = Y_STEPS.find((step) => step * Y_INTERVALS >= highest) ?? Math.ceil(highest / Y_INTERVALS);
+	const yTicks = Array.from({ length: Y_INTERVALS + 1 }, (_, index) => index * yStep);
 	const layers = series.map((line) => {
 		const rows: Row[] = data.flatMap((point) => {
 			const value = point[line.id];
@@ -78,7 +98,16 @@ function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSerie
 		return {
 			// Only the dots answer the pointer, so a day lists each series once and never a carried-over value.
 			lines: [
-				decorative(lineY(rows, { id: `${line.id}-dashed`, x: "date", y: "value", strokeDasharray: "4 4", ...stroke })),
+				decorative(
+					lineY(rows, {
+						id: `${line.id}-dashed`,
+						x: "date",
+						y: "value",
+						strokeDasharray: "4 4",
+						lineCap: "butt",
+						...stroke,
+					}),
+				),
 				decorative(lineY(observed, { id: `${line.id}-solid`, x: "date", y: "value", ...stroke })),
 			],
 			dots: dots(line.id, 3),
@@ -92,39 +121,51 @@ function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSerie
 		...layers.map((layer) => layer.focused),
 	];
 
-	return defineChart({
-		marks,
-		scales: {
-			x: {
-				scale: () => scalePoint<string>().domain(dates).padding(0.5),
-				axis: {
-					line: false,
-					ticks: {
-						size: 0,
-						padding: 8,
-						format: formatShortDate,
-						values: dates.filter((_, index) => index % labelEvery === 0),
+	return defineChart(({ width }) => {
+		const dayWidth = (width - Y_AXIS_WIDTH - 2 * EDGE_MARGIN) / Math.max(1, dates.length - 1);
+		const labelEvery = Math.max(1, Math.ceil(DATE_LABEL_SPACING / dayWidth));
+		return {
+			marks,
+			margin: {
+				top: EDGE_MARGIN,
+				right: EDGE_MARGIN,
+				bottom: X_AXIS_HEIGHT + EDGE_MARGIN,
+				left: Y_AXIS_WIDTH + EDGE_MARGIN,
+			},
+			scales: {
+				x: {
+					scale: () => scalePoint<string>().domain(dates).padding(0),
+					axis: {
+						line: false,
+						ticks: {
+							size: 0,
+							padding: TICK_LABEL_GAP,
+							format: formatShortDate,
+							// Counted back from the end, so the most recent day is always labeled.
+							values: dates.filter((_, index) => (dates.length - 1 - index) % labelEvery === 0),
+						},
+						tickLabels: {
+							fontSize: 12,
+							opacity: 1,
+							thin: false,
+							anchor: ({ value }: { value: string }) => (value === lastDate ? "end" : "middle"),
+							dx: ({ value }: { value: string }) => (value === lastDate ? EDGE_MARGIN : 0),
+						},
 					},
-					tickLabels: { fontSize: 12, thin: { minGap: 32 } },
+				},
+				y: {
+					// An instance, because the chart infers a factory's domain from the data and drops the zero baseline.
+					scale: scaleLinear().domain([0, yStep * Y_INTERVALS]),
+					grid: true,
+					axis: {
+						line: false,
+						ticks: { size: 0, padding: TICK_LABEL_GAP, values: yTicks, format: (value: number) => `${value}%` },
+						tickLabels: { fontSize: 12, opacity: 1 },
+					},
 				},
 			},
-			y: {
-				// An instance, because the chart infers a factory's domain from the data and drops the zero baseline.
-				scale: scaleLinear().domain([0, highest]),
-				nice: true,
-				grid: true,
-				axis: {
-					line: false,
-					ticks: { size: 0, padding: 8, count: 6, format: (value: number) => `${value}%` },
-					tickLabels: { fontSize: 12 },
-				},
-			},
-		},
-		focus: "group-x",
-		focusRing: false,
-		maxFocusDistance: Number.POSITIVE_INFINITY,
-		tooltip,
-	});
+		};
+	}, INTERACTION);
 }
 
 export function LineChart({
