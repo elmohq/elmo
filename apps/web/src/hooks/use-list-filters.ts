@@ -1,9 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { useCallback, useMemo } from "react";
-import { useBrand } from "@/hooks/use-brands";
-import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { DEFAULT_LOOKBACK, type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 /** The shared dashboard filter params. Validated once at the `$brand` layout
@@ -76,9 +74,6 @@ export function useFilterNavigate() {
  *  keep their own per-key `useSearch` selectors so a lookback click doesn't
  *  re-render the whole bar. */
 export function useListFilters() {
-	const { data: brand } = useBrand();
-	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
-
 	const urlFilters: BrandFilterSearch = useSearch({ from: BRAND_ROUTE_ID });
 	const setFilters = useFilterNavigate();
 
@@ -88,7 +83,7 @@ export function useListFilters() {
 
 	return {
 		model,
-		lookback: coerceLookback(urlFilters.lookback, defaultLookback),
+		lookback: coerceLookback(urlFilters.lookback, DEFAULT_LOOKBACK),
 		tags,
 		search,
 		/** True when any narrowing filter is active (lookback never narrows to
