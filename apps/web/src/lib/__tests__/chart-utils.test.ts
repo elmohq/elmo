@@ -4,10 +4,14 @@ import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
 	filterAndCompleteChartData,
+	fromBatchChartColumns,
 	generateDateRange,
 	getDaysFromLookback,
+	type ProcessedBatchChartDataPoint,
+	toBatchChartColumns,
 	toBatchChartData,
 } from "@/lib/chart-utils";
+
 import type { LookbackPeriod } from "@/lib/lookback";
 
 describe("getDaysFromLookback", () => {
@@ -167,5 +171,29 @@ describe("toBatchChartData", () => {
 				competitor_counts: { Globex: 3 },
 			},
 		]);
+	});
+});
+
+describe("toBatchChartColumns", () => {
+	const points: ProcessedBatchChartDataPoint[] = [
+		{
+			prompt_id: "p1",
+			date: "2026-03-01",
+			total_runs: 4,
+			brand_mentioned_count: 1,
+			competitor_counts: { Globex: 2, Initech: 1 },
+		},
+		{ prompt_id: "p1", date: "2026-03-02", total_runs: 2, brand_mentioned_count: 2, competitor_counts: {} },
+		{ prompt_id: "p2", date: "2026-03-01", total_runs: 3, brand_mentioned_count: 0, competitor_counts: { Globex: 3 } },
+	];
+
+	it("survives the trip to the browser as JSON text unchanged", () => {
+		const received = JSON.parse(JSON.stringify(toBatchChartColumns(points)));
+
+		expect(fromBatchChartColumns(received)).toEqual(points);
+	});
+
+	it("carries nothing for a brand with no runs", () => {
+		expect(fromBatchChartColumns(toBatchChartColumns([]))).toEqual([]);
 	});
 });
