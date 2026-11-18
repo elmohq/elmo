@@ -7467,7 +7467,6 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 31,
 		status: "active",
 		checkedAt: "2026-11-18",
-		noScreenshot: true,
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
