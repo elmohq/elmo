@@ -47,7 +47,7 @@
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
 		"auth0": "catalog:",
-		"d3-shape": "^3.2.1",
+		"d3-shape": "3.2.0",
 		"drizzle-orm": "catalog:",
 		"html2canvas-pro": "^2.6.3",
 		"lucide-react": "catalog:",

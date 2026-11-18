@@ -521,8 +521,8 @@ importers:
         specifier: 'catalog:'
         version: 7.7.0
       d3-shape:
-        specifier: ^3.2.1
-        version: 3.2.1
+        specifier: 3.2.0
+        version: 3.2.0
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.41.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
@@ -6568,10 +6568,6 @@ packages:
     resolution: {integrity: sha512-p3KP5HCf/bvjBSSKuXid6Zqijx7wIfNW+J/maPs+iwR35at5JCbLUT0LzF1cnjbCHWhqzQTIN2Jpe8pRebIEFQ==}
     engines: {node: '>=12'}
 
-  d3-path@3.1.1:
-    resolution: {integrity: sha512-jsbgV8zIT38ReB9O7X7gcLndTQRONSqNNd+oGIaTBdUug4r5jFmp0N6RY9R5GWbdUDucn0qoTGyfjapT4tDhcg==}
-    engines: {node: '>=12'}
-
   d3-quadtree@3.0.2:
     resolution: {integrity: sha512-9Lu9mqJKRbIk0d6mKDjpvPURaPdwHVK5CYbcdd0/4vBgz4ldz/7TIOse3kNERsByGNfld58KEco507AztJWyTQ==}
     engines: {node: '>=12'}
@@ -6592,10 +6588,6 @@ packages:
 
   d3-shape@3.2.0:
     resolution: {integrity: sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA==}
-    engines: {node: '>=12'}
-
-  d3-shape@3.2.1:
-    resolution: {integrity: sha512-dm2o+lbKdzg9tY7GEag/dB9hcbodLfwkE/DkvqbELJXaMz0yKzWWhZqhbI7CKubukA7HnRyz0avdtvi7EPxPvw==}
     engines: {node: '>=12'}
 
   d3-time-format@4.1.0:
@@ -16574,8 +16566,6 @@ snapshots:
 
   d3-path@3.1.0: {}
 
-  d3-path@3.1.1: {}
-
   d3-quadtree@3.0.2: {}
 
   d3-sankey@0.12.3:
@@ -16600,10 +16590,6 @@ snapshots:
   d3-shape@3.2.0:
     dependencies:
       d3-path: 3.1.0
-
-  d3-shape@3.2.1:
-    dependencies:
-      d3-path: 3.1.1
 
   d3-time-format@4.1.0:
     dependencies:
@@ -20610,7 +20596,7 @@ snapshots:
       d3-ease: 3.0.1
       d3-interpolate: 3.0.1
       d3-scale: 4.0.2
-      d3-shape: 3.2.1
+      d3-shape: 3.2.0
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
