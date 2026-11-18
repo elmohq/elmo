@@ -63,21 +63,23 @@ export function lastChecked(tools: Competitor[]): string | undefined {
 
 const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
 
+const PINNED_ALTERNATIVES: Record<string, string[]> = {
+	"sight-ai": ["rankspot"],
+};
+
 /**
- * Up to `limit` alternatives to `competitor`: same category first (sorted by
- * popularity), then the most prominent trackers from other categories to fill
- * the list out. Excludes the tool itself and anything we don't index.
+ * Up to `limit` alternatives to `competitor`: pinned tools first, then the same
+ * category (sorted by popularity), then the most prominent trackers from other
+ * categories to fill the list out. Excludes the tool itself and anything we
+ * don't index.
  */
 export function getAlternatives(competitor: Competitor, limit = 6): Competitor[] {
-	const sameCategory = indexedCompetitors
-		.filter((c) => c.slug !== competitor.slug && c.category === competitor.category)
-		.sort(byPopularity);
-	if (sameCategory.length >= limit) return sameCategory.slice(0, limit);
-
-	const backfill = indexedCompetitors
-		.filter((c) => c.slug !== competitor.slug && c.category !== competitor.category)
-		.sort(byPopularity);
-	return [...sameCategory, ...backfill].slice(0, limit);
+	const pinnedSlugs = new Set(PINNED_ALTERNATIVES[competitor.slug]);
+	const pinned = indexedCompetitors.filter((c) => pinnedSlugs.has(c.slug));
+	const candidates = indexedCompetitors.filter((c) => c.slug !== competitor.slug && !pinnedSlugs.has(c.slug));
+	const sameCategory = candidates.filter((c) => c.category === competitor.category).sort(byPopularity);
+	const backfill = candidates.filter((c) => c.category !== competitor.category).sort(byPopularity);
+	return [...pinned, ...sameCategory, ...backfill].slice(0, limit);
 }
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
