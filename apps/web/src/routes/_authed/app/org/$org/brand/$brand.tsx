@@ -9,6 +9,7 @@ import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { brandDetailQuery } from "@/hooks/use-brands";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
@@ -73,9 +74,12 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 		return { brandId: brand.id };
 	},
 	loader: async ({ context }): Promise<BrandData> => {
-		const result = await getBrandData({
-			data: { organizationId: context.organization.id, brandId: context.brandId },
-		});
+		// The server waits for it so its render and the browser's first one agree.
+		const brandDetail = context.queryClient.prefetchQuery(brandDetailQuery(context.brandId));
+		const [result] = await Promise.all([
+			getBrandData({ data: { organizationId: context.organization.id, brandId: context.brandId } }),
+			typeof window === "undefined" ? brandDetail : undefined,
+		]);
 		if (!result) throw notFound();
 
 		if (needsPlan(result.trackingState)) {

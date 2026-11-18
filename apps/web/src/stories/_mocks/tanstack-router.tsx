@@ -190,6 +190,10 @@ export function useRouter() {
 	};
 }
 
+export function useHydrated() {
+	return true;
+}
+
 export function isRedirect(_error: unknown): _error is never {
 	return false;
 }
