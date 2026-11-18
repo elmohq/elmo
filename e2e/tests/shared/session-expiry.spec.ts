@@ -1,7 +1,3 @@
-/**
- * A tab can stay open longer than its session lasts. Its next server call has
- * to send it to sign in again rather than show an empty or broken page.
- */
 import { expect, test } from "../../test";
 import { organizationUrl } from "../../fixtures";
 
