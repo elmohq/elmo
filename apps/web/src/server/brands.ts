@@ -9,7 +9,7 @@ import { type BrandTrackingState, brandTrackingState } from "@workspace/lib/bran
 import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
+import { type Brand, brands, competitors, prompts } from "@workspace/lib/db/schema";
 import {
 	claimBrandSlug,
 	claimNewBrandSlug,
@@ -122,31 +122,36 @@ function getDefaultBrandDomains(): string[] {
 }
 
 /** Takes entitlements from the caller so the brand list doesn't query them once per brand. */
-async function getBrandWithPromptsFromDb(
+async function getBrandDetailFromDb(
 	brandId: string,
 	entitlements?: Entitlements,
-): Promise<(BrandWithPrompts & { trackedTargets: TrackedTarget[]; trackingState: BrandTrackingState }) | undefined> {
+): Promise<
+	| (Brand & {
+			promptCount: number;
+			trackedTargets: TrackedTarget[];
+			trackingState: BrandTrackingState;
+	  })
+	| undefined
+> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
 		});
 		if (!brand) return undefined;
 
-		const [brandPrompts, brandCompetitors, resolved] = await Promise.all([
-			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
-			db.query.competitors.findMany({ where: eq(competitors.brandId, brandId) }),
+		const [brandPrompts, resolved] = await Promise.all([
+			db.select({ premiumModels: prompts.premiumModels }).from(prompts).where(eq(prompts.brandId, brandId)),
 			entitlements ?? getOrgEntitlements(brand.organizationId),
 		]);
 
 		return {
 			...brand,
-			prompts: brandPrompts,
-			competitors: brandCompetitors,
+			promptCount: brandPrompts.length,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
 			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {
-		console.error("Error fetching brand with prompts:", error);
+		console.error("Error fetching brand:", error);
 		return undefined;
 	}
 }
@@ -156,7 +161,7 @@ export const getBrand = createServerFn({ method: "GET" })
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
 
-		const brand = await getBrandWithPromptsFromDb(data.brandId);
+		const brand = await getBrandDetailFromDb(data.brandId);
 		if (!brand) {
 			throw new Error("Brand not found");
 		}

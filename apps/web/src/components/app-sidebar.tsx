@@ -22,7 +22,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
 import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import type { Brand } from "@workspace/lib/db/schema";
 
 import {
 	Sidebar,
@@ -84,7 +84,7 @@ function organizationGroups(
 	];
 }
 
-function brandGroups(organization: OrganizationSummary, brand: BrandWithPrompts): NavGroup[] {
+function brandGroups(organization: OrganizationSummary, brand: Brand): NavGroup[] {
 	const params = brandLinkParams(organization, brand);
 	const dashboard: NavItem[] = [
 		{ title: "Overview", link: { to: "/app/org/$org/brand/$brand", params }, icon: IconDashboard, exact: true },
