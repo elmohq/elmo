@@ -1,6 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { countryName, languageName } from "@workspace/config/markets";
+import { countryName } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -328,9 +328,8 @@ function ColumnHeader({
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								The country a prompt is asked from. Default follows the brand. Its language is detected when you save
-								and can be changed in the same menu. Changing either does not translate the text, and the prompt&apos;s
-								history moves with it. To compare countries, translate the prompt instead.
+								The country a prompt is asked from. Default follows the brand. Changing it does not translate the text,
+								and the prompt&apos;s history moves with it. To compare countries, translate the prompt instead.
 							</p>
 						</TooltipContent>
 					</Tooltip>
@@ -483,14 +482,12 @@ function PromptCountryField({
 }: {
 	prompt: EditablePrompt;
 	support: MarketSupport;
-	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language">>) => void;
+	onChange: (patch: Pick<EditablePrompt, "country">) => void;
 }) {
 	return (
 		<CountryPicker
 			country={prompt.country}
 			onCountryChange={(country) => onChange({ country })}
-			language={prompt.language}
-			onLanguageChange={(language) => onChange({ language })}
 			support={support}
 			allowDefault
 			disabled={!prompt.enabled}
@@ -786,14 +783,14 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 
 function DefaultsNote({ support }: { support: MarketSupport }) {
 	const params = useBrandParams();
-	const { country, language } = support.brandMarket;
+	const { country } = support.brandMarket;
 	return (
 		<div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
 			<p>
-				Prompts are asked from <span className="font-medium">{countryName(country)}</span> in{" "}
-				<span className="font-medium">{languageName(language)}</span> unless a prompt sets its own.{" "}
+				Prompts are asked from <span className="font-medium">{countryName(country)}</span> unless a prompt sets its own
+				country.{" "}
 				<Link to="/app/org/$org/brand/$brand/settings/brand" params={params} className="underline">
-					Change the defaults
+					Change the default
 				</Link>
 			</p>
 			<CountryCostNote support={support} country={country} className="mt-1" />
@@ -868,10 +865,7 @@ export function PromptsListEditor({
 	const leads = useMemo(() => groupLeads(prompts), [prompts]);
 	const addVariant = (lead: EditablePrompt) =>
 		onChange(
-			insertIntoGroup(
-				prompts,
-				newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country, language: lead.language }),
-			),
+			insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
 		);
 	const addTranslations = (drafts: TranslatedDraft[]) =>
 		onChange(

@@ -1,8 +1,8 @@
 /**
  * Guesses the language a prompt is written in, so nobody has to set it by hand.
  * Prompts are a handful of words and often half brand names, which is where
- * detectors go wrong, so this only answers when the text clearly isn't in the
- * brand's language. No answer leaves the prompt following the brand.
+ * detectors go wrong, so this only answers when the text is clearly in one
+ * language.
  */
 import { LANGUAGES } from "@workspace/config/markets";
 import { wholeWordPattern } from "../mentions";
@@ -41,14 +41,22 @@ export interface DetectLanguageOptions {
 	ignore?: readonly string[];
 }
 
-/** The supported language `text` is clearly written in, or null when that is the brand's language or unclear. */
-export async function detectPromptLanguage(text: string, options: DetectLanguageOptions): Promise<string | null> {
-	const names = (options.ignore ?? []).filter((name) => name.trim().length > 0);
+/**
+ * The supported language `text` is clearly written in, or null when it is unclear.
+ * `ignore` holds brand and competitor names, which say nothing about the language around them.
+ */
+export async function detectLanguage(text: string, ignore: readonly string[] = []): Promise<string | null> {
+	const names = ignore.filter((name) => name.trim().length > 0);
 	const stripped = names.reduce((rest, name) => rest.replace(wholeWordPattern(name), " "), text);
 
 	const result = (await loadDetector()).detect(stripped);
-	if (!result.language || !result.isReliable() || result.language === options.brandLanguage) return null;
-	if (AMBIGUOUS.has(result.language)) return null;
+	if (!result.language || !result.isReliable() || AMBIGUOUS.has(result.language)) return null;
 
 	return (result.getScores()[result.language] ?? 0) >= MIN_CONFIDENCE ? result.language : null;
+}
+
+/** As `detectLanguage`, but null as well when the language is the brand's, which a prompt follows without storing. */
+export async function detectPromptLanguage(text: string, options: DetectLanguageOptions): Promise<string | null> {
+	const language = await detectLanguage(text, options.ignore);
+	return language === options.brandLanguage ? null : language;
 }

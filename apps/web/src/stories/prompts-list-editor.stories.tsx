@@ -237,8 +237,7 @@ export const TranslateForCountries: StoryObj = {
 
 /**
  * Before a country is chosen, the picker says which tracked models can't answer
- * from it and what a prompt there costs. A prompt's language is a second field
- * in the same menu, changed without touching its country.
+ * from it and what a prompt there costs.
  */
 export const CountryPickerExplainsACountry: StoryObj = {
 	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
@@ -251,11 +250,6 @@ export const CountryPickerExplainsACountry: StoryObj = {
 		await expect(
 			page.getByText(/One prompt here runs on 3 models: 3 provider calls a day, roughly \$0\.75 a month/),
 		).toBeVisible();
-
-		await userEvent.click(page.getByRole("combobox", { name: "Language" }));
-		await userEvent.click(await page.findByRole("option", { name: "French" }));
-		await userEvent.keyboard("{Escape}");
-		await expect(canvas.getAllByRole("button", { name: /^Country: Germany/ })).not.toHaveLength(0);
 	},
 };
 

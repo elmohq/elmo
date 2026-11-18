@@ -29,8 +29,7 @@ function Controls() {
 
 /**
  * The prompt page's country control names the country like a filter would, and
- * opens to whose setting it is, the prompt's language, and which tracked models
- * can't answer from there.
+ * opens to whose setting it is and which tracked models can't answer from there.
  */
 export const Country: StoryObj = {
 	render: () => <Controls />,
@@ -38,7 +37,6 @@ export const Country: StoryObj = {
 		await userEvent.click(within(canvasElement).getByRole("button", { name: "Country: Germany" }));
 		const page = within(document.body);
 		await expect(await page.findByText("Set on This Prompt")).toBeVisible();
-		await expect(page.getByText("Written in German.")).toBeVisible();
 		await expect(page.getByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 	},
 };

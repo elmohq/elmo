@@ -1,4 +1,4 @@
-import { COUNTRIES, countryName, LANGUAGES, languageName } from "@workspace/config/markets";
+import { COUNTRIES, countryName } from "@workspace/config/markets";
 import { labelForModelFilter } from "@workspace/config/model-filter";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -10,7 +10,6 @@ import {
 	CommandList,
 } from "@workspace/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { AlertTriangle, Check, ChevronsUpDown } from "lucide-react";
@@ -110,56 +109,10 @@ const DEFAULT_ITEM = "default";
 /** cmdk matches item values in lower case. */
 const itemValue = (country: string) => country.toLowerCase();
 
-export function LanguageSelect({
-	value,
-	onChange,
-	defaultLanguage,
-	id,
-	disabled,
-	className,
-}: {
-	value: string | null;
-	onChange: (language: string | null) => void;
-	/** The brand's language. Omit where the brand's own language is being picked. */
-	defaultLanguage?: string;
-	id?: string;
-	disabled?: boolean;
-	className?: string;
-}) {
-	const defaultLabel = defaultLanguage ? `Default (${languageName(defaultLanguage)})` : null;
-	const items = {
-		...(defaultLabel ? { [DEFAULT_ITEM]: defaultLabel } : {}),
-		...Object.fromEntries(LANGUAGES.map((language) => [language.code, language.name])),
-	};
-	return (
-		<Select
-			items={items}
-			value={value ?? DEFAULT_ITEM}
-			onValueChange={(next) => onChange(next === DEFAULT_ITEM ? null : (next as string))}
-			disabled={disabled}
-		>
-			<SelectTrigger id={id} size="sm" aria-label={id ? undefined : "Language"} className={className}>
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				{defaultLabel && <SelectItem value={DEFAULT_ITEM}>{defaultLabel}</SelectItem>}
-				{LANGUAGES.map((language) => (
-					<SelectItem key={language.code} value={language.code}>
-						{language.name}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
 interface CountryPickerProps {
 	/** Null follows the brand's country. */
 	country: string | null;
 	onCountryChange: (country: string | null) => void;
-	/** Null follows the brand's language. Shown, with `onLanguageChange`, as a second field under the list. */
-	language?: string | null;
-	onLanguageChange?: (language: string | null) => void;
 	support: MarketSupport;
 	/** Offers "Brand Default" as the first choice. Off where the brand's own country is being picked. */
 	allowDefault?: boolean;
@@ -167,48 +120,32 @@ interface CountryPickerProps {
 	className?: string;
 }
 
-/** The country, or "Default", with the language's code beside it when the prompt sets one of its own. */
-function TriggerLabel({
-	country,
-	ownLanguage,
-	support,
-}: Pick<CountryPickerProps, "country" | "support"> & { ownLanguage: string | null }) {
+function TriggerLabel({ country, support }: Pick<CountryPickerProps, "country" | "support">) {
+	if (!country) return <span className="truncate text-muted-foreground">Default</span>;
 	return (
 		<span className="flex min-w-0 items-center gap-1.5">
-			{country && coverageNote(support, country) && (
-				<AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />
-			)}
-			<span className={cn("truncate", !country && "text-muted-foreground")}>
-				{country ? countryName(country) : "Default"}
-			</span>
-			{ownLanguage && <span className="shrink-0 text-xs uppercase text-muted-foreground">{ownLanguage}</span>}
+			{coverageNote(support, country) && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />}
+			<span className="truncate">{countryName(country)}</span>
 		</span>
 	);
 }
 
-function describeSelection({
-	country,
-	language,
-	support,
-}: Pick<CountryPickerProps, "country" | "language" | "support">) {
-	const from = countryName(country ?? support.brandMarket.country);
-	const written = languageName(language ?? support.brandMarket.language);
-	const asked = `Asked from ${from} in ${written}.`;
-	if (!country && !language) return `${asked} Both follow the brand.`;
-	const note = country && coverageNote(support, country);
-	return note ? `${asked} Only ${note} can answer from ${from}.` : asked;
+function describeSelection({ country, support }: Pick<CountryPickerProps, "country" | "support">) {
+	if (!country) return `Follows the brand: asked from ${countryName(support.brandMarket.country)}.`;
+	const note = coverageNote(support, country);
+	return note
+		? `Asked from ${countryName(country)}. Only ${note} can answer from there.`
+		: `Asked from ${countryName(country)}, whatever the brand's country is.`;
 }
 
 /**
- * Picks the country a prompt is asked from, with its language as a second,
- * independent field. Before committing, the footer says which tracked models
- * can't answer from the highlighted country and what a prompt there costs.
+ * Picks the country a prompt is asked from. Before committing, the footer says
+ * which tracked models can't answer from the highlighted country and what a
+ * prompt there costs.
  */
 export function CountryPicker({
 	country,
 	onCountryChange,
-	language,
-	onLanguageChange,
 	support,
 	allowDefault = false,
 	disabled,
@@ -217,8 +154,6 @@ export function CountryPicker({
 	const [open, setOpen] = useState(false);
 	const [highlighted, setHighlighted] = useState<string>("");
 	const brand = support.brandMarket;
-	// Only a prompt has a language of its own to show; the brand's is a field beside this one.
-	const ownLanguage = onLanguageChange ? (language ?? null) : null;
 	const previewed =
 		highlighted === DEFAULT_ITEM
 			? brand.country
@@ -246,10 +181,10 @@ export function CountryPicker({
 									variant="outline"
 									size="sm"
 									disabled={disabled}
-									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}${ownLanguage ? `, in ${languageName(ownLanguage)}` : ""}`}
+									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}`}
 									className={cn(
 										"h-8 w-full justify-between gap-1 px-2 font-normal",
-										allowDefault && (country || ownLanguage) && "border-foreground/30",
+										allowDefault && country && "border-foreground/30",
 										className,
 									)}
 								/>
@@ -257,11 +192,11 @@ export function CountryPicker({
 						/>
 					}
 				>
-					<TriggerLabel country={country} ownLanguage={ownLanguage} support={support} />
+					<TriggerLabel country={country} support={support} />
 					<ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
 				</TooltipTrigger>
 				<TooltipContent>
-					<p className="max-w-xs">{describeSelection({ country, language, support })}</p>
+					<p className="max-w-xs">{describeSelection({ country, support })}</p>
 				</TooltipContent>
 			</Tooltip>
 			<PopoverContent align="end" className="w-80 p-0">
@@ -298,17 +233,6 @@ export function CountryPicker({
 					</CommandList>
 				</Command>
 				<div className="space-y-2 border-t bg-muted/40 p-3">
-					{onLanguageChange && (
-						<div className="flex items-center justify-between gap-2">
-							<span className="text-xs font-medium">Language</span>
-							<LanguageSelect
-								value={language ?? null}
-								onChange={onLanguageChange}
-								defaultLanguage={brand.language}
-								className="h-7 w-44 bg-background text-xs"
-							/>
-						</div>
-					)}
 					<p className="text-xs font-medium">{countryName(previewed)}</p>
 					{coverageNote(support, previewed) && <CountryCoverage support={support} country={previewed} />}
 					<CountryCostNote support={support} country={previewed} />

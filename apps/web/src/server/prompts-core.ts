@@ -355,7 +355,7 @@ async function applyPromptUpdate(
 	return row;
 }
 
-/** New wording on a prompt that has no language of its own gets one detected, unless the caller names one. */
+/** New wording gets its language detected again, unless the caller names one. */
 async function withDetectedLanguage(
 	brand: PromptBrand,
 	promptId: string,
@@ -366,9 +366,9 @@ async function withDetectedLanguage(
 		.select({ value: prompts.value, language: prompts.language })
 		.from(prompts)
 		.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brand.id)));
-	if (!existing || existing.language !== null || existing.value === input.value) return input;
-	const language = await (await promptLanguageDetector(brand.id))(input.value);
-	return language ? { ...input, language } : input;
+	if (!existing || existing.value === input.value) return input;
+	const language = await (await promptLanguageDetector(brand.id))(input.value, existing.language);
+	return language === existing.language ? input : { ...input, language };
 }
 
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {

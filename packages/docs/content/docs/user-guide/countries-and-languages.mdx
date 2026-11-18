@@ -4,28 +4,24 @@ description: Track prompts from the countries and in the languages your customer
 updated: 2026-11-17
 ---
 
-AI answers change with where a question is asked from and the language it is asked in. Elmo tracks the two separately: every prompt has a **country** it is asked from and a **language** it is written in.
+AI answers change with where a question is asked from and the language it is asked in. You choose the **country** a prompt is asked from. Elmo works out the **language** from the prompt's wording, so you only meet languages when you filter or translate.
 
-## The Brand's Defaults
+## The Brand's Default Country
 
-Every brand has a default country and a default language, which start as **United States** and **English**. Prompts use them unless they set their own. Change them under **Settings → Brand**.
+Every brand has a default country, which starts as **United States**. Prompts are asked from it unless they set their own. Change it under **Settings → Brand**.
 
-Changing the default country moves every prompt that follows it, from the next run on. Each answer keeps the country it was asked from, but a prompt's history stays with the prompt, so after the change a country filter shows its earlier answers under the new country. Changing the default language does not translate any prompt.
+Changing the default country moves every prompt that follows it, from the next run on. Each answer keeps the country it was asked from, but a prompt's history stays with the prompt, so after the change a country filter shows its earlier answers under the new country.
 
-## A Prompt's Own Country and Language
+## A Prompt's Own Country
 
 In **Settings → Prompts**, the **Country** column shows where each prompt is asked from:
 
 - **Default** — the prompt follows the brand's country.
 - A country such as **Germany** — the prompt is asked from there whatever the brand's default is.
 
-A prompt that sets its own language shows the language's code beside the country, such as **Germany DE** or **Default ES**.
+Open the menu to pick a country. Before you choose, it shows which of the models you track can't answer from the highlighted country and what a prompt there costs.
 
-Open the menu to pick a country. Before you choose, it shows which of the models you track can't answer from the highlighted country and what a prompt there costs. The **Language** field in the same menu sets the prompt's language on its own, so a prompt can be asked from Germany in English, or from the United States in Spanish.
-
-You rarely need to set the language yourself. When you save a prompt that has no language of its own, Elmo detects the language from its wording and stores it if it clearly isn't the brand's. Brand and competitor names are ignored, and a prompt too short or too ambiguous to call is left on the default. Indonesian, Malay, Croatian, and Serbian are too alike for it to tell apart reliably, so set those yourself. A language you choose is never replaced.
-
-Changing a prompt's country or language does not translate it, and the prompt's earlier answers move with it. To ask the same question somewhere else and compare the two, translate it instead.
+Changing a prompt's country does not translate it, and the prompt's earlier answers move with it. To ask the same question somewhere else and compare the two, translate it instead.
 
 ## Variants and Translations
 
@@ -56,7 +52,11 @@ Elmo localizes by country because it is the one location every provider that loc
 
 The language reaches every model through the prompt's wording. Google's surfaces also take it as their interface language.
 
-The prompt page shows the country a prompt is asked from. Click it to see whether the prompt sets it or follows the brand, its language, and which models can't answer from there.
+The prompt page shows the country a prompt is asked from. Click it to see whether the prompt sets it or follows the brand, and which models can't answer from there.
+
+## How Languages Are Detected
+
+There is no language to set. When you save a prompt, Elmo detects the language from its wording and records it, so a German prompt asked from the United States counts as German. Brand and competitor names are ignored. A prompt too short or too ambiguous to call counts as the brand's language, which is English unless the API changed it, and Indonesian, Malay, Croatian, and Serbian are too alike to tell apart reliably. A translated variant always carries the language it was translated into, and the [API](#api) can set a prompt's `language` directly where detection gets it wrong.
 
 ## Filtering by Country and Language
 
@@ -70,7 +70,7 @@ Requests that leave these fields out behave as they did before: prompts follow t
 
 ## Supported Countries and Languages
 
-The tables below list what each provider is told, and the countries and languages you can choose. The translate dialog offers each country in its own languages and in English; the Country and Language fields, and the API, accept any listed country with any listed language.
+The tables below list what each provider is told, and the countries and languages you can choose. The translate dialog offers each country in its own languages and in English; the Country field accepts any listed country, and the API accepts any listed country with any listed language.
 
 In the first table, **Country** means the provider is asked from the prompt's country, **+ language** means it is also sent the language, and **United States only** means it can't be told a country and so only runs prompts asked from the United States.
 

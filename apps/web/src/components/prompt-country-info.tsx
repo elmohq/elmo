@@ -1,4 +1,4 @@
-import { countryName, languageName, type Market } from "@workspace/config/markets";
+import { countryName, type Market } from "@workspace/config/markets";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { AlertTriangle, Globe } from "lucide-react";
 import { CountryCoverage, coverageNote } from "@/components/country-picker";
@@ -30,7 +30,6 @@ export function PromptCountryInfo({
 			/>
 			<PopoverContent align="end" className="w-72 space-y-1.5">
 				<p className="text-xs font-medium">{overridden ? "Set on This Prompt" : "Brand Default"}</p>
-				<p className="text-xs text-muted-foreground">Written in {languageName(market.language)}.</p>
 				<CountryCoverage support={support} country={market.country} />
 			</PopoverContent>
 		</Popover>

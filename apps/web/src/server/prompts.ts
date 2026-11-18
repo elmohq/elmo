@@ -479,6 +479,12 @@ async function assertGroupsUnclaimedElsewhere(brandId: string, groupIds: string[
 	if (claimed) throw new Error("A prompt can only be a variant of a prompt in the same brand.");
 }
 
+/** A detected language, null included, wins over the one the editor sent back unchanged. */
+function languageChange(submitted: string | null | undefined, detected: string | null | undefined) {
+	if (detected !== undefined) return { language: detected };
+	return submitted !== undefined ? { language: submitted } : {};
+}
+
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -535,19 +541,21 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
-		// New wording with no language set is the only thing detected, so a language someone chose is never replaced.
+		// A translated draft arrives with its language; everything else gets it from its wording.
 		const detectLanguage = await promptLanguageDetector(data.brandId);
 		const needsLanguage = [
-			...inserts.map(({ prompt }) => prompt),
+			...inserts
+				.filter(({ prompt }) => (prompt.language ?? null) === null)
+				.map(({ prompt }) => ({ prompt, stored: null })),
 			...updates
-				.filter(({ id, prompt }) => {
-					const stored = existingById.get(id);
-					return stored?.language === null && stored.value !== prompt.value;
-				})
-				.map(({ prompt }) => prompt),
-		].filter((prompt) => (prompt.language ?? null) === null);
+				.map(({ id, prompt }) => ({ prompt, stored: existingById.get(id) }))
+				.filter(({ prompt, stored }) => stored !== undefined && stored.value !== prompt.value)
+				.map(({ prompt, stored }) => ({ prompt, stored: stored?.language ?? null })),
+		];
 		const detected = new Map(
-			await Promise.all(needsLanguage.map(async (prompt) => [prompt, await detectLanguage(prompt.value)] as const)),
+			await Promise.all(
+				needsLanguage.map(async ({ prompt, stored }) => [prompt, await detectLanguage(prompt.value, stored)] as const),
+			),
 		);
 
 		const saved = await db.transaction(async (tx) => {
@@ -562,7 +570,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						premiumModels: after.premiumModels,
 						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 						...(prompt.country !== undefined ? { country: prompt.country } : {}),
-						...(prompt.language !== undefined ? { language: detected.get(prompt) ?? prompt.language } : {}),
+						...languageChange(prompt.language, detected.get(prompt)),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
