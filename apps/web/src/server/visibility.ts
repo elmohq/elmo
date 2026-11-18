@@ -6,9 +6,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { toBatchChartColumns, toBatchChartData } from "@/lib/chart-utils";
-import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { lookbackSchema } from "@/lib/lookback";
 import { getPerPromptDailyCompetitors, getPerPromptDailyRuns } from "@/lib/rollup-read";
-import { getBrandVisibility } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -32,28 +31,12 @@ export interface BatchChartDataResponse {
 	};
 }
 
-interface VisibilityTimeSeriesPoint {
-	date: string;
-	visibility: number | null;
-}
-
-export interface FilteredVisibilityResponse {
-	currentVisibilityPct: number;
-	totalRuns: number;
-	totalPrompts: number;
-	totalCitations: number;
-	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
-	lookback: LookbackPeriod;
-}
-
 export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
-			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -62,10 +45,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
-		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
-			search: data.search,
-		});
+		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {});
 		const promptIds = resolvedPrompts.map((p) => p.id);
 
 		const [brandResult, competitorsResult] = await Promise.all([
@@ -82,8 +62,8 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const brand = brandResult[0];
 
-		// No prompts match the current filters — return an empty-but-valid
-		// payload rather than erroring (the page renders an empty state).
+		// A brand with no enabled prompts gets an empty-but-valid payload rather
+		// than an error (the page renders an empty state).
 		if (promptIds.length === 0) {
 			return {
 				chartData: JSON.stringify(toBatchChartColumns([])),
@@ -107,43 +87,5 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 				fromDate: fromDateStr,
 				toDate: toDateStr,
 			},
-		};
-	});
-
-export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			lookback: lookbackSchema.default("1m"),
-			model: z.string().optional(),
-			tags: z.string().optional(),
-			search: z.string().optional(),
-			timezone: z.string().default("UTC"),
-		}),
-	)
-	.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
-		await requireBrandSession(data.brandId);
-
-		const lookback = data.lookback;
-		// Shares the chart's window so the visibility bar can't disagree with it.
-		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, lookback, data.timezone);
-
-		const result = await getBrandVisibility(
-			data.brandId,
-			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
-		);
-
-		// The single place the dashboard converts the shared ratios to percentages.
-		const asPercent = (ratio: number | null) => (ratio === null ? null : Math.round(ratio * 100));
-		return {
-			// The hero renders a percentage, so "no runs to plot" has to arrive as a
-			// number rather than the null the shared function returns.
-			currentVisibilityPct: asPercent(result.currentVisibility) ?? 0,
-			totalRuns: result.totalRuns,
-			totalPrompts: result.totalPrompts,
-			totalCitations: result.totalCitations,
-			visibilityTimeSeries: result.series.map((point) => ({ ...point, visibility: asPercent(point.visibility) })),
-			lookback,
 		};
 	});

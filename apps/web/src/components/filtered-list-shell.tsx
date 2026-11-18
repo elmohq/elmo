@@ -12,6 +12,7 @@ interface FilteredListShellProps {
 	availableTags: readonly string[];
 	trackedTargets: TrackedTarget[];
 	showSearch?: boolean;
+	searchDebounceMs?: number;
 	showModelSelector?: boolean;
 	/** Show "n results" / "n of m results" next to the filter dropdowns. */
 	showResultCount?: boolean;
@@ -49,6 +50,7 @@ export function FilteredListShell({
 	availableTags,
 	trackedTargets,
 	showSearch = false,
+	searchDebounceMs,
 	showModelSelector = true,
 	showResultCount = false,
 	filterBarExtras,
@@ -97,6 +99,7 @@ export function FilteredListShell({
 					availableTags={availableTags}
 					trackedTargets={trackedTargets}
 					showSearch={showSearch}
+					searchDebounceMs={searchDebounceMs}
 					showModelSelector={showModelSelector}
 					resultCount={showResultCount && !isLoading ? effectiveFilteredCount : undefined}
 					resultTotal={showResultCount && !isLoading ? totalCount : undefined}
