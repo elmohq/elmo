@@ -59,7 +59,6 @@ export const Route = createFileRoute("/auth/login")({
 		// sign in again, so forwarding to it could go round forever.
 		if (search.sig) return;
 		const viewer = await context.queryClient.fetchQuery({ ...viewerQuery, staleTime: 0 }).catch(() => null);
-		// A full page load, as after submitting the form.
 		if (viewer) throw redirect({ href: safeReturnTo(search.returnTo), reloadDocument: true });
 	},
 	head: ({ match }) => {
@@ -85,7 +84,6 @@ function LoginPage() {
 	const router = useRouter();
 
 	useEffect(() => {
-		// Signing in from another tab leaves this one on the form until it looks again.
 		const recheck = () => void router.invalidate();
 		window.addEventListener("focus", recheck);
 		return () => window.removeEventListener("focus", recheck);
