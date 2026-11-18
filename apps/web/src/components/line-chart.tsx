@@ -13,7 +13,6 @@ export interface LineSeries {
 	id: string;
 	label: string;
 	color: string;
-	/** The series people are looking for: drawn heavier, with solid dots. */
 	primary: boolean;
 }
 
@@ -26,13 +25,9 @@ interface Row {
 
 const bump = d3Curve(curveBumpX);
 const MAX_DATE_LABELS = 16;
-/** The brand's own line is the one people are looking for, so it carries more
- *  weight than the competitors it's plotted against. */
 const BRAND_STROKE_WIDTH = 3;
 const COMPETITOR_STROKE_WIDTH = 2;
-/** How far the other series recede while one is singled out. */
 const DIMMED_OPACITY = 0.25;
-/** Ring thickness on the hollow competitor dots. */
 const DOT_RING_WIDTH = 1.5;
 // The tooltip body below draws its own surface.
 const BARE_TOOLTIP = {
