@@ -1,5 +1,14 @@
+import { createSerializationAdapter } from "@tanstack/react-router";
 import { createMiddleware } from "@tanstack/react-start";
-import { isAuthenticationRequired, signInAgain } from "@/lib/auth/session-errors";
+import { AuthenticationRequiredError, signInAgain } from "@/lib/auth/session-errors";
+
+/** Without this the error reaches the browser as a plain Error and loses its class. */
+export const authenticationRequiredAdapter = createSerializationAdapter({
+	key: "AuthenticationRequiredError",
+	test: (value): value is AuthenticationRequiredError => value instanceof AuthenticationRequiredError,
+	toSerializable: () => null,
+	fromSerializable: () => new AuthenticationRequiredError(),
+});
 
 /**
  * A tab can outlive its session, and route loaders, query functions and event
@@ -10,7 +19,8 @@ export const sessionExpiredMiddleware = createMiddleware({ type: "function" }).c
 	try {
 		return await next();
 	} catch (error) {
-		if (isAuthenticationRequired(error)) signInAgain();
+		// Client middleware also runs on the server while it renders a page.
+		if (error instanceof AuthenticationRequiredError && typeof window !== "undefined") signInAgain();
 		throw error;
 	}
 });

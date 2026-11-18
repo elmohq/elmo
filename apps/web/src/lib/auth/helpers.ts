@@ -4,7 +4,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { auth } from "./server";
-import { AUTHENTICATION_REQUIRED } from "./session-errors";
+import { AuthenticationRequiredError } from "./session-errors";
 
 type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unknown };
 
@@ -15,7 +15,7 @@ export async function getAuthSession() {
 
 export async function requireAuthSession() {
 	const session = await getAuthSession();
-	if (!session) throw new Error(AUTHENTICATION_REQUIRED);
+	if (!session) throw new AuthenticationRequiredError();
 	return session;
 }
 

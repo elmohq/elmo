@@ -14,7 +14,7 @@ import { sentryGlobalFunctionMiddleware, sentryGlobalRequestMiddleware } from "@
 import { createCsrfMiddleware, createStart } from "@tanstack/react-start";
 import { authMiddleware } from "@/middleware/auth";
 import { deploymentMiddleware } from "@/middleware/deployment";
-import { sessionExpiredMiddleware } from "@/middleware/session-expired";
+import { authenticationRequiredAdapter, sessionExpiredMiddleware } from "@/middleware/session-expired";
 
 const csrfMiddleware = createCsrfMiddleware({
 	filter: (ctx) => ctx.handlerType === "serverFn",
@@ -24,4 +24,5 @@ export const startInstance = createStart(() => ({
 	// csrf first so forged cross-site requests are rejected before any other work runs
 	requestMiddleware: [csrfMiddleware, sentryGlobalRequestMiddleware, deploymentMiddleware],
 	functionMiddleware: [sentryGlobalFunctionMiddleware, authMiddleware, sessionExpiredMiddleware],
+	serializationAdapters: [authenticationRequiredAdapter],
 }));

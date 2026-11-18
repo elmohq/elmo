@@ -1,7 +1,10 @@
 export const AUTHENTICATION_REQUIRED = "Unauthorized: Authentication required";
 
-export function isAuthenticationRequired(error: unknown): boolean {
-	return error instanceof Error && error.message === AUTHENTICATION_REQUIRED;
+export class AuthenticationRequiredError extends Error {
+	constructor() {
+		super(AUTHENTICATION_REQUIRED);
+		this.name = "AuthenticationRequiredError";
+	}
 }
 
 let signingInAgain = false;

@@ -1,17 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { AUTHENTICATION_REQUIRED, isAuthenticationRequired } from "../session-errors";
-
-describe("isAuthenticationRequired", () => {
-	it("recognizes a signed-out caller and nothing else", () => {
-		expect(isAuthenticationRequired(new Error(AUTHENTICATION_REQUIRED))).toBe(true);
-		expect(isAuthenticationRequired(new Error("Unauthorized: Admin access required"))).toBe(false);
-		expect(isAuthenticationRequired(AUTHENTICATION_REQUIRED)).toBe(false);
-	});
-});
+import { signInAgain } from "../session-errors";
 
 describe("signInAgain", () => {
-	it("sends the browser to sign in once, coming back to where it was", async () => {
-		const { signInAgain } = await import("../session-errors");
+	it("sends the browser to sign in once, coming back to where it was", () => {
 		const assign = vi.fn();
 		const location = { pathname: "/app/org/acme/settings", search: "?tab=keys", hash: "#top", assign };
 
