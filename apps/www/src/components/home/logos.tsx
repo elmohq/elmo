@@ -76,6 +76,21 @@ const customers: Customer[] = [
 		),
 	},
 	{
+		name: "Airbyte",
+		url: "https://airbyte.com/?ref=elmo",
+		linkClass: "group/ab flex h-6 items-center",
+		render: () => (
+			<img
+				src="/airbyte-logo.svg"
+				width={94}
+				height={24}
+				alt=""
+				aria-hidden="true"
+				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/ab:opacity-100 group-hover/ab:grayscale-0"
+			/>
+		),
+	},
+	{
 		name: "Cura",
 		url: "https://cura.inc/?ref=elmo",
 		linkClass: "group/cura flex h-6 items-center",
