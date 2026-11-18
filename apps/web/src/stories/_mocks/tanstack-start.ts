@@ -39,4 +39,10 @@ export const getRequestHeaders = () => ({});
 
 export const getRequest = () => ({ headers: new Headers() });
 
+export const getCookie = (_name: string) => undefined;
+
+export const createIsomorphicFn = () => ({
+	server: () => ({ client: <T>(impl: T) => impl }),
+});
+
 export default {};
