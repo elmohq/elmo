@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { brandSegment, canonicalBrandHref, resolveSegment } from "@workspace/lib/app-urls";
 import { type BrandTrackingState, brandTrackingState, needsPlan } from "@workspace/lib/brand-state";
 import { db } from "@workspace/lib/db/db";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
+import type { Brand } from "@workspace/lib/db/schema";
+import { brands } from "@workspace/lib/db/schema";
 import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
@@ -14,7 +14,7 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
 
 interface BrandData {
-	brand: BrandWithPrompts;
+	brand: Brand;
 	trackingState: BrandTrackingState;
 	organizationId: string;
 }
@@ -32,14 +32,10 @@ const getBrandData = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const [brandPrompts, brandCompetitors, { entitlements }] = await Promise.all([
-			db.query.prompts.findMany({ where: eq(prompts.brandId, brand.id) }),
-			db.query.competitors.findMany({ where: eq(competitors.brandId, brand.id) }),
-			getOrgBillingState(brand.organizationId),
-		]);
+		const { entitlements } = await getOrgBillingState(brand.organizationId);
 
 		return {
-			brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
+			brand,
 			trackingState: brandTrackingState(brand, entitlements),
 			organizationId: brand.organizationId,
 		};

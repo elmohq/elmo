@@ -332,9 +332,7 @@ function DashboardPage() {
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
 	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
-		return (
-			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
-		);
+		return <AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.promptCount ?? 0) > 0} />;
 	}
 
 	return (
