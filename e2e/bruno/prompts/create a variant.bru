@@ -14,13 +14,13 @@ body:json {
   {
     "brandId": "{{brandId}}",
     "value": "Bruno E2E variant — another wording",
-    "groupId": "{{seededGroupId}}"
+    "parentId": "{{promptId}}"
   }
 }
 
 assert {
   res.status: eq 201
-  res.body.groupId: eq {{seededGroupId}}
+  res.body.parentId: eq {{promptId}}
 }
 
 script:post-response {

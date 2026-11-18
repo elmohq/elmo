@@ -19,7 +19,7 @@ const listPromptsQuery = z.object({
 	// Anything but `true` or `false` filters nothing, rather than being refused.
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),
-	groupId: z.uuid().optional(),
+	parentId: z.uuid().optional(),
 	q: z.string().optional(),
 });
 
@@ -27,7 +27,7 @@ const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
-	groupId: z.uuid().optional(),
+	parentId: z.uuid().optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						brandId: query.brandId,
 						enabled: query.enabled,
 						tags: (query.tags ?? "").split(","),
-						groupId: query.groupId,
+						parentId: query.parentId,
 						q: query.q,
 						limit: query.limit,
 						offset: offsetOf(query),
@@ -68,7 +68,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [{ value: body.value, tags: body.tags, groupId: body.groupId, enabled: true }],
+						prompts: [{ value: body.value, tags: body.tags, parentId: body.parentId, enabled: true }],
 					});
 					return toPromptSummary(created);
 				},

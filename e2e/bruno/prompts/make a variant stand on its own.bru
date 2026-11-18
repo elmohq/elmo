@@ -1,5 +1,5 @@
 meta {
-  name: move a variant into its own group
+  name: make a variant stand on its own
   type: http
   seq: 20
 }
@@ -12,11 +12,11 @@ patch {
 
 body:json {
   {
-    "groupId": null
+    "parentId": null
   }
 }
 
 assert {
   res.status: eq 200
-  res.body.groupId: neq {{seededGroupId}}
+  res.body.parentId: eq null
 }

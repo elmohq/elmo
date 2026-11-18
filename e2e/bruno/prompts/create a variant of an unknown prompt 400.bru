@@ -1,5 +1,5 @@
 meta {
-  name: create a variant of an unknown group 400
+  name: create a variant of an unknown prompt 400
   type: http
   seq: 32
 }
@@ -14,12 +14,12 @@ body:json {
   {
     "brandId": "{{brandId}}",
     "value": "x",
-    "groupId": "{{missingUuid}}"
+    "parentId": "{{missingUuid}}"
   }
 }
 
 assert {
   res.status: eq 400
   res.body.error: eq Validation Error
-  res.body.message: contains groupId
+  res.body.message: contains No prompt in this brand
 }

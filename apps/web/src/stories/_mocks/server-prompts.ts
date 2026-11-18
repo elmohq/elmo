@@ -16,12 +16,11 @@ export const getPromptRunsFn = noop;
 export const updatePromptsFn = async ({
 	data,
 }: {
-	data: { prompts: Array<{ id?: string; groupId?: string; value: string; enabled?: boolean; tags?: string[] }> };
+	data: { prompts: Array<{ id?: string; variantOf?: string; value: string; enabled?: boolean; tags?: string[] }> };
 }) =>
 	data.prompts.map((p, i) => ({
 		id: p.id ?? `mock-new-${i}`,
-		// A saved prompt keeps its group, which for the story fixtures is one group each.
-		groupId: p.groupId ?? `group-${p.id ?? `mock-new-${i}`}`,
+		parentId: null,
 		createdAt: new Date(2026, 0, 1 + i),
 		value: p.value,
 		enabled: p.enabled ?? true,

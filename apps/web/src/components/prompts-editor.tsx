@@ -12,13 +12,13 @@ import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
-import { orderByGroup } from "@/lib/prompt-variants";
+import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
 	id: string;
-	groupId: string;
+	parentId: string | null;
 	createdAt: Date | string;
 	value: string;
 	enabled: boolean;
@@ -44,7 +44,7 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 	return orderByGroup(rows).map((p) => ({
 		id: p.id,
 		_key: p.id,
-		groupId: p.groupId,
+		groupId: variantGroupOf(p),
 		value: p.value,
 		enabled: p.enabled,
 		tags: p.tags || [],
@@ -141,8 +141,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			const allPrompts = [
 				...validPrompts.map((p) => ({
-					// A saved prompt keeps its group; only a new one needs telling which it joins.
-					...(p.id ? { id: p.id } : { groupId: p.groupId }),
+					// A saved prompt keeps its parent; only a new one needs telling whose variant it is.
+					...(p.id ? { id: p.id } : { variantOf: p.groupId }),
 					value: p.value.trim(),
 					enabled: p.enabled,
 					tags: p.tags,

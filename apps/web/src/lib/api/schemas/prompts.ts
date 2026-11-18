@@ -5,7 +5,7 @@ export const promptSchema = z.object({
 	id: z.uuid(),
 	brandId: z.string(),
 	value: z.string(),
-	groupId: z.uuid(),
+	parentId: z.uuid().nullable(),
 	enabled: z.boolean(),
 	tags: z.array(z.string()),
 	systemTags: z.array(z.string()),

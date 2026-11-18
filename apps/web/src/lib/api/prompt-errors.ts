@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api/handler";
-import { PromptGroupNotFoundError, PromptNotFoundError } from "@/server/prompts-core";
+import { PromptNotFoundError, PromptParentError } from "@/server/prompts-core";
 
 /**
  * The writes re-check under their own lock, so a prompt that a concurrent
@@ -8,7 +8,7 @@ import { PromptGroupNotFoundError, PromptNotFoundError } from "@/server/prompts-
  */
 export function promptWriteError(err: unknown): ApiError | undefined {
 	if (err instanceof PromptNotFoundError) return new ApiError(404, "Not Found", err.message);
-	if (err instanceof PromptGroupNotFoundError) {
+	if (err instanceof PromptParentError) {
 		return new ApiError(400, "Validation Error", err.message, "validation_error");
 	}
 	return undefined;
