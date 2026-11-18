@@ -40,6 +40,10 @@ const BARE_TOOLTIP = {
 function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSeries: string | null) {
 	const dates = data.map((point) => point.date);
 	const labelEvery = Math.ceil(dates.length / MAX_DATE_LABELS);
+	const highest = Math.max(
+		1,
+		...data.flatMap((point) => series.map((line) => point[line.id]).filter((value) => typeof value === "number")),
+	);
 	const layers = series.map((line) => {
 		const rows: Row[] = data.flatMap((point) => {
 			const value = point[line.id];
@@ -105,7 +109,8 @@ function definitionFor(data: ChartDataPoint[], series: LineSeries[], activeSerie
 				},
 			},
 			y: {
-				scale: scaleLinear,
+				// An instance, because the chart infers a factory's domain from the data and drops the zero baseline.
+				scale: scaleLinear().domain([0, highest]),
 				nice: true,
 				grid: true,
 				axis: {
