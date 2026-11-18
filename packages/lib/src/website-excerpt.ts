@@ -81,23 +81,25 @@ async function fromReadability(url: string): Promise<string | null> {
 	const articleBody = article?.content
 		? parseHTML(`<!DOCTYPE html><html><body>${article.content}</body></html>`).document.body
 		: null;
-	const text = articleBody ? toStructuredText(articleBody) : "";
+	const text = articleBody ? toStructuredText(articleBody, NON_TEXT_TAGS) : "";
 	if (text) {
 		return text;
 	}
 	// Readability couldn't isolate an article (and mutates the document it parses), so read the page afresh.
-	return toStructuredText(parseHTML(html).document.body) || null;
+	return toStructuredText(parseHTML(html).document.body, PAGE_CHROME_TAGS) || null;
 }
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
-const SKIPPED_TAGS = new Set(["script", "style", "noscript", "template", "svg", "iframe", "nav", "footer", "form"]);
+const NON_TEXT_TAGS = new Set(["script", "style", "noscript", "template", "svg", "iframe"]);
+// Readability keeps chrome only when it judges it part of the content (e.g. a product menu), so it's dropped only
+// when reading the whole page.
+const PAGE_CHROME_TAGS = new Set([...NON_TEXT_TAGS, "nav", "footer", "form"]);
 const BLOCK_TAGS = new Set([
 	"address",
 	"article",
 	"aside",
 	"blockquote",
-	"br",
 	"dd",
 	"div",
 	"dl",
@@ -116,7 +118,7 @@ const BLOCK_TAGS = new Set([
 ]);
 
 /** Visible text with headings and list items marked Markdown-style, since that structure is signal for the LLM. */
-function toStructuredText(root: Node | null | undefined): string {
+function toStructuredText(root: Node | null | undefined, skippedTags: Set<string>): string {
 	if (!root) return "";
 	const lines: string[] = [];
 	let prefix = "";
@@ -129,8 +131,9 @@ function toStructuredText(root: Node | null | undefined): string {
 	};
 	const walkElement = (element: Element) => {
 		const tag = element.tagName.toLowerCase();
-		if (SKIPPED_TAGS.has(tag)) return;
-		if (tag === "td" || tag === "th") current += " ";
+		if (skippedTags.has(tag)) return;
+		// A <br> often only wraps a heading or tagline visually, so splitting the line there would orphan its second half.
+		if (tag === "br" || tag === "td" || tag === "th") current += " ";
 		const newLinePrefix = linePrefix(tag);
 		if (newLinePrefix !== undefined) {
 			flush();
