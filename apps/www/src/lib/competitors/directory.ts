@@ -68,18 +68,18 @@ const PINNED_ALTERNATIVES: Record<string, string[]> = {
 };
 
 /**
- * Up to `limit` alternatives to `competitor`: pinned tools first, then the same
- * category (sorted by popularity), then the most prominent trackers from other
- * categories to fill the list out. Excludes the tool itself and anything we
- * don't index.
+ * Up to `limit` alternatives to `competitor`: the same category (sorted by
+ * popularity), then the most prominent trackers from other categories to fill
+ * the list out, with any pinned tools taking the final spots. Excludes the tool
+ * itself and anything we don't index.
  */
 export function getAlternatives(competitor: Competitor, limit = 6): Competitor[] {
 	const pinnedSlugs = new Set(PINNED_ALTERNATIVES[competitor.slug]);
-	const pinned = indexedCompetitors.filter((c) => pinnedSlugs.has(c.slug));
+	const pinned = indexedCompetitors.filter((c) => pinnedSlugs.has(c.slug)).slice(0, limit);
 	const candidates = indexedCompetitors.filter((c) => c.slug !== competitor.slug && !pinnedSlugs.has(c.slug));
 	const sameCategory = candidates.filter((c) => c.category === competitor.category).sort(byPopularity);
 	const backfill = candidates.filter((c) => c.category !== competitor.category).sort(byPopularity);
-	return [...pinned, ...sameCategory, ...backfill].slice(0, limit);
+	return [...[...sameCategory, ...backfill].slice(0, limit - pinned.length), ...pinned];
 }
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
