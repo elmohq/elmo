@@ -77,14 +77,83 @@ async function fromReadability(url: string): Promise<string | null> {
 	if (!html.trim()) {
 		return null;
 	}
-	const { document } = parseHTML(html);
-	const article = new Readability(document).parse();
-	const text = article?.textContent?.trim();
+	const article = new Readability(parseHTML(html).document).parse();
+	const articleBody = article?.content
+		? parseHTML(`<!DOCTYPE html><html><body>${article.content}</body></html>`).document.body
+		: null;
+	const text = articleBody ? toStructuredText(articleBody) : "";
 	if (text) {
 		return text;
 	}
-	// Readability couldn't isolate an article; fall back to all visible text.
-	return document.body?.textContent?.trim() || null;
+	// Readability couldn't isolate an article (and mutates the document it parses), so read the page afresh.
+	return toStructuredText(parseHTML(html).document.body) || null;
+}
+
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+const SKIPPED_TAGS = new Set(["script", "style", "noscript", "template", "svg", "iframe", "nav", "footer", "form"]);
+const BLOCK_TAGS = new Set([
+	"address",
+	"article",
+	"aside",
+	"blockquote",
+	"br",
+	"dd",
+	"div",
+	"dl",
+	"dt",
+	"figcaption",
+	"figure",
+	"header",
+	"main",
+	"ol",
+	"p",
+	"pre",
+	"section",
+	"table",
+	"tr",
+	"ul",
+]);
+
+/** Visible text with headings and list items marked Markdown-style, since that structure is signal for the LLM. */
+function toStructuredText(root: Node | null | undefined): string {
+	if (!root) return "";
+	const lines: string[] = [];
+	let prefix = "";
+	let current = "";
+	const flush = () => {
+		const line = current.replace(/\s+/g, " ").trim();
+		if (line) lines.push(prefix + line);
+		prefix = "";
+		current = "";
+	};
+	const walkElement = (element: Element) => {
+		const tag = element.tagName.toLowerCase();
+		if (SKIPPED_TAGS.has(tag)) return;
+		if (tag === "td" || tag === "th") current += " ";
+		const newLinePrefix = linePrefix(tag);
+		if (newLinePrefix !== undefined) {
+			flush();
+			prefix = newLinePrefix;
+		}
+		for (const child of Array.from(element.childNodes)) walk(child);
+		if (newLinePrefix !== undefined) flush();
+	};
+	const walk = (node: Node) => {
+		if (node.nodeType === TEXT_NODE) current += node.textContent ?? "";
+		else if (node.nodeType === ELEMENT_NODE) walkElement(node as Element);
+	};
+	walk(root);
+	flush();
+	return lines.join("\n");
+}
+
+/** The Markdown-style prefix a tag's text starts a new line with, or undefined for inline tags. */
+function linePrefix(tag: string): string | undefined {
+	const headingLevel = /^h([1-6])$/.exec(tag)?.[1];
+	if (headingLevel) return `${"#".repeat(Number(headingLevel))} `;
+	if (tag === "li") return "- ";
+	return BLOCK_TAGS.has(tag) ? "" : undefined;
 }
 
 async function readBounded(response: Response): Promise<string> {
