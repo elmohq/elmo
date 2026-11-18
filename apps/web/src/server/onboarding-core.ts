@@ -206,19 +206,25 @@ async function insertCompetitors(args: {
 		where: eq(competitors.brandId, args.brandId),
 	});
 	const existingDomains = new Set(existing.flatMap((c) => c.domains));
+	const existingNames = new Set(existing.map((c) => c.name));
 
-	const toInsert: Array<{ brandId: string; name: string; domains: string[]; aliases: string[] }> = [];
+	// Mentions are counted by name, so a name suggested twice becomes one competitor with both domains.
+	const byName = new Map<string, { brandId: string; name: string; domains: string[]; aliases: string[] }>();
 	for (const c of args.source) {
+		const name = c.name.trim();
+		if (existingNames.has(name)) continue;
 		const cleaned = dedupeDomains(c.domains).filter((d) => d !== args.websiteHost);
 		if (cleaned.length === 0) continue;
 		if (cleaned.some((d) => existingDomains.has(d))) continue;
-		toInsert.push({
+		const merged = byName.get(name);
+		byName.set(name, {
 			brandId: args.brandId,
-			name: c.name.trim(),
-			domains: cleaned,
-			aliases: dedupeAliases(c.aliases),
+			name,
+			domains: dedupeDomains([...(merged?.domains ?? []), ...cleaned]),
+			aliases: dedupeAliases([...(merged?.aliases ?? []), ...c.aliases]),
 		});
 	}
+	const toInsert = [...byName.values()];
 	if (toInsert.length === 0) return 0;
 
 	await assertCompetitorCap(args.brandId, toInsert.length, conn);
