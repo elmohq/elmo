@@ -23,25 +23,32 @@ const customers: Customer[] = [
 		render: () => <SpeakeasyLockup />,
 	},
 	{
-		name: "TradeSites",
-		url: "https://www.tradesites.ai/?ref=elmo",
-		linkClass: "group/ts flex h-6 items-center",
-		render: () => (
-			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
-		),
-	},
-	{
-		name: "Record Ranks",
-		url: "https://recordranks.com/?ref=elmo",
-		linkClass: "group/rr flex h-6 items-center",
+		name: "Airbyte",
+		url: "https://airbyte.com/?ref=elmo",
+		linkClass: "group/ab flex h-6 items-center",
 		render: () => (
 			<img
-				src="/recordranks-logo.svg"
-				width={106}
+				src="/airbyte-logo.svg"
+				width={94}
 				height={24}
 				alt=""
 				aria-hidden="true"
-				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
+				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/ab:opacity-100 group-hover/ab:grayscale-0"
+			/>
+		),
+	},
+	{
+		name: "Cura",
+		url: "https://cura.inc/?ref=elmo",
+		linkClass: "group/cura flex h-6 items-center",
+		render: () => (
+			<img
+				src="/cura-logo.svg"
+				width={64}
+				height={18}
+				alt=""
+				aria-hidden="true"
+				className="block h-[18px] w-auto opacity-60 transition-opacity duration-150 group-hover/cura:opacity-100"
 			/>
 		),
 	},
@@ -76,32 +83,25 @@ const customers: Customer[] = [
 		),
 	},
 	{
-		name: "Airbyte",
-		url: "https://airbyte.com/?ref=elmo",
-		linkClass: "group/ab flex h-6 items-center",
+		name: "TradeSites",
+		url: "https://www.tradesites.ai/?ref=elmo",
+		linkClass: "group/ts flex h-6 items-center",
 		render: () => (
-			<img
-				src="/airbyte-logo.svg"
-				width={94}
-				height={24}
-				alt=""
-				aria-hidden="true"
-				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/ab:opacity-100 group-hover/ab:grayscale-0"
-			/>
+			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
 		),
 	},
 	{
-		name: "Cura",
-		url: "https://cura.inc/?ref=elmo",
-		linkClass: "group/cura flex h-6 items-center",
+		name: "Record Ranks",
+		url: "https://recordranks.com/?ref=elmo",
+		linkClass: "group/rr flex h-6 items-center",
 		render: () => (
 			<img
-				src="/cura-logo.svg"
-				width={64}
-				height={18}
+				src="/recordranks-logo.svg"
+				width={106}
+				height={24}
 				alt=""
 				aria-hidden="true"
-				className="block h-[18px] w-auto opacity-60 transition-opacity duration-150 group-hover/cura:opacity-100"
+				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
 			/>
 		),
 	},
