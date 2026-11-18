@@ -77,8 +77,8 @@ export const prompts = pgTable(
 			.references(() => brands.id)
 			.notNull(),
 		value: text("value").notNull(),
-		/** Shared by the variants of one question. No table behind it, and only meaningful within a brand. */
-		groupId: uuid("group_id").defaultRandom().notNull(),
+		/** Set on a variant: another wording of its parent's question. A parent's own is null, and a variant never has variants. */
+		parentId: uuid("parent_id").references((): AnyPgColumn => prompts.id, { onDelete: "set null" }),
 		/** Null follows the brand's market; set, each overrides its half of it. */
 		country: text("country"),
 		language: text("language"),
@@ -96,6 +96,7 @@ export const prompts = pgTable(
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
 		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
+		parentIdIdx: index("prompts_parent_id_idx").on(table.parentId),
 	}),
 ).enableRLS();
 

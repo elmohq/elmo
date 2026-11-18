@@ -12,7 +12,7 @@ import {
 
 const prompts = Array.from({ length: 24 }, (_, i) => ({
 	id: `prompt-${i}`,
-	groupId: `group-prompt-${i}`,
+	parentId: null,
 	createdAt: new Date(2026, 0, 1 + i),
 	country: null,
 	language: null,

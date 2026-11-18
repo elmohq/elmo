@@ -3,7 +3,6 @@
  * its own vocabulary. Callers decide the brand is theirs before calling in.
  */
 
-import { randomUUID } from "node:crypto";
 import {
 	countrySchema,
 	languageSchema,
@@ -22,14 +21,16 @@ import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
+import { variantGroupOf } from "@/lib/prompt-variants";
 import { promptLanguageDetector } from "@/server/prompt-language";
+import { settleVariantParents } from "@/server/prompt-parents";
 
 export const MAX_PROMPT_BATCH = 100;
 
-export class PromptGroupNotFoundError extends Error {
-	constructor(public readonly groupId: string) {
-		super(`No prompt in this brand has groupId '${groupId}'`);
-		this.name = "PromptGroupNotFoundError";
+export class PromptParentError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "PromptParentError";
 	}
 }
 
@@ -74,11 +75,11 @@ export const bulkPromptInputSchema = z.object({
 				tags: promptTagsSchema.optional(),
 				enabled: z.boolean().optional().describe("Whether to start sampling it. Defaults to true."),
 				premiumModels: z.array(z.string()).optional().describe("Premium engines to pair this prompt with."),
-				groupId: z
+				parentId: z
 					.uuid()
 					.optional()
 					.describe(
-						`The \`groupId\` of an existing prompt in this brand, to add this one as another wording of the same question. ${VARIANT_COST} Omit to start a new group.`,
+						`The id of an existing prompt in this brand, to add this one as a variant: another wording of the same question. ${VARIANT_COST} Naming a variant adds this one beside it, under the same parent.`,
 					),
 				country: promptCountrySchema.optional(),
 				language: promptLanguageSchema.optional(),
@@ -94,12 +95,12 @@ export const promptUpdateFields = {
 	enabled: z.boolean().optional().describe("Whether to keep sampling it."),
 	tags: promptTagsSchema.optional().describe("Replaces the prompt's tags outright."),
 	premiumModels: z.array(z.string()).optional().describe("Replaces the prompt's premium engine pairings."),
-	groupId: z
+	parentId: z
 		.uuid()
 		.nullable()
 		.optional()
 		.describe(
-			"Moves the prompt into the group of another prompt in the same brand, making it a variant of that question. Null moves it into a group of its own.",
+			"Makes the prompt a variant of another prompt in the same brand, taking its own variants with it. Naming one of its own variants swaps the two. Null makes a variant stand on its own; on a parent it changes nothing.",
 		),
 	country: promptCountrySchema.optional(),
 	language: promptLanguageSchema.optional(),
@@ -109,7 +110,7 @@ export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, premiumModels, groupId, country, or language must be provided",
+		"At least one of value, enabled, tags, premiumModels, parentId, country, or language must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -128,7 +129,7 @@ const PROMPT_COLUMNS = {
 	id: prompts.id,
 	brandId: prompts.brandId,
 	value: prompts.value,
-	groupId: prompts.groupId,
+	parentId: prompts.parentId,
 	country: prompts.country,
 	language: prompts.language,
 	enabled: prompts.enabled,
@@ -159,7 +160,7 @@ export function toPromptSummary(prompt: Prompt, brand: Market): PromptSummary {
 		id: prompt.id,
 		brandId: prompt.brandId,
 		value: prompt.value,
-		groupId: prompt.groupId,
+		parentId: prompt.parentId,
 		country: prompt.country,
 		language: prompt.language,
 		...effectiveLocale(prompt, brand),
@@ -176,7 +177,8 @@ export interface ListPromptsFilters {
 	brandId?: string;
 	enabled?: boolean;
 	tags?: string[];
-	groupId?: string;
+	/** Only the variants of this prompt. */
+	parentId?: string;
 	countries?: string;
 	languages?: string;
 	q?: string;
@@ -191,7 +193,7 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	if (filters.enabled !== undefined) conditions.push(eq(prompts.enabled, filters.enabled));
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
-	if (filters.groupId) conditions.push(eq(prompts.groupId, filters.groupId));
+	if (filters.parentId) conditions.push(eq(prompts.parentId, filters.parentId));
 	const countries = parseCountryFilter(filters.countries);
 	if (countries.length > 0) conditions.push(inArray(sql`coalesce(${prompts.country}, ${brands.country})`, countries));
 	const languages = parseLanguageFilter(filters.languages);
@@ -231,17 +233,14 @@ export async function requirePrompt(promptId: string): Promise<Prompt> {
 	return prompt;
 }
 
-/** A group id only means something inside its brand, so one from anywhere else is refused rather than adopted. */
-async function assertGroupsInBrand(conn: DbConnection, brandId: string, groupIds: readonly string[]): Promise<void> {
-	const wanted = [...new Set(groupIds)];
-	if (wanted.length === 0) return;
-	const found = await conn
-		.selectDistinct({ groupId: prompts.groupId })
+/** The parent a new variant of `parentId` gets: that prompt, or its own parent when it is a variant itself. */
+async function parentInBrand(conn: DbConnection, brandId: string, parentId: string): Promise<string> {
+	const [parent] = await conn
+		.select({ id: prompts.id, parentId: prompts.parentId })
 		.from(prompts)
-		.where(and(eq(prompts.brandId, brandId), inArray(prompts.groupId, wanted)));
-	const known = new Set(found.map((row) => row.groupId));
-	const missing = wanted.find((groupId) => !known.has(groupId));
-	if (missing) throw new PromptGroupNotFoundError(missing);
+		.where(and(eq(prompts.id, parentId), eq(prompts.brandId, brandId)));
+	if (!parent) throw new PromptParentError(`No prompt in this brand has id '${parentId}'`);
+	return variantGroupOf(parent);
 }
 
 /** One delta against both pools in one transaction, so a batch that would
@@ -256,7 +255,7 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 	const rows = parsed.prompts.map((prompt, index) => ({
 		brandId: brand.id,
 		value: prompt.value,
-		...(prompt.groupId ? { groupId: prompt.groupId } : {}),
+		parentId: prompt.parentId ?? null,
 		country: prompt.country ?? null,
 		language: languages[index],
 		enabled: prompt.enabled ?? true,
@@ -276,12 +275,22 @@ export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptIn
 			},
 			tx,
 		);
-		await assertGroupsInBrand(
-			tx,
-			brand.id,
-			parsed.prompts.flatMap((prompt) => prompt.groupId ?? []),
-		);
-		return tx.insert(prompts).values(rows).returning();
+		for (const row of rows) {
+			if (row.parentId) row.parentId = await parentInBrand(tx, brand.id, row.parentId);
+		}
+		const inserted = await tx.insert(prompts).values(rows).returning({ id: prompts.id });
+		await settleVariantParents(tx, brand.id);
+		const settled = await tx
+			.select()
+			.from(prompts)
+			.where(
+				inArray(
+					prompts.id,
+					inserted.map((row) => row.id),
+				),
+			);
+		const byId = new Map(settled.map((row) => [row.id, row]));
+		return inserted.flatMap((row) => byId.get(row.id) ?? []);
 	});
 
 	// Outside the transaction: a queue hiccup must not roll back prompts the
@@ -306,10 +315,26 @@ function promptUpdateData(
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
-	if (input.groupId !== undefined) update.groupId = input.groupId ?? randomUUID();
 	if (input.country !== undefined) update.country = input.country;
 	if (input.language !== undefined) update.language = input.language;
 	return update;
+}
+
+/** The parent to store for a requested one. Naming one of the prompt's own variants hands the group to that variant first. */
+async function parentChange(
+	tx: DbConnection,
+	brand: PromptBrand,
+	promptId: string,
+	requested: string | null | undefined,
+): Promise<{ parentId?: string | null }> {
+	if (requested === undefined) return {};
+	if (requested === null) return { parentId: null };
+	if (requested === promptId) throw new PromptParentError("A prompt can't be a variant of itself");
+
+	const parentId = await parentInBrand(tx, brand.id, requested);
+	if (parentId !== promptId) return { parentId };
+	await tx.update(prompts).set({ parentId: null }).where(eq(prompts.id, requested));
+	return { parentId: requested };
 }
 
 /** The quota-checked half of an update: re-read the row under the lock, charge
@@ -339,13 +364,15 @@ async function applyPromptUpdate(
 		tx,
 	);
 
-	if (input.groupId) await assertGroupsInBrand(tx, brand.id, [input.groupId]);
-
-	const [row] = await tx
+	await tx
 		.update(prompts)
-		.set(promptUpdateData(input, brand, nextPremium))
-		.where(eq(prompts.id, promptId))
-		.returning();
+		.set({
+			...promptUpdateData(input, brand, nextPremium),
+			...(await parentChange(tx, brand, promptId, input.parentId)),
+		})
+		.where(eq(prompts.id, promptId));
+	await settleVariantParents(tx, brand.id);
+	const [row] = await tx.select().from(prompts).where(eq(prompts.id, promptId));
 	if (input.value !== undefined && input.value !== existing.value) {
 		await markPromptRunsDirty(tx, brand.id, [promptId]);
 	}
@@ -388,7 +415,10 @@ export async function deletePrompt(promptId: string): Promise<{ prompt: Prompt; 
 
 	const result = await db.transaction(async (tx) => {
 		const [owner] = await tx.select({ brandId: prompts.brandId }).from(prompts).where(eq(prompts.id, promptId));
-		if (owner) await lockBrandRollups(tx, owner.brandId);
+		if (owner) {
+			await lockBrandRollups(tx, owner.brandId);
+			await settleVariantParents(tx, owner.brandId, promptId);
+		}
 		await tx.delete(citations).where(eq(citations.promptId, promptId));
 		const deletedRuns = await tx
 			.delete(promptRuns)

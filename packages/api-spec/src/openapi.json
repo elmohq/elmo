@@ -49,10 +49,10 @@
 						"type": "string",
 						"description": "The actual prompt text"
 					},
-					"groupId": {
-						"type": "string",
+					"parentId": {
+						"type": ["string", "null"],
 						"format": "uuid",
-						"description": "Shared by the variants of one question: prompts that ask the same thing in different words. Each variant is tracked and billed as its own prompt. A prompt with no variants has a group to itself."
+						"description": "Set on a variant: the prompt whose question this one asks in other words. Each variant is tracked and billed as its own prompt. Null on a prompt that isn't a variant. Variants are one level deep, and when a parent is disabled or deleted its oldest enabled variant becomes the parent of the rest."
 					},
 					"country": {
 						"type": ["string", "null"],
@@ -110,7 +110,7 @@
 					"id",
 					"brandId",
 					"value",
-					"groupId",
+					"parentId",
 					"country",
 					"language",
 					"effectiveCountry",
@@ -143,10 +143,10 @@
 						},
 						"description": "User-defined tags for categorizing this prompt"
 					},
-					"groupId": {
+					"parentId": {
 						"type": "string",
 						"format": "uuid",
-						"description": "The `groupId` of an existing prompt in the same brand, to add this prompt as a variant of that question. Omit to start a new group."
+						"description": "The id of an existing prompt in the same brand, to add this prompt as a variant of it. Naming a variant adds this one beside it, under the same parent."
 					},
 					"country": {
 						"type": ["string", "null"],
@@ -186,10 +186,10 @@
 						},
 						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
 					},
-					"groupId": {
+					"parentId": {
 						"type": ["string", "null"],
 						"format": "uuid",
-						"description": "Moves the prompt into the group of another prompt in the same brand. Null moves it into a group of its own."
+						"description": "Makes the prompt a variant of another prompt in the same brand, taking its own variants with it. Naming one of its own variants swaps the two. Null makes a variant stand on its own."
 					},
 					"country": {
 						"type": ["string", "null"],
@@ -3702,9 +3702,9 @@
 						}
 					},
 					{
-						"name": "groupId",
+						"name": "parentId",
 						"in": "query",
-						"description": "Only the variants of one question.",
+						"description": "Only the variants of this prompt.",
 						"schema": {
 							"type": "string",
 							"format": "uuid"

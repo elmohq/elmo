@@ -20,7 +20,7 @@ const listPromptsQuery = z.object({
 	// Anything but `true` or `false` filters nothing, rather than being refused.
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),
-	groupId: z.uuid().optional(),
+	parentId: z.uuid().optional(),
 	countries: countryFilterSchema.optional(),
 	languages: languageFilterSchema.optional(),
 	q: z.string().optional(),
@@ -30,7 +30,7 @@ const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
-	groupId: z.uuid().optional(),
+	parentId: z.uuid().optional(),
 	country: countrySchema.nullable().optional(),
 	language: languageSchema.nullable().optional(),
 });
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						brandId: query.brandId,
 						enabled: query.enabled,
 						tags: (query.tags ?? "").split(","),
-						groupId: query.groupId,
+						parentId: query.parentId,
 						countries: query.countries,
 						languages: query.languages,
 						q: query.q,
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 							{
 								value: body.value,
 								tags: body.tags,
-								groupId: body.groupId,
+								parentId: body.parentId,
 								country: body.country,
 								language: body.language,
 								enabled: true,

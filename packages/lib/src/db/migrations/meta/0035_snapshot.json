@@ -998,12 +998,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "group_id": {
-          "name": "group_id",
+        "parent_id": {
+          "name": "parent_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": false
         },
         "country": {
           "name": "country",
@@ -1096,6 +1095,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "prompts_parent_id_idx": {
+          "name": "prompts_parent_id_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1110,6 +1124,19 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "prompts_parent_id_prompts_id_fk": {
+          "name": "prompts_parent_id_prompts_id_fk",
+          "tableFrom": "prompts",
+          "tableTo": "prompts",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

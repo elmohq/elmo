@@ -15,8 +15,5 @@ assert {
   res.body.id: eq {{promptId}}
   res.body.enabled: isTruthy
   res.body.value: contains monitoring tool
-}
-
-script:post-response {
-  bru.setVar("seededGroupId", res.getBody().groupId);
+  res.body.parentId: eq null
 }

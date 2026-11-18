@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/prompts?groupId={{seededGroupId}}
+  url: {{baseUrl}}/api/v1/prompts?parentId={{promptId}}
   body: none
   auth: inherit
 }
 
 params:query {
-  groupId: {{seededGroupId}}
+  parentId: {{promptId}}
 }
 
 assert {
@@ -19,8 +19,8 @@ assert {
 }
 
 tests {
-  test("the prompt and its variant come back, and nothing else", function() {
+  test("the variant comes back, and nothing else", function() {
     const ids = res.getBody().data.map((prompt) => prompt.id);
-    expect(ids).to.have.members([bru.getEnvVar("promptId"), bru.getVar("variantPromptId")]);
+    expect(ids).to.have.members([bru.getVar("variantPromptId")]);
   });
 }
