@@ -3,8 +3,11 @@ import type { ClientConfig } from "@workspace/config/types";
 import type { Competitor } from "@workspace/lib/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
+import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceArea, XAxis, YAxis } from "recharts";
+import { useChartRangeSelect } from "@/hooks/use-chart-range-select";
+import { bucketChartData, bucketOfPoint, type DateBucket, formatBucket } from "@/lib/chart-buckets";
 import {
 	type ChartDataPoint,
 	type ChartSubject,
@@ -92,6 +95,8 @@ interface BaseChartProps {
 	chartType?: "bar" | "line";
 	chartColors?: string[];
 	chartHeight?: string;
+	/** Called with the days a drag across the line chart takes in. */
+	onSelectRange?: (range: DateBucket) => void;
 }
 
 export function BaseChart({
@@ -107,6 +112,7 @@ export function BaseChart({
 	chartType = "line",
 	chartColors: chartColorsProp,
 	chartHeight = "250px",
+	onSelectRange,
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -190,7 +196,7 @@ export function BaseChart({
 						return value !== null && value !== undefined;
 					});
 				})
-			: extendLinesToChartEdges(completeData, dataKeys).map((point) => {
+			: extendLinesToChartEdges(bucketChartData(completeData, dataKeys), dataKeys).map((point) => {
 					const newPoint = { ...point };
 					for (const key of dataKeys) {
 						if (isExtendedDataPoint(point, key)) {
@@ -201,6 +207,8 @@ export function BaseChart({
 					}
 					return newPoint;
 				});
+
+	const { handlers, selection } = useChartRangeSelect(chartData.map(bucketOfPoint), onSelectRange);
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -304,8 +312,11 @@ export function BaseChart({
 						</BarChart>
 					</ChartContainer>
 				) : (
-					<ChartContainer config={chartConfig} className="aspect-auto min-h-0 w-full flex-1">
-						<LineChart data={chartData}>
+					<ChartContainer
+						config={chartConfig}
+						className={cn("aspect-auto min-h-0 w-full flex-1", onSelectRange && "cursor-crosshair select-none")}
+					>
+						<LineChart data={chartData} {...handlers}>
 							<CartesianGrid vertical={false} />
 							<XAxis
 								dataKey="date"
@@ -339,7 +350,7 @@ export function BaseChart({
 							<ChartTooltip
 								isAnimationActive={false}
 								cursor={false}
-								content={({ active, payload, label }) => {
+								content={({ active, payload }) => {
 									if (!active || !payload?.length) return null;
 
 									// Dashed extensions are visual continuity, not observed values.
@@ -353,12 +364,7 @@ export function BaseChart({
 
 									if (filteredPayload.length === 0) return null;
 
-									const [year, month, day] = (label as string).split("-").map(Number);
-									const date = new Date(year, month - 1, day);
-									const formattedDate = date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
+									const formattedDate = formatBucket(bucketOfPoint(filteredPayload[0].payload));
 
 									return (
 										<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
@@ -417,6 +423,7 @@ export function BaseChart({
 									isAnimationActive={isAnimationActive}
 								/>,
 							])}
+							{selection && <ReferenceArea {...selection} fill="var(--foreground)" fillOpacity={0.08} />}
 						</LineChart>
 					</ChartContainer>
 				)}

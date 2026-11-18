@@ -5,6 +5,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
+import { useZoomToDateRange } from "@/hooks/use-list-filters";
 import { visibilityBadgeProps } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
@@ -108,6 +109,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
+	const zoomToRange = useZoomToDateRange();
 
 	const chartData = useMemo(() => {
 		if (!chartContext) return null;
@@ -239,6 +241,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 				<CardContent className="pl-0 pr-6">
 					{brand && data && competitors && (
 						<BaseChart
+							onSelectRange={zoomToRange}
 							data={data}
 							lookback={lookback}
 							brand={brand}

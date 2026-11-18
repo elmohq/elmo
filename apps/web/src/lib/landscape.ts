@@ -3,6 +3,7 @@
  * carried forward over the days it didn't run, summed across prompts. So the last day is the current
  * figure every headline shows. Shares are fractions of 1; position is an average place, 1 being named first.
  */
+import { bucketDateIndexes, type DateBucket } from "@/lib/chart-buckets";
 import { carryForward } from "@/lib/chart-utils";
 import type { PromptModelDailyCompetitor, PromptModelDailyRuns } from "@/lib/rollup-read";
 import {
@@ -30,10 +31,14 @@ export interface LandscapeCompany {
 	byModel: Record<string, MetricValues>;
 	/** One value per entry of `Landscape.dates`. */
 	series: Record<LandscapeMetric, (number | null)[]>;
+	/** One value per entry of `Landscape.trendBuckets`, each measured over all of its bucket's days. */
+	trend: Record<LandscapeMetric, (number | null)[]>;
 }
 
 export interface Landscape {
 	dates: string[];
+	/** The spans the trend charts plot: single days on short windows, longer ones as the window grows. */
+	trendBuckets: DateBucket[];
 	/** Most-run first. */
 	models: string[];
 	/** The brand first, then each tracked competitor. */
@@ -200,9 +205,19 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 	const byPrompt = observations(input);
 	const days = carriedDays(byPrompt, input.dates);
 	const lastByModel = latestByModel(byPrompt);
+	const bucketIndexes = bucketDateIndexes(input.dates);
+	const bucketTotals = bucketIndexes.map(({ from, to }) => {
+		const total = emptyObservation();
+		for (const date of input.dates.slice(from, to)) {
+			const day = days.get(date);
+			if (day) addObservation(total, day);
+		}
+		return total;
+	});
 
 	const company = (name: string, domain: string | null, isBrand: boolean): LandscapeCompany => {
 		const daily = input.dates.map((date) => measure(name, days.get(date)));
+		const bucketed = bucketTotals.map((total) => measure(name, total));
 		const last = days.get(lastDate)?.companies.get(name);
 		return {
 			name,
@@ -214,11 +229,15 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 			series: Object.fromEntries(
 				LANDSCAPE_METRICS.map((metric) => [metric, daily.map((values) => values[metric])]),
 			) as LandscapeCompany["series"],
+			trend: Object.fromEntries(
+				LANDSCAPE_METRICS.map((metric) => [metric, bucketed.map((values) => values[metric])]),
+			) as LandscapeCompany["trend"],
 		};
 	};
 
 	return {
 		dates: input.dates,
+		trendBuckets: bucketIndexes.map(({ from, to }) => ({ start: input.dates[from], end: input.dates[to - 1] })),
 		models,
 		companies: [
 			company(input.brand.name, input.brand.domain, true),

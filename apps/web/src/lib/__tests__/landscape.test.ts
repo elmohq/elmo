@@ -73,6 +73,29 @@ describe("buildLandscape", () => {
 		expect(initech.totals).toMatchObject({ visibility: 0, share: 0, position: null });
 	});
 
+	it("plots a short window day by day", () => {
+		const landscape = buildLandscape(input);
+		expect(landscape.trendBuckets).toEqual(input.dates.map((date) => ({ start: date, end: date })));
+		expect(landscape.companies[0].trend).toEqual(landscape.companies[0].series);
+	});
+
+	it("plots a long window as weeks, each measured over all of its days", () => {
+		const dates = Array.from({ length: 70 }, (_, i) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10));
+		const landscape = buildLandscape({
+			...input,
+			dates,
+			// In the last week the brand goes from 2 of 10 runs to 9 of 10, on the final day.
+			runs: [run("p1", "chatgpt", dates[0], 10, 2, 0), run("p1", "chatgpt", dates[69], 10, 9, 0)],
+			competitorRuns: [],
+		});
+		expect(landscape.trendBuckets).toHaveLength(10);
+		expect(landscape.trendBuckets.at(-1)).toEqual({ start: dates[63], end: dates[69] });
+		const [acme] = landscape.companies;
+		expect(acme.trend.visibility[0]).toBeCloseTo(0.2);
+		expect(acme.trend.visibility.at(-1)).toBeCloseTo((6 * 2 + 9) / 70);
+		expect(acme.totals.visibility).toBeCloseTo(0.9);
+	});
+
 	it("measures each company per model against that model's own runs", () => {
 		const landscape = buildLandscape(input);
 		expect(landscape.models).toEqual(["chatgpt", "claude"]);

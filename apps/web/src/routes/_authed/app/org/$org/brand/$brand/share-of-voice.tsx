@@ -17,7 +17,7 @@ import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { SiteIcon } from "@/components/site-icon";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrand } from "@/hooks/use-brands";
-import { useListFilters } from "@/hooks/use-list-filters";
+import { useListFilters, useZoomToDateRange } from "@/hooks/use-list-filters";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useCompetitiveLandscape, useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { useSiteIcons } from "@/hooks/use-site-icons";
@@ -54,6 +54,7 @@ function ShareOfVoiceOverview({
 	colors: Map<string, string>;
 	domainFor: (name: string) => string | undefined;
 }) {
+	const zoomToRange = useZoomToDateRange();
 	return (
 		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 			<Card>
@@ -72,12 +73,13 @@ function ShareOfVoiceOverview({
 				<CardContent>
 					{landscape ? (
 						<CompanyTrendChart
-							dates={landscape.dates}
+							onSelectRange={zoomToRange}
+							buckets={landscape.trendBuckets}
 							companies={chartedCompanies(landscape, "share").map((c) => ({
 								name: c.name,
 								isBrand: c.isBrand,
 								color: colors.get(c.name) ?? "#94a3b8",
-								values: c.series.share,
+								values: c.trend.share,
 							}))}
 							format={METRIC_META.share.format}
 							height={220}

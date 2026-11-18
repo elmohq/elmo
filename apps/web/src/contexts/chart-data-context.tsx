@@ -1,5 +1,6 @@
 import type { Competitor } from "@workspace/lib/db/schema";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { RUNS_KEY } from "@/lib/chart-buckets";
 import {
 	type ChartSubject,
 	generateDateRange,
@@ -93,6 +94,7 @@ export function ChartDataProvider({
 					return dataPoint;
 				}
 
+				dataPoint[RUNS_KEY] = totalRuns;
 				const brandMentions = dayStat ? Number(dayStat.brand_mentioned_count) : 0;
 				const brandVisibility = Math.round((brandMentions / totalRuns) * 100);
 				dataPoint[brand.id] = brandVisibility;
