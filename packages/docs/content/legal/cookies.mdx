@@ -28,6 +28,7 @@ These are always set. The site cannot work without them, and consent is not requ
 | --- | --- | --- | --- |
 | `better-auth.session_token` and related session cookies | app.elmohq.com | Keeps you signed in | For as long as you stay signed in |
 | CSRF and callback state | app.elmohq.com | Protects sign-in and form submissions from cross-site request forgery | Minutes |
+| `tz` | app.elmohq.com, demo.elmohq.com | Holds your browser's time zone, so a dashboard page arrives already showing the right calendar days of data | 1 year |
 | `elmo.cookie-consent` (localStorage) | elmohq.com, app.elmohq.com, demo.elmohq.com | Remembers your answer to the cookie banner so we don't ask again | Until you clear it |
 | Load-balancing and security cookies | all | Set by our hosting providers to route requests and mitigate abuse | Session |
 | Cloudflare Turnstile (no cookie) | app.elmohq.com sign-up, sign-in, and password reset | Checks that a person, not a bot, is creating an account or asking us to send an email. Turnstile runs in a Cloudflare frame and sets no tracking cookies. | Minutes |
