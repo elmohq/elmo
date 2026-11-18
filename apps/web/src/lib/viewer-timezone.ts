@@ -2,6 +2,7 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
 
 const COOKIE = "tz";
+const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 export function browserTimezone(): string {
 	return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -26,5 +27,5 @@ export const viewerTimezone = createIsomorphicFn()
 	.client((): string | undefined => browserTimezone());
 
 export function rememberViewerTimezone(): void {
-	document.cookie = `${COOKIE}=${encodeURIComponent(browserTimezone())}; path=/; max-age=31536000; samesite=lax`;
+	document.cookie = `${COOKIE}=${encodeURIComponent(browserTimezone())}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
 }
