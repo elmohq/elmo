@@ -109,7 +109,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
 			market: resolveMarket(prompt, brand),
-			/** False when the prompt follows the brand's country. */
 			countryOverridden: prompt.country !== null,
 			/** Every wording of this question, this one included, oldest first. */
 			variants: variants.map(({ country, language, ...variant }) => ({

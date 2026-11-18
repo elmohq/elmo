@@ -13,7 +13,6 @@ const target = (value: string, overrides: Partial<MarketTarget> = {}): MarketTar
 	replication: 1,
 	unsupportedCountries: [],
 	locationFree: false,
-	sendsLanguage: false,
 	costPerRunUsd: 0.01,
 	...overrides,
 });

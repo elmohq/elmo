@@ -200,7 +200,7 @@ export const Countries: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/roughly \$0\.90 a month at estimated provider prices/)).toBeVisible();
 		await expect(canvas.getAllByRole("button", { name: "Country: brand default, United States" })).not.toHaveLength(0);
-		await expect(canvas.getAllByRole("button", { name: "Country: Germany" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: /^Country: Germany/ })).not.toHaveLength(0);
 	},
 };
 
@@ -230,7 +230,7 @@ export const TranslateForCountries: StoryObj = {
 
 		await expect(await canvas.findAllByDisplayValue("best crm for small business (fr-FR)")).not.toHaveLength(0);
 		await expect(canvas.getAllByDisplayValue("best crm for small business (ja-JP)")).not.toHaveLength(0);
-		await expect(canvas.getAllByRole("button", { name: "Country: France" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: /^Country: France/ })).not.toHaveLength(0);
 		await expect(await canvas.findByText(/including 3 variants\./)).toBeVisible();
 	},
 };
@@ -245,7 +245,7 @@ export const CountryPickerExplainsACountry: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(document.body);
-		await userEvent.click(canvas.getAllByRole("button", { name: "Country: Germany" }).at(-1)!);
+		await userEvent.click(canvas.getAllByRole("button", { name: /^Country: Germany/ }).at(-1)!);
 
 		await expect(await page.findByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
 		await expect(
@@ -255,7 +255,7 @@ export const CountryPickerExplainsACountry: StoryObj = {
 		await userEvent.click(page.getByRole("combobox", { name: "Language" }));
 		await userEvent.click(await page.findByRole("option", { name: "French" }));
 		await userEvent.keyboard("{Escape}");
-		await expect(canvas.getAllByRole("button", { name: "Country: Germany" })).not.toHaveLength(0);
+		await expect(canvas.getAllByRole("button", { name: /^Country: Germany/ })).not.toHaveLength(0);
 	},
 };
 

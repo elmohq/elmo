@@ -6,7 +6,6 @@ const target = (value: string, overrides: Partial<MarketTarget> = {}): MarketTar
 	replication: 1,
 	unsupportedCountries: [],
 	locationFree: false,
-	sendsLanguage: false,
 	costPerRunUsd: 0.01,
 	...overrides,
 });
@@ -16,7 +15,7 @@ export const selfHostedMarketSupport: MarketSupport = {
 	brandMarket: { country: "US", language: "en" },
 	targets: [
 		target("chatgpt"),
-		target("google-ai-mode", { sendsLanguage: true, costPerRunUsd: 0.005 }),
+		target("google-ai-mode", { costPerRunUsd: 0.005 }),
 		target("claude", { locationFree: true }),
 		target("perplexity", { unsupportedCountries: ["DE", "FR", "JP", "BR", "GB"], costPerRunUsd: 0.005 }),
 	],

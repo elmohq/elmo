@@ -58,13 +58,14 @@ function DefaultLocaleFields({
 				<Label>Default Country</Label>
 				<CountryPicker
 					country={market.country}
+					language={market.language}
 					onCountryChange={(country) => country && onChange({ ...market, country })}
 					support={support}
 					disabled={disabled}
 					className="max-w-sm"
 				/>
 				<p className="text-xs text-muted-foreground">Where prompts are asked from, unless a prompt sets its own.</p>
-				{market.country !== saved.country && (
+				{market.country !== saved.country && followingCountry > 0 && (
 					<p className="text-xs text-amber-700">
 						Saving moves {promptCount(followingCountry)} that follow the default. Their earlier answers stay in their
 						history and count under the new country, and models that can&apos;t answer from it stop running them.
@@ -83,7 +84,7 @@ function DefaultLocaleFields({
 				<p className="text-xs text-muted-foreground">
 					The language prompts are written in, unless a prompt sets its own.
 				</p>
-				{market.language !== saved.language && (
+				{market.language !== saved.language && followingLanguage > 0 && (
 					<p className="text-xs text-amber-700">
 						Saving changes the language recorded for {promptCount(followingLanguage)} that follow the default. Their
 						text is not translated.

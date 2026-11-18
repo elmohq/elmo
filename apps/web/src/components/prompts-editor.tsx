@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Sparkles } from "lucide-react";
@@ -11,6 +13,7 @@ import {
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
 import type { TranslateFn } from "@/components/translate-prompts-dialog";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { brandKeys } from "@/hooks/use-brands";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import type { MarketSupport } from "@/lib/market-support";
 import { trackEvent } from "@/lib/posthog";
@@ -124,6 +127,8 @@ export function PromptsEditor({
 	const suggestionsRef = useRef<HTMLDivElement>(null);
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
+	const queryClient = useQueryClient();
+	const router = useRouter();
 	const writeError = useWriteErrorMessage();
 
 	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(
@@ -189,6 +194,9 @@ export function PromptsEditor({
 			setPrompts(next);
 			setBaseline(next);
 			invalidatePromptsSummary(brandId);
+			// The country and language filters and the plan's prompt count both follow what was just saved.
+			queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+			router.invalidate();
 		} catch (err) {
 			console.error("Error saving prompts:", err);
 			setError(writeError(err, "Failed to save prompts."));

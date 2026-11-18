@@ -141,9 +141,7 @@ const PROMPT_COLUMNS = {
 export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
 } & {
-	/** The prompt's own `country`, or the brand's where it sets none. */
 	effectiveCountry: string;
-	/** The prompt's own `language`, or the brand's where it sets none. */
 	effectiveLanguage: string;
 };
 

@@ -16,7 +16,6 @@ export type BrandFilterSearch = {
 	model?: string;
 	lookback?: string;
 	tags?: string;
-	/** Comma-joined country codes, like `tags`. */
 	countries?: string;
 	languages?: string;
 	q?: string;
@@ -90,7 +89,7 @@ export function useListFilters() {
 
 	const model = urlFilters.model ?? ALL_MODELS_VALUE;
 	const tags = useMemo(() => splitTags(urlFilters.tags), [urlFilters.tags]);
-	// Normalized through the supported lists, so a stale link can't filter on a code nothing uses.
+	// Normalized through the supported lists, so a link can't filter on a code Elmo doesn't know.
 	const countries = useMemo(() => parseCountryFilter(urlFilters.countries), [urlFilters.countries]);
 	const languages = useMemo(() => parseLanguageFilter(urlFilters.languages), [urlFilters.languages]);
 	const search = urlFilters.q ?? "";

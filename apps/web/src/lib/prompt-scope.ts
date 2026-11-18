@@ -25,10 +25,7 @@ export function promptScopeOf(data: PromptScope): PromptScope {
 	return { tags: data.tags, countries: data.countries, languages: data.languages };
 }
 
-/**
- * Answers whether a prompt is asked from one of the filtered countries and in
- * one of the filtered languages. Either filter left empty matches every prompt.
- */
+/** Either filter left empty matches every prompt; with both, a prompt must match both. */
 export function localeFilter(
 	scope: Pick<PromptScope, "countries" | "languages">,
 	brand: { country: string; language: string },

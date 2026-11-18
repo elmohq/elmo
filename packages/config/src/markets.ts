@@ -181,7 +181,7 @@ export function describeLanguageForMarket(market: Market): string {
 	return `${languageName(market.language)} as written in ${countryName(market.country)}`;
 }
 
-/** A market written as a locale, `de-CH`: stable in URLs and API queries. */
+/** A market written as a locale, `de-CH`. */
 export function marketId(market: Market): string {
 	return `${market.language}-${market.country}`;
 }
@@ -233,11 +233,6 @@ export function sameMarket(a: Market, b: Market): boolean {
 /** "Switzerland · French" */
 export function marketName(market: Market): string {
 	return `${countryName(market.country)} · ${languageName(market.language)}`;
-}
-
-/** "CH · FR": short enough for a table cell. */
-export function marketCode(market: Market): string {
-	return `${market.country} · ${market.language.toUpperCase()}`;
 }
 
 /**

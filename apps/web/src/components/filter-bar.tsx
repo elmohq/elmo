@@ -254,8 +254,11 @@ function LocaleDropdown({ kind }: { kind: LocaleKind }) {
 	const selected = useMemo(() => parse(urlValue), [parse, urlValue]);
 	const [open, setOpen] = useState(false);
 
-	const available = brand?.locales?.[kind] ?? [];
-	if (available.length <= 1 && selected.length === 0) return null;
+	const inUse = brand?.locales?.[kind] ?? [];
+	if (inUse.length <= 1 && selected.length === 0) return null;
+	// A selected code nothing uses any more still gets a row, so it can be seen and unticked.
+	const unused = selected.filter((code) => !inUse.some((entry) => entry.code === code));
+	const available = [...inUse, ...unused.map((code) => ({ code, prompts: 0 }))];
 
 	const commit = (next: string[]) => setFilters({ [kind]: joinTags(next) });
 	const toggle = (code: string) =>

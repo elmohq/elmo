@@ -138,7 +138,7 @@ export function LanguageSelect({
 			onValueChange={(next) => onChange(next === DEFAULT_ITEM ? null : (next as string))}
 			disabled={disabled}
 		>
-			<SelectTrigger id={id} size="sm" aria-label="Language" className={className}>
+			<SelectTrigger id={id} size="sm" aria-label={id ? undefined : "Language"} className={className}>
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
@@ -167,19 +167,21 @@ interface CountryPickerProps {
 	className?: string;
 }
 
-function TriggerLabel({ country, language, support }: Pick<CountryPickerProps, "country" | "language" | "support">) {
-	if (!country) {
-		// A prompt that sets only its language is still worth telling apart from one that sets nothing.
-		return language ? (
-			<span className="truncate">{languageName(language)}</span>
-		) : (
-			<span className="truncate text-muted-foreground">Default</span>
-		);
-	}
+/** The country, or "Default", with the language's code beside it when the prompt sets one of its own. */
+function TriggerLabel({
+	country,
+	ownLanguage,
+	support,
+}: Pick<CountryPickerProps, "country" | "support"> & { ownLanguage: string | null }) {
 	return (
 		<span className="flex min-w-0 items-center gap-1.5">
-			{coverageNote(support, country) && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />}
-			<span className="truncate">{countryName(country)}</span>
+			{country && coverageNote(support, country) && (
+				<AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />
+			)}
+			<span className={cn("truncate", !country && "text-muted-foreground")}>
+				{country ? countryName(country) : "Default"}
+			</span>
+			{ownLanguage && <span className="shrink-0 text-xs uppercase text-muted-foreground">{ownLanguage}</span>}
 		</span>
 	);
 }
@@ -215,6 +217,8 @@ export function CountryPicker({
 	const [open, setOpen] = useState(false);
 	const [highlighted, setHighlighted] = useState<string>("");
 	const brand = support.brandMarket;
+	// Only a prompt has a language of its own to show; the brand's is a field beside this one.
+	const ownLanguage = onLanguageChange ? (language ?? null) : null;
 	const previewed =
 		highlighted === DEFAULT_ITEM
 			? brand.country
@@ -242,10 +246,10 @@ export function CountryPicker({
 									variant="outline"
 									size="sm"
 									disabled={disabled}
-									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}`}
+									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}${ownLanguage ? `, in ${languageName(ownLanguage)}` : ""}`}
 									className={cn(
 										"h-8 w-full justify-between gap-1 px-2 font-normal",
-										allowDefault && (country || language) && "border-foreground/30",
+										allowDefault && (country || ownLanguage) && "border-foreground/30",
 										className,
 									)}
 								/>
@@ -253,7 +257,7 @@ export function CountryPicker({
 						/>
 					}
 				>
-					<TriggerLabel country={country} language={language} support={support} />
+					<TriggerLabel country={country} ownLanguage={ownLanguage} support={support} />
 					<ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
 				</TooltipTrigger>
 				<TooltipContent>

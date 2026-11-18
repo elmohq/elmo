@@ -24,7 +24,6 @@ function toMarketTarget(plan: TargetPlan, showCost: boolean): MarketTarget {
 		replication: plan.replication,
 		unsupportedCountries: COUNTRIES.filter((country) => !handlingOf(country.code).runs).map((country) => country.code),
 		locationFree: handlingOf(DEFAULT_MARKET.country).country === "location-free",
-		sendsLanguage: handlingOf(DEFAULT_MARKET.country).sendsLanguage,
 		costPerRunUsd: showCost ? estimateRunCostUsd(config.provider, config.webSearch) : null,
 	};
 }

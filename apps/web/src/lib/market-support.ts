@@ -1,6 +1,6 @@
 /**
  * What a brand's tracked models do with a market, and what one more prompt in
- * it costs: the facts the market picker shows before anyone commits to one.
+ * it costs: the facts the country picker shows before anyone commits to one.
  */
 import type { Market } from "@workspace/config/markets";
 import { PROJECTION_DAYS_PER_MONTH } from "@workspace/lib/usage";
@@ -15,8 +15,6 @@ export interface MarketTarget {
 	unsupportedCountries: string[];
 	/** A model called without web search: its answer has no location, so it runs everywhere. */
 	locationFree: boolean;
-	/** Whether the provider is sent the language, beyond the prompt being written in it. */
-	sendsLanguage: boolean;
 	/** Self-hosted only: the estimated provider bill per call. */
 	costPerRunUsd: number | null;
 }
