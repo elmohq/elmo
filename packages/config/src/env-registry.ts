@@ -31,6 +31,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "PostgreSQL connection string.",
 	},
 	{
+		name: "DATABASE_POOL_MAX",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Most PostgreSQL connections each web or worker process holds open (default 10). Lower it on serverless hosts, where every instance has its own pool.",
+	},
+	{
 		name: "APP_URL",
 		scope: "server",
 		requiredBy: ["cloud"],
