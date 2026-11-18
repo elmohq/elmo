@@ -14,6 +14,13 @@ import { wholeWordPattern } from "../mentions";
  */
 const MIN_CONFIDENCE = 0.7;
 
+/**
+ * Answers the detector gives for more than one supported language: it has no
+ * Indonesian and reads it as Malay, and reads Serbian in Latin script as
+ * Croatian. Neither is safe to store unasked.
+ */
+const AMBIGUOUS = new Set(["ms", "hr"]);
+
 type Detector = typeof import("eld/medium")["eld"];
 
 let detector: Promise<Detector> | undefined;
@@ -41,6 +48,7 @@ export async function detectPromptLanguage(text: string, options: DetectLanguage
 
 	const result = (await loadDetector()).detect(stripped);
 	if (!result.language || !result.isReliable() || result.language === options.brandLanguage) return null;
+	if (AMBIGUOUS.has(result.language)) return null;
 
 	return (result.getScores()[result.language] ?? 0) >= MIN_CONFIDENCE ? result.language : null;
 }

@@ -34,6 +34,11 @@ describe("detectPromptLanguage", () => {
 		expect(await detect("Zapatos Rápidos review", "en", ["Zapatos Rápidos"])).toBeNull();
 	});
 
+	it("doesn't guess between languages it can't tell apart", async () => {
+		expect(await detect("sepatu lari terbaik untuk pemula")).toBeNull();
+		expect(await detect("najbolji crm za mala preduzeća")).toBeNull();
+	});
+
 	it("finds an English prompt under a brand whose language is another", async () => {
 		expect(await detect("what is the best email marketing tool for a small team", "de")).toBe("en");
 	});
