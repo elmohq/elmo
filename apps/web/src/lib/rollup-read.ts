@@ -245,36 +245,42 @@ export async function getVisibilityDailyAggregate(
 				FROM unnest(ARRAY[${uuidList(scope.promptIds)}]::uuid[]) AS p(pid)
 				LEFT JOIN ${brandedIdsRelation} bp ON bp.bid = p.pid
 			),
+			-- Carried per prompt and model: a cycle's models can land on different days, and a
+			-- prompt's latest day alone would drop the models that answered the day before.
 			observations AS (
 				SELECT
 					prompt_id,
+					model,
 					${localDate(sql`bucket`, scope.timezone)} AS obs_date,
 					sum(runs)::int AS total_runs,
 					sum(brand_mentioned_runs)::int AS brand_mentioned_count
 				FROM rollup_prompt_runs
 				WHERE ${rollupScope(scope)}
-				GROUP BY prompt_id, obs_date
+				GROUP BY prompt_id, model, obs_date
 			),
 			first_obs AS (
-				SELECT DISTINCT ON (prompt_id)
+				SELECT DISTINCT ON (prompt_id, model)
 					prompt_id,
+					model,
 					total_runs AS first_runs,
 					brand_mentioned_count AS first_mentioned
 				FROM observations
-				ORDER BY prompt_id, obs_date
+				ORDER BY prompt_id, model, obs_date
 			),
 			grid AS (
 				SELECT
 					pl.prompt_id,
+					fo.model,
 					pl.is_branded,
 					dr.day AS date,
 					obs.total_runs AS actual_runs,
 					obs.brand_mentioned_count AS actual_mentioned,
-					count(obs.total_runs) OVER (PARTITION BY pl.prompt_id ORDER BY dr.day) AS fwd_grp
+					count(obs.total_runs) OVER (PARTITION BY pl.prompt_id, fo.model ORDER BY dr.day) AS fwd_grp
 				FROM prompts_list pl
+				JOIN first_obs fo ON fo.prompt_id = pl.prompt_id
 				CROSS JOIN date_range dr
 				LEFT JOIN observations obs
-					ON obs.prompt_id = pl.prompt_id AND obs.obs_date = dr.day
+					ON obs.prompt_id = pl.prompt_id AND obs.model = fo.model AND obs.obs_date = dr.day
 			),
 			lvcf AS (
 				SELECT
@@ -284,15 +290,15 @@ export async function getVisibilityDailyAggregate(
 					g.actual_runs,
 					g.actual_mentioned,
 					coalesce(
-						max(g.actual_runs) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						max(g.actual_runs) OVER (PARTITION BY g.prompt_id, g.model, g.fwd_grp),
 						fo.first_runs
 					) AS lvcf_runs,
 					coalesce(
-						max(g.actual_mentioned) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						max(g.actual_mentioned) OVER (PARTITION BY g.prompt_id, g.model, g.fwd_grp),
 						fo.first_mentioned
 					) AS lvcf_mentioned
 				FROM grid g
-				LEFT JOIN first_obs fo ON fo.prompt_id = g.prompt_id
+				JOIN first_obs fo ON fo.prompt_id = g.prompt_id AND fo.model = g.model
 			)
 		SELECT
 			to_char(date, 'YYYY-MM-DD') AS date,

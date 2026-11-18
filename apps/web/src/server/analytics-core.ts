@@ -42,15 +42,13 @@ import {
 	getFanoutQueryPage,
 	getFanoutQueryTotals,
 	getMentionTotals,
-	getPerPromptDailyCompetitors,
-	getPerPromptDailyRuns,
 	getPerPromptRunStats,
 	getPromptModelDailyCompetitors,
 	getPromptModelDailyRuns,
 	getPromptsFirstEvaluatedAt,
 	getRunsByModel,
 	getVisibilityDailyAggregate,
-	type PerPromptDailyRuns,
+	type PromptModelDailyRuns,
 } from "@/lib/rollup-read";
 import {
 	averagePosition,
@@ -177,14 +175,15 @@ export interface BrandShareOfVoice {
 	series: { date: string; share: number | null }[];
 }
 
-/** Standings carry each prompt's latest counts forward, so the headline and the
+/** Standings carry each prompt and model's latest counts forward, so the headline and the
  * trend's last point are the same number. */
 // Off the per-prompt rows rather than the per-competitor query, which counts mention instances
 // and would not agree with them.
-function shareSeries(perPromptDaily: PerPromptDailyRuns[], dateRange: string[]) {
+function shareSeries(perPromptDaily: PromptModelDailyRuns[], dateRange: string[]) {
 	return shareOfVoiceTimeSeriesLVCF(
 		perPromptDaily.map((row) => ({
 			promptId: row.prompt_id,
+			model: row.model,
 			date: String(row.date),
 			brandMentions: row.brand_mentioned_runs,
 			competitorMentions: row.competitor_mentions,
@@ -212,8 +211,8 @@ export async function getBrandShareOfVoice(
 	const scope = analyticsScope(brandId, window, resolved.promptIds, filters);
 	const [totals, perPromptDaily, perPromptCompetitorDaily, competitorRows] = await Promise.all([
 		getMentionTotals(scope),
-		getPerPromptDailyRuns(scope),
-		getPerPromptDailyCompetitors(scope),
+		getPromptModelDailyRuns(scope),
+		getPromptModelDailyCompetitors(scope),
 		getCompetitorTotals(scope),
 	]);
 	const competitorTotals = new Map(competitorRows.map((row) => [row.competitor, row]));
@@ -221,11 +220,13 @@ export async function getBrandShareOfVoice(
 	const standings = shareOfVoiceLeaderboardLVCF(
 		perPromptDaily.map((row) => ({
 			promptId: row.prompt_id,
+			model: row.model,
 			date: String(row.date),
 			brand: row.brand_mentioned_runs,
 		})),
 		perPromptCompetitorDaily.map((row) => ({
 			promptId: row.prompt_id,
+			model: row.model,
 			date: String(row.date),
 			competitor: row.competitor,
 			mentions: row.runs,
