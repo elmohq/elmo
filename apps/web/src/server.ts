@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
+import { compressResponse } from "@/lib/compress-response";
 
 // Not awaited: the app has to serve sign-in and settings whether or not the
 // credential store is reachable.
@@ -50,14 +51,17 @@ function addSecurityHeaders(response: Response): Response {
 	return response;
 }
 
-export default createServerEntry(
-	Sentry.wrapFetchWithSentry({
-		// The first request a server instance handles runs before Sentry isolates requests from
-		// each other, so without its own scope the user set on it would stick to every later one.
-		fetch: (request: Request) =>
-			Sentry.withIsolationScope(async () => {
-				const response = await handler.fetch(request);
-				return addSecurityHeaders(response);
-			}),
-	}),
-);
+const app = Sentry.wrapFetchWithSentry({
+	// The first request a server instance handles runs before Sentry isolates requests from
+	// each other, so without its own scope the user set on it would stick to every later one.
+	fetch: (request: Request) => Sentry.withIsolationScope(async () => addSecurityHeaders(await handler.fetch(request))),
+});
+
+export default createServerEntry({
+	fetch: async (request: Request) => {
+		const response = await app.fetch(request);
+		// Applied last, since Sentry rewrites HTML bodies as text. Vercel's CDN
+		// compresses for us, and with Brotli.
+		return process.env.VERCEL ? response : compressResponse(request, response);
+	},
+});

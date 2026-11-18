@@ -41,6 +41,8 @@ export default defineConfig({
 		tanstackStart(),
 		nitro({
 			traceDeps: ["@takumi-rs/core"],
+			// Vercel compresses static files itself.
+			compressPublicAssets: !process.env.VERCEL,
 			exportConditions: ["import"],
 			sourcemap: true,
 			alias: {
