@@ -2,9 +2,11 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/rollup-read";
 
+// Shared, because charts format a date per axis tick and `toLocaleDateString` builds a formatter per call.
+const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
 /** A calendar day ("2026-03-04") as a chart labels it ("Mar 4"). */
-export const formatShortDate = (date: string) =>
-	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const formatShortDate = (date: string) => SHORT_DATE.format(new Date(`${date}T00:00:00Z`));
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
