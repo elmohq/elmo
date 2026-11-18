@@ -2,23 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
-import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import {
-	assertAllowed,
-	assertPromptSaveAllowed,
-	decidePromptCap,
-	promptSaveDelta,
-	withQuotaLock,
-} from "@workspace/lib/entitlements";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
-import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
-import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { computeSystemTags, effectiveTags } from "@workspace/lib/tag-utils";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
-import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -34,6 +25,7 @@ import {
 	getCitationUrlStats,
 	getCompetitorTotals,
 	getMentionTotals,
+	getPerPromptCitationTotals,
 	getPerPromptRunStats,
 	getPromptsFirstEvaluatedAt,
 	type PerPromptRunStats,
@@ -43,7 +35,6 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
-import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 
@@ -102,6 +93,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	citations: number,
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -115,6 +107,7 @@ function summarizePrompt(
 		enabled: prompt.enabled,
 		createdAt: prompt.createdAt,
 		totalRuns,
+		citations,
 		brandMentionPct,
 		competitorMentionPct,
 		averageWeightedMentions: totalRuns > 0 ? weightedMentions / totalRuns : 0,
@@ -144,7 +137,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
-			tags: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -168,32 +160,33 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
-		const [summaryData, firstEvaluatedData] = await Promise.all([
-			getPerPromptRunStats({
-				brandId: data.brandId,
-				from: fromDateStr,
-				to: toDateStr,
-				timezone,
-				promptIds,
-				model: data.model,
-				webSearchEnabled,
-			}),
+		const scope = {
+			brandId: data.brandId,
+			from: fromDateStr,
+			to: toDateStr,
+			timezone,
+			promptIds,
+			model: data.model,
+			webSearchEnabled,
+		};
+		const [summaryData, firstEvaluatedData, citationData] = await Promise.all([
+			getPerPromptRunStats(scope),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
+			getPerPromptCitationTotals(scope),
 		]);
 
 		const summaryMap = new Map(summaryData.map((s) => [s.prompt_id, s]));
 		const firstEvalMap = new Map(firstEvaluatedData.map((f) => [f.prompt_id, f.first_evaluated_at]));
+		const citationsMap = new Map(citationData.map((c) => [c.prompt_id, c.citations]));
 
 		const allUserTags = new Set<string>();
-		const tagFilter = parseTagFilter(data.tags);
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), citationsMap.get(p.id) ?? 0);
 		});
 
-		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
-		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
+		const sortedPrompts = promptSummaries.sort(byVisibilityThenName);
 
 		return {
 			prompts: sortedPrompts,

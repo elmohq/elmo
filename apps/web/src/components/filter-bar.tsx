@@ -18,6 +18,7 @@ import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
+import { SEARCH_DEBOUNCE_MS } from "@/hooks/use-debounced-value";
 import { DEFAULT_LOOKBACK, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
@@ -223,9 +224,11 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 function SearchInput({
 	placeholder = "Search prompts...",
 	searching = false,
+	debounceMs = SEARCH_DEBOUNCE_MS,
 }: {
 	placeholder?: string;
 	searching?: boolean;
+	debounceMs?: number;
 }) {
 	const urlValue = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
 	const setFilters = useFilterNavigate();
@@ -257,9 +260,9 @@ function SearchInput({
 		const timer = setTimeout(() => {
 			pendingTargetRef.current = local;
 			setFilters({ q: local.length ? local : undefined });
-		}, 250);
+		}, debounceMs);
 		return () => clearTimeout(timer);
-	}, [local, value, setFilters]);
+	}, [local, value, setFilters, debounceMs]);
 
 	const clear = () => {
 		setLocal("");
@@ -317,6 +320,7 @@ export function FilterBar({
 	resultCount,
 	resultTotal,
 	searching,
+	searchDebounceMs,
 	extraControls,
 }: {
 	availableTags: readonly string[];
@@ -330,6 +334,7 @@ export function FilterBar({
 	resultTotal?: number;
 	/** For searches slow enough that the input should show they're still running. */
 	searching?: boolean;
+	searchDebounceMs?: number;
 	/** Page-specific controls rendered inline with the dropdown group
 	 *  (e.g. the prompts list's sort dropdown). */
 	extraControls?: ReactNode;
@@ -343,7 +348,9 @@ export function FilterBar({
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput placeholder={searchPlaceholder} searching={searching} />}
+			{showSearch && (
+				<SearchInput placeholder={searchPlaceholder} searching={searching} debounceMs={searchDebounceMs} />
+			)}
 		</div>
 	);
 }

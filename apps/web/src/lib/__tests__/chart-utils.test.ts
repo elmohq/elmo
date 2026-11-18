@@ -10,6 +10,7 @@ import {
 	type ProcessedBatchChartDataPoint,
 	toBatchChartColumns,
 	toBatchChartData,
+	visibilityOverWindow,
 } from "@/lib/chart-utils";
 
 import type { LookbackPeriod } from "@/lib/lookback";
@@ -195,5 +196,42 @@ describe("toBatchChartColumns", () => {
 
 	it("carries nothing for a brand with no runs", () => {
 		expect(fromBatchChartColumns(toBatchChartColumns([]))).toEqual([]);
+	});
+});
+
+describe("visibilityOverWindow", () => {
+	const range = ["2026-03-01", "2026-03-02", "2026-03-03"];
+	const day = (prompt_id: string, date: string, total_runs: number, brand_mentioned_count: number) => ({
+		prompt_id,
+		date,
+		total_runs,
+		brand_mentioned_count,
+		competitor_counts: {},
+	});
+	const points = [day("p1", "2026-03-01", 2, 2), day("p1", "2026-03-03", 2, 0), day("p2", "2026-03-03", 2, 0)];
+
+	it("carries a prompt's latest result across days it did not run", () => {
+		const { visibilityTimeSeries, currentVisibilityPct } = visibilityOverWindow(points, new Set(["p1"]), range);
+
+		expect(visibilityTimeSeries.map((point) => point.visibility)).toEqual([100, 100, 0]);
+		expect(currentVisibilityPct).toBe(0);
+	});
+
+	it("counts a prompt from the start of the window with its first result", () => {
+		const { visibilityTimeSeries } = visibilityOverWindow(points, new Set(["p1", "p2"]), range);
+
+		expect(visibilityTimeSeries.map((point) => point.visibility)).toEqual([50, 50, 0]);
+	});
+
+	it("covers only the prompts asked for, and totals the runs that actually happened", () => {
+		expect(visibilityOverWindow(points, new Set(["p2"]), range).totalRuns).toBe(2);
+		expect(visibilityOverWindow(points, new Set(["p1", "p2"]), range).totalRuns).toBe(6);
+	});
+
+	it("leaves days with nothing to plot empty", () => {
+		const result = visibilityOverWindow(points, new Set(["missing"]), range);
+
+		expect(result.currentVisibilityPct).toBe(0);
+		expect(result.visibilityTimeSeries.every((point) => point.visibility === null)).toBe(true);
 	});
 });

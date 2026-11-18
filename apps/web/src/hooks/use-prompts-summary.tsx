@@ -7,7 +7,6 @@ export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
 	model?: string;
-	tags?: string[];
 }
 
 export const promptsSummaryKeys = {
@@ -27,7 +26,6 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					lookback: filters?.lookback || "1m",
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
