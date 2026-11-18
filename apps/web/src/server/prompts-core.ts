@@ -22,6 +22,7 @@ import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
+import { promptLanguageDetector } from "@/server/prompt-language";
 
 export const MAX_PROMPT_BATCH = 100;
 
@@ -61,7 +62,7 @@ const promptCountrySchema = countrySchema
 const promptLanguageSchema = languageSchema
 	.nullable()
 	.describe(
-		"ISO 639-1 language the prompt is written in, e.g. `de`. Null follows the brand's language. The text is sent as written: Elmo does not translate it.",
+		"ISO 639-1 language the prompt is written in, e.g. `de`. Omitted, it is detected from the text when that is clearly not the brand's language. Null follows the brand's language. The text is sent as written: Elmo does not translate it.",
 	);
 
 export const bulkPromptInputSchema = z.object({
@@ -247,12 +248,17 @@ async function assertGroupsInBrand(conn: DbConnection, brandId: string, groupIds
  * overrun a limit creates nothing. */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
 	const parsed = bulkPromptInputSchema.omit({ brandId: true }).parse(input);
-	const rows = parsed.prompts.map((prompt) => ({
+	const detectLanguage = await promptLanguageDetector(brand.id);
+	// An omitted language is detected; an explicit null is the caller choosing the brand's.
+	const languages = await Promise.all(
+		parsed.prompts.map((prompt) => (prompt.language === undefined ? detectLanguage(prompt.value) : prompt.language)),
+	);
+	const rows = parsed.prompts.map((prompt, index) => ({
 		brandId: brand.id,
 		value: prompt.value,
 		...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 		country: prompt.country ?? null,
-		language: prompt.language ?? null,
+		language: languages[index],
 		enabled: prompt.enabled ?? true,
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
@@ -349,8 +355,25 @@ async function applyPromptUpdate(
 	return row;
 }
 
+/** New wording on a prompt that has no language of its own gets one detected, unless the caller names one. */
+async function withDetectedLanguage(
+	brand: PromptBrand,
+	promptId: string,
+	input: UpdatePromptInput,
+): Promise<UpdatePromptInput> {
+	if (input.value === undefined || input.language !== undefined) return input;
+	const [existing] = await db
+		.select({ value: prompts.value, language: prompts.language })
+		.from(prompts)
+		.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brand.id)));
+	if (!existing || existing.language !== null || existing.value === input.value) return input;
+	const language = await (await promptLanguageDetector(brand.id))(input.value);
+	return language ? { ...input, language } : input;
+}
+
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
-	const input = updatePromptInputSchema.parse(changes);
+	const parsed = updatePromptInputSchema.parse(changes);
+	const input = await withDetectedLanguage(brand, promptId, parsed);
 	const updated = await withQuotaLock(brand.organizationId, (tx, afterCommit) =>
 		applyPromptUpdate(tx, afterCommit, brand, promptId, input),
 	);

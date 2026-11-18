@@ -328,9 +328,9 @@ function ColumnHeader({
 						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">
-								The country a prompt is asked from. Default follows the brand. Its language is set in the same menu.
-								Changing either does not translate the text, and the prompt&apos;s history moves with it. To compare
-								countries, translate the prompt instead.
+								The country a prompt is asked from. Default follows the brand. Its language is detected when you save
+								and can be changed in the same menu. Changing either does not translate the text, and the prompt&apos;s
+								history moves with it. To compare countries, translate the prompt instead.
 							</p>
 						</TooltipContent>
 					</Tooltip>

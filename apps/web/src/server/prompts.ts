@@ -45,6 +45,7 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
+import { promptLanguageDetector } from "@/server/prompt-language";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
@@ -513,7 +514,13 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				enabled: prompts.enabled,
+				premiumModels: prompts.premiumModels,
+				language: prompts.language,
+			})
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
@@ -528,6 +535,21 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
+		// New wording with no language set is the only thing detected, so a language someone chose is never replaced.
+		const detectLanguage = await promptLanguageDetector(data.brandId);
+		const needsLanguage = [
+			...inserts.map(({ prompt }) => prompt),
+			...updates
+				.filter(({ id, prompt }) => {
+					const stored = existingById.get(id);
+					return stored?.language === null && stored.value !== prompt.value;
+				})
+				.map(({ prompt }) => prompt),
+		].filter((prompt) => (prompt.language ?? null) === null);
+		const detected = new Map(
+			await Promise.all(needsLanguage.map(async (prompt) => [prompt, await detectLanguage(prompt.value)] as const)),
+		);
+
 		const saved = await db.transaction(async (tx) => {
 			for (const { id, prompt, after } of updates) {
 				await tx
@@ -540,7 +562,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						premiumModels: after.premiumModels,
 						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 						...(prompt.country !== undefined ? { country: prompt.country } : {}),
-						...(prompt.language !== undefined ? { language: prompt.language } : {}),
+						...(prompt.language !== undefined ? { language: detected.get(prompt) ?? prompt.language } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
@@ -566,7 +588,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						premiumModels: after.premiumModels,
 						...(prompt.groupId ? { groupId: prompt.groupId } : {}),
 						country: prompt.country ?? null,
-						language: prompt.language ?? null,
+						language: detected.get(prompt) ?? prompt.language ?? null,
 					})),
 				);
 			}

@@ -59,7 +59,8 @@
 		"./rollups/citation-pages": "./src/rollups/citation-pages.ts",
 		"./rollups/fanout": "./src/rollups/fanout.ts",
 		"./mention-judge": "./src/mention-judge/index.ts",
-		"./markets/translate": "./src/markets/translate.ts"
+		"./markets/translate": "./src/markets/translate.ts",
+		"./markets/detect-language": "./src/markets/detect-language.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "catalog:",
@@ -79,6 +80,7 @@
 		"better-auth": "catalog:",
 		"dataforseo-client": "catalog:",
 		"drizzle-orm": "catalog:",
+		"eld": "^2.1.1",
 		"jose": "6.2.15",
 		"linkedom": "catalog:",
 		"olostep": "catalog:",

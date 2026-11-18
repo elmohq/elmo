@@ -1,10 +1,15 @@
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
-import { listPrompts } from "@/server/prompts-core";
+import { createPrompts, listPrompts, updatePrompt } from "@/server/prompts-core";
 import { createBrand, deleteBrand } from "@/test/integration/stats-fixtures";
+
+vi.mock("@/lib/job-scheduler", () => ({
+	createPromptJobScheduler: vi.fn(),
+	removePromptJobScheduler: vi.fn(),
+}));
 
 let brandId: string;
 let follows: string;
@@ -91,5 +96,55 @@ describe("listing prompts by country and language", () => {
 	it("filters on the resolved language", async () => {
 		const { data } = await listPrompts({ brandId, languages: "en", limit: 10, offset: 0 });
 		expect(data.map((prompt) => prompt.id)).toEqual([overrides]);
+	});
+});
+
+describe("detecting a prompt's language on save", () => {
+	const english = { id: "", name: "Acme", website: "https://acme.example", organizationId: "" };
+	let englishBrandId: string;
+
+	beforeAll(async () => {
+		vi.stubEnv("DEPLOYMENT_MODE", "local");
+		englishBrandId = await createBrand();
+		english.id = englishBrandId;
+		english.organizationId = englishBrandId;
+	});
+
+	afterAll(async () => {
+		await deleteBrand(englishBrandId);
+		vi.unstubAllEnvs();
+	});
+
+	it("stores the language of a prompt written in another one, and leaves the brand's own unset", async () => {
+		const [german, plain] = await createPrompts(english, {
+			prompts: [{ value: "bestes CRM für kleine Unternehmen" }, { value: "best crm for small business" }],
+		});
+		expect(german.language).toBe("de");
+		expect(plain.language).toBeNull();
+	});
+
+	it("takes a language the caller names, or an explicit null, over what it would detect", async () => {
+		const [named, followsBrand] = await createPrompts(english, {
+			prompts: [
+				{ value: "mejor crm para pequeñas empresas", language: "pt" },
+				{ value: "meilleur CRM pour les petites entreprises", language: null },
+			],
+		});
+		expect(named.language).toBe("pt");
+		expect(followsBrand.language).toBeNull();
+	});
+
+	it("detects again when a prompt with no language of its own is reworded, but never replaces a chosen one", async () => {
+		const [unset, chosen] = await createPrompts(english, {
+			prompts: [{ value: "best crm for startups" }, { value: "top crm tools", language: "es" }],
+		});
+
+		const reworded = await updatePrompt(english, unset.id, {
+			value: "beste CRM-Software für Gründer und Selbstständige",
+		});
+		expect(reworded.language).toBe("de");
+
+		const kept = await updatePrompt(english, chosen.id, { value: "beste CRM-Software für Gründer und Selbstständige" });
+		expect(kept.language).toBe("es");
 	});
 });

@@ -154,7 +154,7 @@
 					},
 					"language": {
 						"type": ["string", "null"],
-						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Omit or send null to follow the brand. The text is sent as written; it is not translated."
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Omitted, it is detected from the text when that is clearly not the brand's language; send null to follow the brand regardless. The text is sent as written; it is not translated."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -197,7 +197,7 @@
 					},
 					"language": {
 						"type": ["string", "null"],
-						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Null follows the brand. The text is not translated."
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Null follows the brand. Omitted while `value` changes on a prompt with no language of its own, it is detected from the new text. The text is not translated."
 					}
 				}
 			},
