@@ -1,7 +1,7 @@
 import { countryName, type Market } from "@workspace/config/markets";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { AlertTriangle, Globe } from "lucide-react";
-import { CountryCoverage, coverageNote } from "@/components/country-picker";
+import { Globe } from "lucide-react";
+import { CountryCoverage } from "@/components/country-picker";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import type { MarketSupport } from "@/lib/market-support";
 
@@ -16,13 +16,12 @@ export function PromptCountryInfo({
 }) {
 	if (!support) return null;
 
-	const partial = coverageNote(support, market.country) !== null;
 	return (
 		<Popover>
 			<PopoverTrigger
 				render={
 					<FilterTriggerButton
-						icon={partial ? <AlertTriangle className="size-3.5 text-amber-600" /> : <Globe className="size-3.5" />}
+						icon={<Globe className="size-3.5" />}
 						label={countryName(market.country)}
 						aria-label={`Country: ${countryName(market.country)}`}
 					/>

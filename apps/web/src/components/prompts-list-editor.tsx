@@ -22,7 +22,7 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { CopyPlus, CornerDownRight, Inbox, Languages, ListPlus, Plus, Sparkles, X } from "lucide-react";
+import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { CountryCostNote, CountryPicker } from "@/components/country-picker";
@@ -176,10 +176,10 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_10rem_2.75rem]",
-	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_10rem_5.5rem_2.75rem]",
-	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_10rem_2.75rem]",
-	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_10rem_5.5rem_2.75rem]",
+	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_13rem_2.75rem]",
+	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_13rem_5.5rem_2.75rem]",
+	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_13rem_2.75rem]",
+	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_13rem_5.5rem_2.75rem]",
 };
 
 /** Columns: [select] [text] [system?] [tags] [country?] [premium?] [switch]. */
@@ -358,51 +358,19 @@ function ColumnHeader({
 	);
 }
 
-const VARIANT_HELP =
-	"Add another wording of this question. A variant is tracked as its own prompt: it runs on every model and counts toward your prompt limit.";
-
-const TRANSLATE_HELP =
-	"Add this prompt for other countries, translated where the language differs. Each is added as a variant and tracked as its own prompt.";
-
 const FIELD_ACTION_CLASS =
 	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
 
-const ACTIONS_PADDING = ["", "pr-8", "pr-14", "pr-20"];
-
-function FieldAction({
-	label,
-	help,
-	onClick,
-	children,
-}: {
-	label: string;
-	help: string;
-	onClick: () => void;
-	children: ReactNode;
-}) {
-	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={<button type="button" onClick={onClick} aria-label={label} className={FIELD_ACTION_CLASS} />}
-			>
-				{children}
-			</TooltipTrigger>
-			<TooltipContent>
-				<p className="max-w-xs">{help}</p>
-			</TooltipContent>
-		</Tooltip>
-	);
-}
-
-function DraftMarker({ prompt }: { prompt: EditablePrompt }) {
+function DraftMarker({ prompt, inset }: { prompt: EditablePrompt; inset: boolean }) {
 	if (!prompt.suggested && !prompt.translated) return null;
-	const Icon = prompt.translated ? Languages : Sparkles;
 	return (
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
-						<Icon className="size-3.5" aria-label={prompt.translated ? "Translated" : "Suggested"} />
+					<span
+						className={cn("absolute inset-y-0 flex items-center text-primary", inset ? "left-[1.375rem]" : "left-2.5")}
+					>
+						<Sparkles className="size-3.5" aria-label={prompt.translated ? "Translated" : "Suggested"} />
 					</span>
 				}
 			/>
@@ -420,8 +388,6 @@ function PromptTextField({
 	lead,
 	onValueChange,
 	onRemove,
-	onAddVariant,
-	onTranslate,
 	className,
 }: {
 	prompt: EditablePrompt;
@@ -429,48 +395,30 @@ function PromptTextField({
 	lead?: EditablePrompt;
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
-	onAddVariant?: () => void;
-	onTranslate?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
-	const actions = Number(removable) + Number(Boolean(onAddVariant)) + Number(Boolean(onTranslate));
 	const marked = prompt.suggested || prompt.translated;
 	return (
-		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
-			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
-			<div className="relative min-w-0 flex-1">
-				<DraftMarker prompt={prompt} />
-				<Input
-					value={prompt.value}
-					onChange={(e) => onValueChange(e.target.value)}
-					placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
-					aria-label={lead ? `Variant of "${lead.value}"` : undefined}
-					className={cn("min-w-0", marked && "pl-8", ACTIONS_PADDING[actions])}
-				/>
-				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
-					{onAddVariant && (
-						<FieldAction label={`Add a variant of "${prompt.value}"`} help={VARIANT_HELP} onClick={onAddVariant}>
-							<CopyPlus className="size-3.5" />
-						</FieldAction>
-					)}
-					{onTranslate && (
-						<FieldAction label={`Translate "${prompt.value}"`} help={TRANSLATE_HELP} onClick={onTranslate}>
-							<Languages className="size-3.5" />
-						</FieldAction>
-					)}
-					{removable && (
-						<button
-							type="button"
-							onClick={onRemove}
-							aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
-							className={FIELD_ACTION_CLASS}
-						>
-							<X className="size-3.5" />
-						</button>
-					)}
-				</div>
-			</div>
+		<div className={cn("relative min-w-0", lead && "ml-3 border-l-2 pl-3", className)}>
+			<DraftMarker prompt={prompt} inset={Boolean(lead)} />
+			<Input
+				value={prompt.value}
+				onChange={(e) => onValueChange(e.target.value)}
+				placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
+				aria-label={lead ? `Variant of "${lead.value}"` : undefined}
+				className={cn("min-w-0", marked && "pl-8", removable && "pr-8")}
+			/>
+			{removable && (
+				<button
+					type="button"
+					onClick={onRemove}
+					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+					className={cn("absolute inset-y-0 right-1.5 my-auto", FIELD_ACTION_CLASS)}
+				>
+					<X className="size-3.5" />
+				</button>
+			)}
 		</div>
 	);
 }
@@ -525,8 +473,6 @@ function PromptRow({
 	selected,
 	onToggleSelect,
 	lead,
-	onAddVariant,
-	onTranslate,
 	support,
 }: {
 	prompt: EditablePrompt;
@@ -543,8 +489,6 @@ function PromptRow({
 	selected: boolean;
 	onToggleSelect: () => void;
 	lead?: EditablePrompt;
-	onAddVariant?: () => void;
-	onTranslate?: () => void;
 	support?: MarketSupport;
 }) {
 	return (
@@ -563,8 +507,6 @@ function PromptRow({
 						lead={lead}
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
-						onAddVariant={onAddVariant}
-						onTranslate={onTranslate}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -604,8 +546,6 @@ function PromptRow({
 					lead={lead}
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
-					onAddVariant={onAddVariant}
-					onTranslate={onTranslate}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -727,11 +667,13 @@ function AddControls({
 function SelectionBar({
 	count,
 	onSetEnabled,
+	onAddVariant,
 	onTranslate,
 	onClear,
 }: {
 	count: number;
 	onSetEnabled: (enabled: boolean) => void;
+	onAddVariant?: () => void;
 	onTranslate?: () => void;
 	onClear: () => void;
 }) {
@@ -753,9 +695,14 @@ function SelectionBar({
 				>
 					Disable
 				</Button>
+				{onAddVariant && (
+					<Button type="button" size="sm" variant="outline" onClick={onAddVariant} className="cursor-pointer">
+						Add Variant
+					</Button>
+				)}
 				{onTranslate && (
 					<Button type="button" size="sm" variant="outline" onClick={onTranslate} className="cursor-pointer">
-						<Languages className="size-3.5" /> Translate
+						Translate
 					</Button>
 				)}
 				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="cursor-pointer">
@@ -795,7 +742,8 @@ function DefaultsNote({ support }: { support: MarketSupport }) {
 			</p>
 			<CountryCostNote support={support} country={country} className="mt-1" />
 			<p className="mt-1 text-xs text-muted-foreground">
-				Every variant and every translation is another prompt, tracked and paid for on its own.
+				Select prompts to add a variant or translate them for other countries. Each one added is another prompt, tracked
+				and paid for on its own.
 			</p>
 		</div>
 	);
@@ -810,6 +758,12 @@ function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): E
 		language: draft.market.language,
 		translated: draft.value !== draft.source.value,
 	});
+}
+
+/** The selected rows a variant or translation can be made from: a blank row has nothing to reword, and a full list has no room for the result. */
+function growableSelection(prompts: EditablePrompt[], selectedKeys: ReadonlySet<string>, atCapacity: boolean) {
+	if (atCapacity) return [];
+	return prompts.filter((prompt) => selectedKeys.has(prompt._key) && prompt.value.trim().length > 0);
 }
 
 export function PromptsListEditor({
@@ -863,10 +817,18 @@ export function PromptsListEditor({
 	};
 
 	const leads = useMemo(() => groupLeads(prompts), [prompts]);
-	const addVariant = (lead: EditablePrompt) =>
+	/** One blank variant under each selected question, however many of its rows are ticked. */
+	const addVariants = (selection: EditablePrompt[]) => {
+		const parents = [...new Set(selection.flatMap((row) => leads.get(row.groupId) ?? []))];
 		onChange(
-			insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
+			parents.reduce(
+				(rows, lead) =>
+					insertIntoGroup(rows, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
+				prompts,
+			),
 		);
+		clearSelection();
+	};
 	const addTranslations = (drafts: TranslatedDraft[]) =>
 		onChange(
 			drafts.reduce(
@@ -874,13 +836,11 @@ export function PromptsListEditor({
 				prompts,
 			),
 		);
-	const translatable = (rows: EditablePrompt[]) => rows.filter((row) => row.value.trim().length > 0);
 	const leadOf = (prompt: EditablePrompt) => {
 		const lead = leads.get(prompt.groupId);
 		return lead === prompt ? undefined : lead;
 	};
-	/** A blank row has nothing to reword or translate yet, and a full list has no room for the result. */
-	const canGrow = (prompt: EditablePrompt) => !atCapacity && prompt.value.trim().length > 0;
+	const growable = growableSelection(prompts, selectedKeys, atCapacity);
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
@@ -895,11 +855,8 @@ export function PromptsListEditor({
 				<SelectionBar
 					count={liveSelectedCount}
 					onSetEnabled={applyEnabledToSelection}
-					onTranslate={
-						locales && !atCapacity
-							? () => translate(translatable(prompts.filter((p) => selectedKeys.has(p._key))))
-							: undefined
-					}
+					onAddVariant={variants && growable.length > 0 ? () => addVariants(growable) : undefined}
+					onTranslate={locales && growable.length > 0 ? () => translate(growable) : undefined}
 					onClear={clearSelection}
 				/>
 			)}
@@ -962,8 +919,6 @@ export function PromptsListEditor({
 							selected={selectedKeys.has(prompt._key)}
 							onToggleSelect={() => toggleSelect(prompt._key)}
 							lead={leadOf(prompt)}
-							onAddVariant={canGrow(prompt) && variants && !leadOf(prompt) ? () => addVariant(prompt) : undefined}
-							onTranslate={canGrow(prompt) && locales ? () => translate([prompt]) : undefined}
 							support={locales?.support}
 						/>
 					))}

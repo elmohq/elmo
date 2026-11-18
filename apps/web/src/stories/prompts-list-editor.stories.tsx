@@ -151,9 +151,8 @@ export const Variants: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/including 1 variant\./)).toBeVisible();
 
-		await userEvent.click(
-			canvas.getAllByRole("button", { name: 'Add a variant of "best crm for small business"' })[0]!,
-		);
+		await userEvent.click(canvas.getAllByRole("checkbox", { name: "Select prompt" })[0]!);
+		await userEvent.click(canvas.getByRole("button", { name: "Add Variant" }));
 		const added = canvas.getAllByRole("textbox", { name: 'Variant of "best crm for small business"' });
 		await userEvent.type(added.at(-1)!, "top crm tools for small teams");
 
@@ -213,7 +212,8 @@ export const TranslateForCountries: StoryObj = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const page = within(document.body);
-		await userEvent.click(canvas.getAllByRole("button", { name: 'Translate "best crm for small business"' })[0]!);
+		await userEvent.click(canvas.getAllByRole("checkbox", { name: "Select prompt" })[0]!);
+		await userEvent.click(canvas.getByRole("button", { name: "Translate" }));
 
 		const dialog = within(await page.findByRole("dialog"));
 		// Germany · German already has a variant of this question.

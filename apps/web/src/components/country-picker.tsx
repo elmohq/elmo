@@ -122,20 +122,13 @@ interface CountryPickerProps {
 
 function TriggerLabel({ country, support }: Pick<CountryPickerProps, "country" | "support">) {
 	if (!country) return <span className="truncate text-muted-foreground">Default</span>;
+	const note = coverageNote(support, country);
 	return (
-		<span className="flex min-w-0 items-center gap-1.5">
-			{coverageNote(support, country) && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" aria-hidden />}
+		<span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
 			<span className="truncate">{countryName(country)}</span>
+			{note && <span className="shrink-0 text-xs text-amber-700">{note}</span>}
 		</span>
 	);
-}
-
-function describeSelection({ country, support }: Pick<CountryPickerProps, "country" | "support">) {
-	if (!country) return `Follows the brand: asked from ${countryName(support.brandMarket.country)}.`;
-	const note = coverageNote(support, country);
-	return note
-		? `Asked from ${countryName(country)}. Only ${note} can answer from there.`
-		: `Asked from ${countryName(country)}, whatever the brand's country is.`;
 }
 
 /**
@@ -171,34 +164,25 @@ export function CountryPicker({
 
 	return (
 		<Popover open={open} onOpenChange={setOpenOnCurrent}>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<PopoverTrigger
-							render={
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									disabled={disabled}
-									aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}`}
-									className={cn(
-										"h-8 w-full justify-between gap-1 px-2 font-normal",
-										allowDefault && country && "border-foreground/30",
-										className,
-									)}
-								/>
-							}
-						/>
-					}
-				>
-					<TriggerLabel country={country} support={support} />
-					<ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-				</TooltipTrigger>
-				<TooltipContent>
-					<p className="max-w-xs">{describeSelection({ country, support })}</p>
-				</TooltipContent>
-			</Tooltip>
+			<PopoverTrigger
+				render={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={disabled}
+						aria-label={`Country: ${country ? countryName(country) : `brand default, ${countryName(brand.country)}`}`}
+						className={cn(
+							"h-8 w-full justify-between gap-1 px-2 font-normal",
+							allowDefault && country && "border-foreground/30",
+							className,
+						)}
+					/>
+				}
+			>
+				<TriggerLabel country={country} support={support} />
+				<ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+			</PopoverTrigger>
 			<PopoverContent align="end" className="w-80 p-0">
 				<Command value={highlighted} onValueChange={setHighlighted}>
 					<CommandInput placeholder="Search countries..." />

@@ -1,12 +1,13 @@
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Layers } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { visibilityBadgeProps } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
@@ -58,29 +59,40 @@ export interface PromptCardVariant {
 
 const NO_VARIANTS: PromptCardVariant[] = [];
 
-/** A small mark beside the title of a prompt that has variants; hovering lists them. */
+/** Beside the title of a prompt that has variants: says how many, and opens to links to each. */
 function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
+	const params = useBrandParams();
 	if (variants.length === 0) return null;
-	const label = variants.length === 1 ? "1 variant" : `${variants.length} variants`;
 	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={<span role="img" aria-label={label} className="shrink-0 cursor-help text-muted-foreground" />}
+		<Popover>
+			<PopoverTrigger
+				render={
+					<button
+						type="button"
+						className="shrink-0 cursor-pointer text-xs text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
+					/>
+				}
 			>
-				<Layers className="size-3.5" />
-			</TooltipTrigger>
-			<TooltipContent className="max-w-sm">
-				<p className="font-medium">Also Tracked As</p>
-				<ul className="mt-1 space-y-0.5">
+				{variants.length === 1 ? "1 variant" : `${variants.length} variants`}
+			</PopoverTrigger>
+			<PopoverContent align="start" initialFocus={false} className="w-80 space-y-2 p-3">
+				<p className="text-xs font-medium text-muted-foreground">Also Tracked As</p>
+				<ul className="space-y-1.5 text-left text-sm">
 					{variants.map((variant) => (
 						<li key={variant.id}>
-							{variant.value}
-							{variant.locale && <span className="opacity-70"> · {variant.locale}</span>}
+							<Link
+								to="/app/org/$org/brand/$brand/prompts/$promptId"
+								params={{ ...params, promptId: variant.id }}
+								className="block text-left outline-none hover:underline focus-visible:underline"
+							>
+								{variant.value}
+							</Link>
+							{variant.locale && <span className="block text-xs text-muted-foreground">{variant.locale}</span>}
 						</li>
 					))}
 				</ul>
-			</TooltipContent>
-		</Tooltip>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
