@@ -4,8 +4,12 @@ import { organizationUrl } from "../../fixtures";
 test("a tab whose session has ended is sent to sign in again and returns where it was", async ({
   page,
   context,
+  consoleErrors,
 }, testInfo) => {
   test.skip(testInfo.project.name === "whitelabel", "signing in again leaves for the identity provider");
+  // The request that finds the session gone still fails, and whether that is
+  // logged before the browser leaves for sign-in depends on timing.
+  consoleErrors.allow("AuthenticationRequiredError");
 
   await page.goto(`${organizationUrl()}/settings`, { waitUntil: "networkidle" });
   await context.clearCookies();
