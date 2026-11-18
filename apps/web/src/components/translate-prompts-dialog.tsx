@@ -43,7 +43,12 @@ export interface TranslatedDraft {
 	value: string;
 }
 
-export type TranslateFn = (market: Market, texts: string[]) => Promise<{ translation: string }[]>;
+/** `languages` are what each text is saved under, null where it has none. Text already in the market's language comes back as written. */
+export type TranslateFn = (
+	market: Market,
+	texts: string[],
+	languages: (string | null)[],
+) => Promise<{ translation: string }[]>;
 
 interface TranslatePromptsDialogProps {
 	open: boolean;
@@ -110,26 +115,21 @@ function AddedCost({
 	);
 }
 
-/** A prompt already written in a market's language is asked there as it stands; the rest are translated. */
 async function draftsFor(
 	additions: { market: Market; missing: TranslationSource[] }[],
-	brandMarket: Market,
 	translate: TranslateFn,
 ): Promise<TranslatedDraft[]> {
 	const drafts: TranslatedDraft[] = [];
 	for (const { market, missing } of additions) {
-		const foreign = missing.filter((source) => resolveMarket(source, brandMarket).language !== market.language);
-		const translated =
-			foreign.length > 0
-				? await translate(
-						market,
-						foreign.map((source) => source.value),
-					)
-				: [];
-		for (const source of missing) {
-			const index = foreign.indexOf(source);
-			drafts.push({ source, market, value: index === -1 ? source.value : translated[index].translation });
-		}
+		if (missing.length === 0) continue;
+		const translated = await translate(
+			market,
+			missing.map((source) => source.value),
+			missing.map((source) => source.language),
+		);
+		missing.forEach((source, index) => {
+			drafts.push({ source, market, value: translated[index].translation });
+		});
 	}
 	return drafts;
 }
@@ -183,7 +183,7 @@ export function TranslatePromptsDialog({
 		setWorking(true);
 		setError(null);
 		try {
-			const drafts = await draftsFor(additions, support.brandMarket, translate);
+			const drafts = await draftsFor(additions, translate);
 			onTranslated(drafts);
 			setSelected([]);
 			onOpenChange(false);

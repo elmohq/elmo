@@ -3,6 +3,7 @@ import { promptTranslations } from "@workspace/lib/db/schema";
 import { DAILY_TRANSLATION_LIMIT, TranslationLimitError, translatePrompts } from "@workspace/lib/markets/translate";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { draftPromptTranslations } from "@/server/prompt-language";
 import { createBrand, deleteBrand } from "@/test/integration/stats-fixtures";
 
 const germany = { country: "DE", language: "de" };
@@ -80,5 +81,24 @@ describe("translatePrompts", () => {
 		} finally {
 			await deleteBrand(limited);
 		}
+	});
+});
+
+describe("drafting a prompt for another country", () => {
+	it("translates a prompt written in another language and leaves one already in the market's language as written", async () => {
+		const [english, german] = await draftPromptTranslations(brandId, germany, [
+			"what is the best crm for a small business",
+			"bestes CRM für kleine Unternehmen",
+		]);
+		expect(english.translation).not.toBe("what is the best crm for a small business");
+		expect(german.translation).toBe("bestes CRM für kleine Unternehmen");
+	});
+
+	it("goes by the language a prompt is saved under when its wording is too short to tell", async () => {
+		const [saved] = await draftPromptTranslations(brandId, france, ["Acme pricing"], ["fr"]);
+		expect(saved.translation).toBe("Acme pricing");
+
+		const [unsaved] = await draftPromptTranslations(brandId, france, ["Acme pricing"], [null]);
+		expect(unsaved.translation).not.toBe("Acme pricing");
 	});
 });

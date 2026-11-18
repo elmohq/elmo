@@ -83,7 +83,6 @@ function classifyPrompt(
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
 		prompt.country !== prev.country ||
-		prompt.language !== prev.language ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -138,7 +137,8 @@ export function PromptsEditor({
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
 	const locales = useMemo(() => {
-		const translate: TranslateFn = (market, texts) => translatePromptsFn({ data: { brandId, market, texts } });
+		const translate: TranslateFn = (market, texts, languages) =>
+			translatePromptsFn({ data: { brandId, market, texts, languages } });
 		return { support: marketSupport, translate };
 	}, [brandId, marketSupport]);
 	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
@@ -174,7 +174,8 @@ export function PromptsEditor({
 					tags: p.tags,
 					premiumModels: p.premiumModels,
 					country: p.country,
-					language: p.language,
+					// Only an unsaved translation says its language; the rest is detected from the wording.
+					...(p.id ? {} : { language: p.language }),
 				})),
 				...removedPrompts,
 			];

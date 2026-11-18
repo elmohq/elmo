@@ -1,20 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { detectPromptLanguage } from "./detect-language";
+import { detectLanguage } from "./detect-language";
 
-const detect = (text: string, brandLanguage = "en", ignore: string[] = []) =>
-	detectPromptLanguage(text, { brandLanguage, ignore });
-
-describe("detectPromptLanguage", () => {
-	it("names the language of a prompt clearly written in another one", async () => {
-		expect(await detect("bestes CRM für kleine Unternehmen")).toBe("de");
-		expect(await detect("mejor crm para pequeñas empresas")).toBe("es");
-		expect(await detect("meilleur CRM pour PME")).toBe("fr");
-		expect(await detect("中小企業向けの最高のCRM")).toBe("ja");
-	});
-
-	it("leaves a prompt in the brand's language following the brand", async () => {
-		expect(await detect("best crm for small business")).toBeNull();
-		expect(await detect("bestes CRM für kleine Unternehmen", "de")).toBeNull();
+describe("detectLanguage", () => {
+	it("names the language a prompt is clearly written in", async () => {
+		expect(await detectLanguage("bestes CRM für kleine Unternehmen")).toBe("de");
+		expect(await detectLanguage("mejor crm para pequeñas empresas")).toBe("es");
+		expect(await detectLanguage("meilleur CRM pour PME")).toBe("fr");
+		expect(await detectLanguage("中小企業向けの最高のCRM")).toBe("ja");
+		expect(await detectLanguage("what is the best email marketing tool for a small team")).toBe("en");
 	});
 
 	it("doesn't mistake short English prompts made of product names for another language", async () => {
@@ -25,21 +18,17 @@ describe("detectPromptLanguage", () => {
 			"lululemon leggings sizing",
 			"hubspot pricing",
 		]) {
-			expect(await detect(prompt), prompt).toBeNull();
+			expect([null, "en"], prompt).toContain(await detectLanguage(prompt));
 		}
 	});
 
 	it("judges the words around brand and competitor names, not the names", async () => {
-		expect(await detect("Salesforce Alternativen für kleine Unternehmen", "en", ["Salesforce"])).toBe("de");
-		expect(await detect("Zapatos Rápidos review", "en", ["Zapatos Rápidos"])).toBeNull();
+		expect(await detectLanguage("Salesforce Alternativen für kleine Unternehmen", ["Salesforce"])).toBe("de");
+		expect([null, "en"]).toContain(await detectLanguage("Zapatos Rápidos review", ["Zapatos Rápidos"]));
 	});
 
 	it("doesn't guess between languages it can't tell apart", async () => {
-		expect(await detect("sepatu lari terbaik untuk pemula")).toBeNull();
-		expect(await detect("najbolji crm za mala preduzeća")).toBeNull();
-	});
-
-	it("finds an English prompt under a brand whose language is another", async () => {
-		expect(await detect("what is the best email marketing tool for a small team", "de")).toBe("en");
+		expect(await detectLanguage("sepatu lari terbaik untuk pemula")).toBeNull();
+		expect(await detectLanguage("najbolji crm za mala preduzeća")).toBeNull();
 	});
 });

@@ -34,13 +34,6 @@ function loadDetector(): Promise<Detector> {
 	return detector;
 }
 
-export interface DetectLanguageOptions {
-	/** The language prompts are assumed to be in. Never returned. */
-	brandLanguage: string;
-	/** Brand and competitor names, which say nothing about the language around them. */
-	ignore?: readonly string[];
-}
-
 /**
  * The supported language `text` is clearly written in, or null when it is unclear.
  * `ignore` holds brand and competitor names, which say nothing about the language around them.
@@ -53,10 +46,4 @@ export async function detectLanguage(text: string, ignore: readonly string[] = [
 	if (!result.language || !result.isReliable() || AMBIGUOUS.has(result.language)) return null;
 
 	return (result.getScores()[result.language] ?? 0) >= MIN_CONFIDENCE ? result.language : null;
-}
-
-/** As `detectLanguage`, but null as well when the language is the brand's, which a prompt follows without storing. */
-export async function detectPromptLanguage(text: string, options: DetectLanguageOptions): Promise<string | null> {
-	const language = await detectLanguage(text, options.ignore);
-	return language === options.brandLanguage ? null : language;
 }

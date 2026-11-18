@@ -56,7 +56,7 @@ The prompt page shows the country a prompt is asked from. Click it to see whethe
 
 ## How Languages Are Detected
 
-There is no language to set. When you save a prompt, Elmo detects the language from its wording and records it, so a German prompt asked from the United States counts as German. Brand and competitor names are ignored. A prompt too short or too ambiguous to call counts as the brand's language, which is English unless the API changed it, and Indonesian, Malay, Croatian, and Serbian are too alike to tell apart reliably. A translated variant always carries the language it was translated into, and the [API](#api) can set a prompt's `language` directly where detection gets it wrong.
+There is no language to set. When you save a prompt, Elmo detects the language from its wording and records it, so a German prompt asked from the United States counts as German. Brand and competitor names are ignored. A new prompt too short or too ambiguous to call counts as the brand's language, which is English unless the API changed it, and a reworded one keeps the language it had. Indonesian, Malay, Croatian, and Serbian are too alike to tell apart reliably, so prompts in them are treated as unclear. A translated variant always carries the language it was translated into, and the [API](#api) can set a prompt's `language` directly where detection gets it wrong.
 
 ## Filtering by Country and Language
 

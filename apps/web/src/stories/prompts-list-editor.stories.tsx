@@ -174,7 +174,7 @@ export const Variants: StoryObj = {
 
 const localesFor = (support: MarketSupport): PromptLocales => ({
 	support,
-	translate: (market, texts) => translatePromptsFn({ data: { market, texts } }),
+	translate: (market, texts, languages) => translatePromptsFn({ data: { market, texts, languages } }),
 });
 
 const MARKET_PROMPTS = [
