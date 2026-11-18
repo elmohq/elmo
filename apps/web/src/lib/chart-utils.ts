@@ -164,6 +164,50 @@ export function fromBatchChartColumns(columns: BatchChartColumns): ProcessedBatc
 	);
 }
 
+function pointsByPrompt(points: ProcessedBatchChartDataPoint[], promptIds: ReadonlySet<string>) {
+	const byPrompt = new Map<string, ProcessedBatchChartDataPoint[]>();
+	for (const point of points) {
+		if (!promptIds.has(point.prompt_id)) continue;
+		const days = byPrompt.get(point.prompt_id);
+		if (days) days.push(point);
+		else byPrompt.set(point.prompt_id, [point]);
+	}
+	return byPrompt;
+}
+
+/**
+ * A prompt counts on every day with its latest result so far — or its first,
+ * before it has run — so a gap in a schedule doesn't read as a dip.
+ */
+export function visibilityOverWindow(
+	points: ProcessedBatchChartDataPoint[],
+	promptIds: ReadonlySet<string>,
+	dateRange: string[],
+) {
+	const runs = new Array<number>(dateRange.length).fill(0);
+	const mentioned = new Array<number>(dateRange.length).fill(0);
+	let totalRuns = 0;
+
+	for (const days of pointsByPrompt(points, promptIds).values()) {
+		let next = 0;
+		let carried = days[0];
+		for (let index = 0; index < dateRange.length; index++) {
+			while (next < days.length && String(days[next].date) <= dateRange[index]) carried = days[next++];
+			runs[index] += carried.total_runs;
+			mentioned[index] += carried.brand_mentioned_count;
+		}
+		for (const day of days) totalRuns += day.total_runs;
+	}
+
+	const visibilityTimeSeries = dateRange.map((date, index) => ({
+		date,
+		visibility: runs[index] === 0 ? null : Math.round((mentioned[index] / runs[index]) * 100),
+	}));
+	const observed = visibilityTimeSeries.filter((point) => point.visibility !== null);
+
+	return { currentVisibilityPct: observed.at(-1)?.visibility ?? 0, totalRuns, visibilityTimeSeries };
+}
+
 /**
  * Seeded with each prompt's earliest observation so days before its first run
  * still count; otherwise a staggered schedule reads as a ramp-up.
