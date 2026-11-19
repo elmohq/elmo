@@ -6,11 +6,13 @@
 
 import { type CitationCategory, extractDomain } from "@workspace/lib/citations/domain-categories";
 import { categorizeDomain } from "@workspace/lib/citations/domain-lists";
+import { OPPORTUNITIES_GENERATIONS_PER_DAY } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
+import { describeWait } from "@/lib/describe-wait";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import {
 	getPerPromptCitationPages,
@@ -538,37 +540,131 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 	return null;
 }
 
-/** Generates inline, with no queue: the freshness gate is what bounds the spend. */
-export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+const GENERATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** Advisory locks share one namespace per database; this keeps generation locks off other uses of the brand id. */
+const GENERATION_LOCK_CLASS = 0x6f707073;
+
+const BUSY_MESSAGE = "Opportunities are already being generated for this brand. Try again in a minute.";
+
+type StoredOpportunities = typeof brandOpportunities.$inferSelect;
+
+async function latestStored(brandId: string): Promise<StoredOpportunities | undefined> {
 	const [latest] = await db
 		.select()
 		.from(brandOpportunities)
 		.where(eq(brandOpportunities.brandId, brandId))
 		.orderBy(desc(brandOpportunities.createdAt))
 		.limit(1);
-	const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
-	const servedModel = latest?.model ?? null;
-	const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
-	const serveStored = () => ({
-		report: withoutRepeats(latest.report as OpportunitiesReport),
+	return latest;
+}
+
+const isFresh = (stored: StoredOpportunities) =>
+	Date.now() - stored.createdAt.getTime() < REFRESH_AFTER_DAYS * 86_400_000;
+
+function serveStored(stored: StoredOpportunities): OpportunitiesResponse {
+	return {
+		report: withoutRepeats(stored.report as OpportunitiesReport),
 		reason: null,
 		generatedFor: null,
-		lastEvaluatedAt,
-		model: servedModel,
-	});
-	if (latest && isFresh) return serveStored();
+		lastEvaluatedAt: stored.createdAt.toISOString(),
+		model: stored.model ?? null,
+	};
+}
 
+/**
+ * Whether another generation fits in the rolling day, given when the brand's recent
+ * generations were stored (newest first). `resetsAt` is when the oldest one ages out.
+ */
+export function generationAllowance(
+	recent: Date[],
+	now = Date.now(),
+): { allowed: true } | { allowed: false; resetsAt: Date } {
+	const inWindow = recent.filter((createdAt) => now - createdAt.getTime() < GENERATION_WINDOW_MS);
+	if (inWindow.length < OPPORTUNITIES_GENERATIONS_PER_DAY) return { allowed: true };
+	const oldest = inWindow.at(-1) ?? new Date(now);
+	return { allowed: false, resetsAt: new Date(oldest.getTime() + GENERATION_WINDOW_MS) };
+}
+
+/**
+ * Runs `run` only when no other request is generating for this brand, and returns null
+ * when one is. It tries rather than waits: a waiter would sit on a pooled connection
+ * while the holder needs the pool for its digest queries. The lock is transaction-scoped,
+ * so it is released even if the request dies mid-generation.
+ */
+async function withGenerationLock<T>(brandId: string, run: () => Promise<T>): Promise<T | null> {
+	return db.transaction(async (tx) => {
+		const result = await tx.execute<{ locked: boolean }>(
+			sql`select pg_try_advisory_xact_lock(${GENERATION_LOCK_CLASS}, hashtext(${brandId})) as locked`,
+		);
+		return result.rows[0]?.locked ? run() : null;
+	});
+}
+
+/** Generates inline, with no queue: the freshness gate and the daily allowance bound the spend. */
+export async function resolveOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	const latest = await latestStored(brandId);
+	if (latest && isFresh(latest)) return serveStored(latest);
+
+	const response = await withGenerationLock(brandId, async () => {
+		// Another request may have stored a fresh report between the read above and taking the lock.
+		const current = await latestStored(brandId);
+		if (current && isFresh(current)) return serveStored(current);
+		return generate(brandId, timezone, current);
+	});
+	if (response) return response;
+	if (latest) return serveStored(latest);
+	throw new Error(BUSY_MESSAGE);
+}
+
+/** Regenerates now, ignoring freshness, within the brand's daily generation allowance. */
+export async function refreshOpportunities(brandId: string, timezone = "UTC"): Promise<OpportunitiesResponse> {
+	const response = await withGenerationLock(brandId, async () => {
+		const recent = await db
+			.select({ createdAt: brandOpportunities.createdAt })
+			.from(brandOpportunities)
+			.where(
+				and(
+					eq(brandOpportunities.brandId, brandId),
+					gt(brandOpportunities.createdAt, new Date(Date.now() - GENERATION_WINDOW_MS)),
+				),
+			)
+			.orderBy(desc(brandOpportunities.createdAt));
+		const allowance = generationAllowance(recent.map((row) => row.createdAt));
+		if (!allowance.allowed) {
+			throw new Error(
+				`You've used all ${OPPORTUNITIES_GENERATIONS_PER_DAY} opportunity refreshes for today. Try again in ${describeWait(allowance.resetsAt)}.`,
+			);
+		}
+		return generate(brandId, timezone, await latestStored(brandId));
+	});
+	if (!response) throw new Error(BUSY_MESSAGE);
+	return response;
+}
+
+/** Builds the digest, generates, and stores the report; falls back to `latest` when that fails. */
+async function generate(
+	brandId: string,
+	timezone: string,
+	latest: StoredOpportunities | undefined,
+): Promise<OpportunitiesResponse> {
 	const digest = await buildDigest(brandId, timezone);
 	if (!digest) {
-		if (latest) return serveStored();
-		return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt, model: null };
+		if (latest) return serveStored(latest);
+		return {
+			report: null,
+			reason: "insufficient-data",
+			generatedFor: null,
+			lastEvaluatedAt: null,
+			model: null,
+		};
 	}
 
 	const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
 	const generated = await generateValidReport(prompt);
 	if (!generated) {
 		// No schema-valid report; serve the last good one if there is one.
-		if (latest) return serveStored();
+		if (latest) return serveStored(latest);
 		throw new Error("Failed to generate a valid opportunities report");
 	}
 
