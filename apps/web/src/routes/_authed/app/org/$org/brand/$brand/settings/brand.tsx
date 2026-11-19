@@ -38,17 +38,17 @@ function DefaultCountryField({
 	onChange,
 	support,
 	saved,
-	prompts,
+	following,
 	disabled,
 }: {
 	country: string;
 	onChange: (country: string) => void;
 	support: MarketSupport;
 	saved: string;
-	prompts: { enabled: boolean; country: string | null }[];
+	/** How many prompts follow the default and would move with it. */
+	following: number;
 	disabled: boolean;
 }) {
-	const following = prompts.filter((prompt) => prompt.enabled && !prompt.country).length;
 	return (
 		<div className="space-y-2">
 			<Label>Default Country</Label>
@@ -275,7 +275,7 @@ function BrandSettingsPage() {
 							onChange={setCountry}
 							support={marketSupport}
 							saved={brand.country}
-							prompts={brand.prompts}
+							following={brand.promptsFollowingCountry}
 							disabled={isSubmitting}
 						/>
 					)}

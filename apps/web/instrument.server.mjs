@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/tanstackstart-react";
+import { AUTHENTICATION_REQUIRED } from "./src/lib/auth/session-errors";
 
 // Platform pings, health checks and the analytics proxy outnumber real requests and say nothing about the app.
 const UNTRACED_PATHS = /^\/(_vercel\/|api\/health\/?$|api\/plausible\/)/;
@@ -16,6 +17,8 @@ if (process.env.SENTRY_DSN) {
 		environment: process.env.ENVIRONMENT || process.env.NODE_ENV || "development",
 		initialScope: { tags: { service: "web" } },
 		integrations: [Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
+		// A signed-out browser calling a server function; the client sends it to sign in again.
+		ignoreErrors: [AUTHENTICATION_REQUIRED],
 		tracesSampler: ({ attributes, inheritOrSampleWith }) => {
 			const op = attributes?.["sentry.op"];
 			const path = attributes?.["url.path"];

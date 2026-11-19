@@ -19,9 +19,7 @@ import { ChevronDown, Clock, Globe, Languages, Search, Tag as TagIcon, X } from 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
-import { useBrand } from "@/hooks/use-brands";
-import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
-import { type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
+import { DEFAULT_LOOKBACK, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
 
 export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
@@ -29,6 +27,7 @@ export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives only in the URL. Each widget selects just its own search
 // key so one filter's click doesn't re-render the others.
+import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
@@ -128,20 +127,18 @@ function ModelDropdown({ trackedTargets }: { trackedTargets: TrackedTarget[] }) 
 }
 
 function LookbackDropdown() {
-	const { data: brand } = useBrand();
-	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
-	const selected = coerceLookback(urlLookback, defaultLookback);
+	const selected = coerceLookback(urlLookback, DEFAULT_LOOKBACK);
 
 	const handleChange = (next: LookbackPeriod) => {
-		setFilters({ lookback: next === defaultLookback ? undefined : next });
+		setFilters({ lookback: next === DEFAULT_LOOKBACK ? undefined : next });
 	};
 
 	return (
 		<LookbackPicker
 			value={selected}
-			defaultValue={defaultLookback}
+			defaultValue={DEFAULT_LOOKBACK}
 			onChange={handleChange}
 			trigger={
 				<FilterTriggerButton

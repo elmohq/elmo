@@ -17,11 +17,7 @@ const MOCK_BRAND = {
 	aliases: ["Acme Inc", "Acme Corporation"],
 	country: "US",
 	language: "en",
-	prompts: [
-		{ enabled: true, country: null, language: null },
-		{ enabled: true, country: null, language: null },
-		{ enabled: true, country: "DE", language: "de" },
-	],
+	promptsFollowingCountry: 2,
 	updatedAt: new Date("2026-09-01T00:00:00Z"),
 };
 

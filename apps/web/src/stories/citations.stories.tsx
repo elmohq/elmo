@@ -23,7 +23,6 @@ const brand = {
 	onboarded: true,
 	enabled: true,
 	prompts: [{ id: "p1", value: "best crm", enabled: true }],
-	earliestDataDate: "2026-05-05",
 	trackedTargets: MODELS.map((model) => ({
 		value: model,
 		model,

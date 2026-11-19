@@ -1,22 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BrandTrackingState } from "@workspace/lib/brand-state";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 import { useResolvedBrandId } from "@/hooks/use-brand-id";
-import type { TrackedTarget } from "@/lib/model-filter";
-import type { LocaleUse } from "@/lib/prompt-scope";
 import { getBrand, getCompetitors } from "@/server/brands";
-
-type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
-	earliestDataDate?: string | null;
-	trackingState: BrandTrackingState;
-	/**
-	 * What this brand's results can be broken down by, resolved server-side so
-	 * the UI never hardcodes a model list. A model appears twice when the brand
-	 * runs it both scraped and grounded — see server/brands.ts.
-	 */
-	trackedTargets: TrackedTarget[];
-	locales: { countries: LocaleUse[]; languages: LocaleUse[] };
-};
 
 export const brandKeys = {
 	all: ["brands"] as const,
@@ -47,7 +31,7 @@ export function useBrand(brandId?: string) {
 	};
 
 	return {
-		data: query.data as BrandWithPromptsAndDataInfo | undefined,
+		data: query.data,
 		isLoading: query.isLoading,
 		error: query.error,
 		refetch,
