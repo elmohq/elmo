@@ -11,6 +11,8 @@ import {
 
 const prompts = Array.from({ length: 24 }, (_, i) => ({
 	id: `prompt-${i}`,
+	parentId: null,
+	createdAt: new Date(2026, 0, 1 + i),
 	value: `What are the best AI visibility tools for ${["agencies", "startups", "enterprises", "ecommerce"][i % 4]}? (${i + 1})`,
 	enabled: i % 5 !== 0,
 	tags: i % 3 === 0 ? ["comparison"] : [],

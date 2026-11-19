@@ -74,6 +74,8 @@ export const prompts = pgTable(
 			.references(() => brands.id)
 			.notNull(),
 		value: text("value").notNull(),
+		/** Set on a variant: another wording of its parent's question. A parent's own is null, and a variant never has variants. */
+		parentId: uuid("parent_id").references((): AnyPgColumn => prompts.id, { onDelete: "set null" }),
 		enabled: boolean("enabled").default(true).notNull(),
 		/** Tracked grounded, one org premium slot per entry. */
 		premiumModels: text("premium_models").array().notNull().default([]),
@@ -88,6 +90,7 @@ export const prompts = pgTable(
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
 		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
+		parentIdIdx: index("prompts_parent_id_idx").on(table.parentId),
 	}),
 ).enableRLS();
 

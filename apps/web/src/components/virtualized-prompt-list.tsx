@@ -1,7 +1,7 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { LookbackPeriod } from "@/lib/lookback";
-import { CachedPromptChart } from "./cached-prompt-chart";
+import { CachedPromptChart, type PromptCardVariant } from "./cached-prompt-chart";
 
 interface PromptItem {
 	id: string;
@@ -9,6 +9,7 @@ interface PromptItem {
 	// All-time first evaluation date (null if never evaluated)
 	// Note: Date objects are serialized to strings in JSON responses
 	firstEvaluatedAt?: Date | string | null;
+	variants?: PromptCardVariant[];
 }
 
 interface VirtualizedPromptListProps {
@@ -99,6 +100,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 									availableModels={availableModels}
 									searchHighlight={searchHighlight}
 									hasEverBeenEvaluated={Boolean(prompt.firstEvaluatedAt)}
+									variants={prompt.variants}
 								/>
 							</div>
 						</div>

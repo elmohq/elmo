@@ -1,0 +1,15 @@
+meta {
+  name: delete the variant
+  type: http
+  seq: 33
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{variantPromptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}

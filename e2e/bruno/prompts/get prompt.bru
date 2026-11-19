@@ -15,4 +15,5 @@ assert {
   res.body.id: eq {{promptId}}
   res.body.enabled: isTruthy
   res.body.value: contains monitoring tool
+  res.body.parentId: eq null
 }

@@ -20,16 +20,24 @@ function Harness({
 	initial,
 	showSystemTags = true,
 	premium,
+	variants,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
+	variants?: boolean;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} premium={premium} />
+			<PromptsListEditor
+				prompts={prompts}
+				onChange={setPrompts}
+				showSystemTags={showSystemTags}
+				premium={premium}
+				variants={variants}
+			/>
 		</div>
 	);
 }
@@ -114,6 +122,45 @@ export const RemoveUnsavedRow: StoryObj = {
 		);
 		await userEvent.click(canvas.getAllByRole("button", { name: 'Remove "trail shoes for wide feet"' })[0]!);
 		await expect(canvas.queryAllByDisplayValue("trail shoes for wide feet")).toHaveLength(0);
+	},
+};
+
+/**
+ * A variant lands under the prompt it rewords, below the variants already
+ * there, and the count line says it is tracked as a prompt of its own.
+ */
+export const Variants: StoryObj = {
+	render: () => (
+		<Harness
+			variants
+			initial={[
+				...entries(["best crm for small business"], { id: "crm", groupId: "crm-group", tags: ["crm"] }),
+				...entries(["which crm should a startup use"], { id: "crm-2", groupId: "crm-group", tags: ["crm"] }),
+				...entries(["cheapest project management tool"], { id: "pm" }),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(await canvas.findByText(/including 1 variant\./)).toBeVisible();
+
+		await userEvent.click(canvas.getAllByRole("button", { name: 'Actions for "best crm for small business"' }).at(-1)!);
+		await userEvent.click(await within(document.body).findByRole("menuitem", { name: "Add Variant" }));
+		const added = canvas.getAllByRole("textbox", { name: 'Variant of "best crm for small business"' });
+		await userEvent.type(added.at(-1)!, "top crm tools for small teams");
+
+		// Each row renders twice, once per layout, so every prompt appears as a pair.
+		const promptTexts = canvas
+			.getAllByRole("textbox")
+			.map((input) => (input as HTMLInputElement).value)
+			.filter((value) => value.includes("crm") || value.includes("project"));
+		await expect(promptTexts.filter((_, index) => index % 2 === 0)).toEqual([
+			"best crm for small business",
+			"which crm should a startup use",
+			"top crm tools for small teams",
+			"cheapest project management tool",
+		]);
+		await expect(await canvas.findByText(/including 2 variants\./)).toBeVisible();
 	},
 };
 

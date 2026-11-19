@@ -18,6 +18,7 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { type PromptVariant, PromptVariantsMenu } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
 import { SiteIcon } from "@/components/site-icon";
@@ -45,6 +46,7 @@ type PromptMetadata = {
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
+	variants: PromptVariant[];
 };
 
 type PromptRunsData = ReturnType<typeof usePromptRunsOnly>["data"];
@@ -98,10 +100,12 @@ function PromptHeader({
 	promptMeta,
 	isMetaLoading,
 	onLookbackChange,
+	tab,
 }: {
 	promptMeta: PromptMetadata | null;
 	isMetaLoading: boolean;
 	onLookbackChange: () => void;
+	tab?: PromptDetailTab;
 }) {
 	const brandParams = useBrandParams();
 	const systemTags = promptMeta?.systemTags || [];
@@ -118,7 +122,8 @@ function PromptHeader({
 						<h1 className="text-2xl font-semibold tracking-tight leading-tight break-words">{promptMeta?.value}</h1>
 					)}
 				</div>
-				<div className="shrink-0">
+				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
+					{promptMeta && <PromptVariantsMenu promptId={promptMeta.id} variants={promptMeta.variants} tab={tab} />}
 					<LookbackSelector onLookbackChange={onLookbackChange} />
 				</div>
 			</div>
@@ -199,6 +204,8 @@ function PromptHistoryPage() {
 	const lookback = useLookbackPeriod();
 
 	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
+	// Unset on the default tab, so switching variants doesn't write the default into the URL.
+	const tabInUrl = Route.useSearch({ select: (s) => s.tab });
 	const navigate = Route.useNavigate();
 	const setActiveTab = useCallback(
 		(tab: PromptDetailTab) =>
@@ -298,7 +305,12 @@ function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-0">
-			<PromptHeader promptMeta={promptMeta} isMetaLoading={isMetaLoading} onLookbackChange={handleLookbackChange} />
+			<PromptHeader
+				promptMeta={promptMeta}
+				isMetaLoading={isMetaLoading}
+				onLookbackChange={handleLookbackChange}
+				tab={tabInUrl}
+			/>
 
 			<div className="border-b border-border">
 				<div className="flex items-end justify-between">
