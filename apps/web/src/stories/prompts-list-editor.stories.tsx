@@ -1,13 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import {
 	type EditablePrompt,
 	newPromptEntry,
 	type PremiumAllowance,
+	type PromptLocales,
 	PromptsListEditor,
 } from "@/components/prompts-list-editor";
+import type { MarketSupport } from "@/lib/market-support";
+import { planMarketSupport, selfHostedMarketSupport } from "./_mocks/market-support";
+import { translatePromptsFn } from "./_mocks/server-prompt-translation";
 
 const meta = {
 	title: "Components/PromptsListEditor",
@@ -21,11 +25,13 @@ function Harness({
 	showSystemTags = true,
 	premium,
 	variants,
+	locales,
 }: {
 	initial: EditablePrompt[];
 	showSystemTags?: boolean;
 	premium?: PremiumAllowance;
 	variants?: boolean;
+	locales?: PromptLocales;
 }) {
 	const [prompts, setPrompts] = useState(initial);
 
@@ -37,6 +43,7 @@ function Harness({
 				showSystemTags={showSystemTags}
 				premium={premium}
 				variants={variants}
+				locales={locales}
 			/>
 		</div>
 	);
@@ -161,6 +168,138 @@ export const Variants: StoryObj = {
 			"cheapest project management tool",
 		]);
 		await expect(await canvas.findByText(/including 2 variants\./)).toBeVisible();
+	},
+};
+
+const localesFor = (support: MarketSupport): PromptLocales => ({
+	support,
+	translate: (market, texts, languages) => translatePromptsFn({ data: { market, texts, languages } }),
+	// Stands in for the detector: German once the wording has an umlaut or "für", otherwise the brand's language.
+	detectLanguage: async (text) => (/für|[äöü]/.test(text) ? "de" : null),
+});
+
+const MARKET_PROMPTS = [
+	...entries(["best crm for small business"], { id: "crm", groupId: "crm-group", tags: ["crm"] }),
+	...entries(["bestes CRM für kleine Unternehmen"], {
+		id: "crm-de",
+		groupId: "crm-group",
+		tags: ["crm"],
+		country: "DE",
+		language: "de",
+	}),
+	...entries(["cheapest project management tool"], { id: "pm" }),
+];
+
+/** Each prompt shows the country it is asked from, with the brand's as the default, and the language it is written in. */
+export const Countries: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const countries = canvas.getAllByRole("combobox", { name: "Country" });
+		await expect(countries.some((field) => field.textContent?.includes("Germany"))).toBe(true);
+		await expect(countries.some((field) => field.textContent?.includes("United States"))).toBe(true);
+		const languages = canvas.getAllByRole("combobox", { name: "Language" });
+		await expect(languages.some((field) => field.textContent?.includes("German"))).toBe(true);
+		await expect(canvas.queryByText(/New prompts are asked from/)).toBeNull();
+	},
+};
+
+/** Only a prompt that isn't a variant has the menu for adding variants and translations. */
+export const VariantsHaveNoMenu: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getAllByRole("button", { name: 'Actions for "best crm for small business"' })).not.toHaveLength(
+			0,
+		);
+		await expect(canvas.queryAllByRole("button", { name: /Actions for "bestes CRM/ })).toHaveLength(0);
+	},
+};
+
+/**
+ * A new prompt's language follows what is typed. Once someone picks a language
+ * it stays put, whatever the wording becomes.
+ */
+export const LanguageFollowsTypingUntilChosen: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(document.body);
+		await userEvent.click(canvas.getByRole("button", { name: "Add Prompt" }));
+		const language = () => canvas.getAllByRole("combobox", { name: "Language" }).at(-1)!;
+		await expect(language()).toHaveTextContent("English");
+
+		const text = canvas.getAllByPlaceholderText("Enter prompt text...").at(-1)!;
+		await userEvent.type(text, "bestes Werkzeug für Teams");
+		await waitFor(() => expect(language()).toHaveTextContent("German"));
+
+		await userEvent.click(language());
+		await userEvent.click(await page.findByRole("option", { name: "French" }));
+		await userEvent.clear(text);
+		await userEvent.type(text, "best tool for teams");
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await expect(language()).toHaveTextContent("French");
+	},
+};
+
+/** Choosing a country for one prompt changes that prompt alone. */
+export const ChooseACountry: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(document.body);
+		await userEvent.click(canvas.getAllByRole("combobox", { name: "Country" }).at(-1)!);
+		await userEvent.click(await page.findByRole("option", { name: /Japan/ }));
+		await expect(canvas.getAllByRole("combobox", { name: "Country" }).at(-1)!).toHaveTextContent("Japan");
+	},
+};
+
+/** Starting a new prompt says where it will be asked from and what a prompt costs, and not before. */
+export const NewPromptSaysWhatItCosts: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Add Prompt" }));
+		await expect(await canvas.findByText(/New prompts are asked from United States/)).toHaveTextContent(
+			"Each prompt runs on 4 models: 4 provider calls a day, roughly $0.90 a month at estimated provider prices.",
+		);
+	},
+};
+
+/**
+ * Translating adds a variant per language under the prompt, asked from the
+ * same country.
+ */
+export const TranslateIntoLanguages: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(document.body);
+		await userEvent.click(canvas.getAllByRole("button", { name: 'Actions for "best crm for small business"' }).at(-1)!);
+		await userEvent.click(await page.findByRole("menuitem", { name: "Translate" }));
+
+		const dialog = within(await page.findByRole("dialog"));
+		await expect(dialog.getByRole("option", { name: /German.*Already added/ })).toHaveAttribute(
+			"aria-disabled",
+			"true",
+		);
+		await userEvent.click(dialog.getByRole("option", { name: /^French/ }));
+		await userEvent.click(dialog.getByRole("option", { name: /^Japanese/ }));
+		await userEvent.click(dialog.getByRole("button", { name: "Add 2 Variants" }));
+
+		await expect(await canvas.findAllByDisplayValue("best crm for small business (fr-US)")).not.toHaveLength(0);
+		await expect(canvas.getAllByDisplayValue("best crm for small business (ja-US)")).not.toHaveLength(0);
+		await expect(await canvas.findByText(/including 3 variants\./)).toBeVisible();
+	},
+};
+
+/** Cloud: no prices, so a new prompt is counted against the plan instead. */
+export const CountriesOnAPlan: StoryObj = {
+	render: () => <Harness variants locales={localesFor(planMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(canvas.getByRole("button", { name: "Add Prompt" }));
+		await expect(await canvas.findByText(/Each prompt uses 1 of your plan's 100 prompts \(42 in use\)/)).toBeVisible();
 	},
 };
 

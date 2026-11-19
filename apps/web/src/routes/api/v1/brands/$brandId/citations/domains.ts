@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/domains"
 					const { domains, total, totals } = await getBrandCitationDomains(
 						brand.id,
 						range,
-						{ model: query.model, tags: query.tags },
+						{ model: query.model, tags: query.tags, countries: query.countries, languages: query.languages },
 						{ search: query.q, category: query.category, limit: query.limit, offset: offsetOf(query) },
 					);
 					return {

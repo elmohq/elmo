@@ -1,4 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
+import { countryName, languageName, parseCountryFilter, parseLanguageFilter } from "@workspace/config/markets";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -14,7 +15,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { ChevronDown, Clock, Search, Tag as TagIcon, X } from "lucide-react";
+import { ChevronDown, Clock, Globe, Languages, Search, Tag as TagIcon, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { MdSelectAll } from "react-icons/md";
 import { formatLookbackLabel, LookbackPicker } from "@/components/lookback-picker";
@@ -26,6 +27,7 @@ export { ALL_MODELS_VALUE } from "@workspace/config/model-filter";
 import { ALL_MODELS_VALUE, iconIdForModelFilter, labelForModelFilter } from "@workspace/config/model-filter";
 // Filter state lives only in the URL. Each widget selects just its own search
 // key so one filter's click doesn't re-render the others.
+import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, joinTags, splitTags, useFilterNavigate } from "@/hooks/use-list-filters";
 import { getAvailableModels, groupTrackedTargets, type TrackedTarget } from "@/lib/model-filter";
 
@@ -220,6 +222,101 @@ function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
 	);
 }
 
+type LocaleKind = "countries" | "languages";
+
+const LOCALE_FILTERS = {
+	countries: {
+		label: "Countries",
+		icon: <Globe className="size-3.5" />,
+		parse: parseCountryFilter,
+		name: countryName,
+	},
+	languages: {
+		label: "Languages",
+		icon: <Languages className="size-3.5" />,
+		parse: parseLanguageFilter,
+		name: languageName,
+	},
+};
+
+/**
+ * Only there once the brand's prompts span more than one country (or language),
+ * or a link arrives already filtered: with a single one there is nothing to choose.
+ */
+function LocaleDropdown({ kind }: { kind: LocaleKind }) {
+	const { label, icon, parse, name } = LOCALE_FILTERS[kind];
+	const { data: brand } = useBrand();
+	const urlValue = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s[kind] });
+	const setFilters = useFilterNavigate();
+	const selected = useMemo(() => parse(urlValue), [parse, urlValue]);
+	const [open, setOpen] = useState(false);
+
+	const inUse = brand?.locales?.[kind] ?? [];
+	if (inUse.length <= 1 && selected.length === 0) return null;
+	// A selected code nothing uses any more still gets a row, so it can be seen and unticked.
+	const unused = selected.filter((code) => !inUse.some((entry) => entry.code === code));
+	const available = [...inUse, ...unused.map((code) => ({ code, prompts: 0 }))];
+
+	const commit = (next: string[]) => setFilters({ [kind]: joinTags(next) });
+	const toggle = (code: string) =>
+		commit(selected.includes(code) ? selected.filter((entry) => entry !== code) : [...selected, code]);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen} modal={false}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={icon}
+						label={label}
+						active={selected.length > 0}
+						badgeCount={selected.length > 0 ? selected.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
+				<div className="flex items-center justify-between px-3 h-10 border-b">
+					<span className="font-medium text-sm">{label}</span>
+					{selected.length > 0 && (
+						<button
+							type="button"
+							onClick={() => commit([])}
+							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+						>
+							Clear
+						</button>
+					)}
+				</div>
+				<div className="py-1 max-h-64 overflow-y-auto">
+					{available.map(({ code, prompts }) => {
+						const checked = selected.includes(code);
+						return (
+							<button
+								key={code}
+								type="button"
+								onClick={(e) => {
+									// Keep the popover open so several can be picked at once.
+									e.preventDefault();
+									e.stopPropagation();
+									toggle(code);
+								}}
+								className={`flex w-full items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+									checked ? "bg-accent" : "hover:bg-muted"
+								}`}
+							>
+								<Checkbox checked={checked} className="pointer-events-none" />
+								<span className="flex-1">{name(code)}</span>
+								<span className="text-xs text-muted-foreground tabular-nums">
+									{prompts} {prompts === 1 ? "prompt" : "prompts"}
+								</span>
+							</button>
+						);
+					})}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 function SearchInput({
 	placeholder = "Search prompts...",
 	searching = false,
@@ -296,8 +393,10 @@ function SearchInput({
 // The count comes in as a prop so the prompts-summary query has a single owner.
 function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const tags = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.tags });
+	const countries = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.countries });
+	const languages = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.languages });
 	const q = useSearch({ from: BRAND_ROUTE_ID, select: (s) => s.q });
-	const active = Boolean(tags) || Boolean(q);
+	const active = Boolean(tags) || Boolean(countries) || Boolean(languages) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
@@ -339,6 +438,8 @@ export function FilterBar({
 			<div className="flex flex-wrap items-center gap-1.5">
 				{showModelSelector && <ModelDropdown trackedTargets={trackedTargets} />}
 				<TagsDropdown availableTags={availableTags} />
+				<LocaleDropdown kind="countries" />
+				<LocaleDropdown kind="languages" />
 				<LookbackDropdown />
 				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />

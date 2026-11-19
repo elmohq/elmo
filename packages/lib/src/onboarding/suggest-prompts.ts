@@ -1,3 +1,10 @@
+import {
+	countryName,
+	DEFAULT_MARKET,
+	describeLanguageForMarket,
+	type Market,
+	sameMarket,
+} from "@workspace/config/markets";
 import { z } from "zod";
 import { dedupeKey } from "../bulk-prompts";
 import {
@@ -19,6 +26,8 @@ export interface SuggestPromptsOptions {
 	existingTags?: string[];
 	competitors?: string[];
 	count?: number;
+	/** The brand's market, so suggestions arrive in the language its prompts are asked in. */
+	market?: Market;
 }
 
 const DEFAULT_COUNT = 5;
@@ -39,6 +48,7 @@ function buildPrompt(args: {
 	existingTags: string[];
 	competitors: string[];
 	count: number;
+	market: Market;
 }): string {
 	const excerptBlock = websiteExcerptBlock(args.analysisUrl, args.websiteExcerpt);
 	const competitorsLine =
@@ -51,10 +61,14 @@ function buildPrompt(args: {
 		args.existingPrompts.length > 0
 			? `\nPrompts the brand already has — do NOT repeat these, reword them, or return trivial variants (plurals, reordered words, swapped synonyms):\n${args.existingPrompts.map((p) => `- ${p}`).join("\n")}\n`
 			: "";
+	// The default market is what the prompt already assumes, so it is left as it was.
+	const marketLine = sameMarket(args.market, DEFAULT_MARKET)
+		? ""
+		: `\n\nWrite every prompt in ${describeLanguageForMarket(args.market)}, as someone in ${countryName(args.market.country)} would ask it. Keep the tags in English.`;
 
 	return `Suggest ${args.count} more AI tracking prompts for ${args.brandName} (${args.analysisUrl}).
 ${excerptBlock}${competitorsLine}${tagsLine}${existingBlock}
-Each prompt is something a real person would type into ChatGPT where an answer could plausibly mention ${args.brandName} or its competitors. Use web search to understand what the brand sells and who buys it, then cover angles the existing prompts miss: other product categories, audiences, use cases, price points, regions, or buying stages.`;
+Each prompt is something a real person would type into ChatGPT where an answer could plausibly mention ${args.brandName} or its competitors. Use web search to understand what the brand sells and who buys it, then cover angles the existing prompts miss: other product categories, audiences, use cases, price points, regions, or buying stages.${marketLine}`;
 }
 
 export async function suggestPrompts(options: SuggestPromptsOptions): Promise<OnboardingPrompt[]> {
@@ -72,6 +86,7 @@ export async function suggestPrompts(options: SuggestPromptsOptions): Promise<On
 		existingTags: options.existingTags ?? [],
 		competitors: options.competitors ?? [],
 		count,
+		market: options.market ?? DEFAULT_MARKET,
 	});
 	const raw = await runStructuredResearchPrompt(prompt, buildSchema(count));
 

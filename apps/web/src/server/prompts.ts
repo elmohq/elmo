@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { countrySchema, languageSchema, type Market, resolveMarket, sameMarket } from "@workspace/config/markets";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
@@ -29,6 +30,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
+import { localeFilter, promptScopeFields } from "@/lib/prompt-scope";
 import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import {
 	type CitationUrlStats,
@@ -44,6 +46,7 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
+import { promptLanguageDetector } from "@/server/prompt-language";
 import { settleVariantParents } from "@/server/prompt-parents";
 import { parseTagFilter } from "@/server/prompt-resolution";
 import { parentsForInserts, planPromptSave } from "@/server/prompt-save";
@@ -82,8 +85,20 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			// pgboss schema may not exist yet — that's fine
 		}
 
+		const [brand] = await db
+			.select({ country: brands.country, language: brands.language })
+			.from(brands)
+			.where(eq(brands.id, data.brandId));
+		if (!brand) return null;
+
 		const variants = await db
-			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				enabled: prompts.enabled,
+				country: prompts.country,
+				language: prompts.language,
+			})
 			.from(prompts)
 			.where(
 				and(
@@ -101,8 +116,12 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
+			market: resolveMarket(prompt, brand),
 			/** Every wording of this question, this one included: the parent, then its variants oldest first. */
-			variants,
+			variants: variants.map(({ country, language, ...variant }) => ({
+				...variant,
+				market: resolveMarket({ country, language }, brand),
+			})),
 		};
 	});
 
@@ -117,7 +136,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
-	variants: { id: string; value: string }[],
+	variants: { id: string; value: string; market: Market | null }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -138,7 +157,7 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
-		/** The other tracked wordings of this question, oldest first. */
+		/** The other tracked wordings of this question, oldest first, each with its country and language when they differ from this prompt's. */
 		variants,
 	};
 }
@@ -162,12 +181,18 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			lookback: lookbackSchema.default("1m"),
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			timezone: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		await requireBrandSession(data.brandId);
+
+		const [brand] = await db
+			.select({ country: brands.country, language: brands.language })
+			.from(brands)
+			.where(eq(brands.id, data.brandId));
+		if (!brand) throw new Error("Brand not found");
 
 		const allPrompts = await db
 			.select()
@@ -211,13 +236,23 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
+			const market = resolveMarket(p, brand);
 			const variants = (groups.get(variantGroupOf(p)) ?? [])
 				.filter((other) => other.id !== p.id)
-				.map((other) => ({ id: other.id, value: other.value }));
+				.map((other) => {
+					const elsewhere = resolveMarket(other, brand);
+					// Named only where it differs, which is what tells a translation from a rewording.
+					return {
+						id: other.id,
+						value: other.value,
+						market: sameMarket(elsewhere, market) ? null : elsewhere,
+					};
+				});
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
 		});
 
-		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
+		const inLocaleIds = new Set(allPrompts.filter(localeFilter(data, brand)).map((p) => p.id));
+		const filteredPrompts = promptSummaries.filter((p) => inLocaleIds.has(p.id) && matchesTagFilter(p.tags, tagFilter));
 		const sortedPrompts = filteredPrompts.sort(byVisibilityThenName);
 
 		return {
@@ -461,6 +496,9 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					 * prompts saved together, the first of which becomes the parent of the rest.
 					 */
 					variantOf: z.uuid().optional(),
+					/** Null follows the brand. */
+					country: countrySchema.nullable().optional(),
+					language: languageSchema.nullable().optional(),
 				}),
 			),
 		}),
@@ -480,6 +518,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 				value: prompts.value,
 				enabled: prompts.enabled,
 				premiumModels: prompts.premiumModels,
+				language: prompts.language,
 			})
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
@@ -489,6 +528,13 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		const { updates, inserts } = planPromptSave(data.prompts, existingRows);
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
+
+		// Detected when a prompt is created and never again, so an edit can't change a language someone settled on.
+		const detectLanguage = await promptLanguageDetector(data.brandId);
+		const undetected = inserts.map(({ prompt }) => prompt).filter((prompt) => (prompt.language ?? null) === null);
+		const detected = new Map(
+			await Promise.all(undetected.map(async (prompt) => [prompt, await detectLanguage(prompt.value)] as const)),
+		);
 
 		const saved = await db.transaction(async (tx) => {
 			for (const { id, prompt, after } of updates) {
@@ -500,6 +546,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
+						...(prompt.country !== undefined ? { country: prompt.country } : {}),
+						...(prompt.language !== undefined ? { language: prompt.language } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}
@@ -527,6 +575,8 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						tags: prompt.tags || [],
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
+						country: prompt.country ?? null,
+						language: detected.get(prompt) ?? prompt.language ?? null,
 					})),
 				);
 			}

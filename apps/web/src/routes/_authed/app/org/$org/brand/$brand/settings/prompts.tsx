@@ -10,6 +10,7 @@ import { PromptsEditor } from "@/components/prompts-editor";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { pageHead } from "@/lib/route-head";
+import { getMarketSupportFn } from "@/server/market-support";
 import { getPremiumPoolFn } from "@/server/premium-tracking";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
@@ -50,9 +51,10 @@ function PromptsSettingsSkeleton() {
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/prompts")({
 	staticData: { crumb: "Prompts" },
 	loader: async ({ context }) => {
-		const [brandPrompts, premiumPool] = await Promise.all([
+		const [brandPrompts, premiumPool, marketSupport] = await Promise.all([
 			getPromptsForEditing({ data: { brandId: context.brandId } }),
 			getPremiumPoolFn({ data: { brandId: context.brandId } }),
+			getMarketSupportFn({ data: { brandId: context.brandId } }),
 		]);
 
 		// The pool is org-wide but the editor only sees this brand, so hand it the
@@ -60,6 +62,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 		const spentHere = premiumSlotsUsed(brandPrompts);
 		return {
 			prompts: brandPrompts,
+			marketSupport,
 			premium: premiumPool.available
 				? {
 						total: premiumPool.total,
@@ -74,7 +77,7 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/setting
 });
 
 function PromptsSettingsPage() {
-	const { prompts: brandPrompts, premium } = Route.useLoaderData();
+	const { prompts: brandPrompts, premium, marketSupport } = Route.useLoaderData();
 	const brandId = useBrandId();
 
 	return (
@@ -84,6 +87,7 @@ function PromptsSettingsPage() {
 			pageTitle="Prompts"
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
 			premium={premium}
+			marketSupport={marketSupport}
 		/>
 	);
 }

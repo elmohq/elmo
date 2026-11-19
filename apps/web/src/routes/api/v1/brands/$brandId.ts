@@ -36,7 +36,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 				response: brandSchema,
 				body: updateBrandBodySchema.refine(
 					(body) => Object.keys(body).length > 0,
-					"At least one of brandName, domains, aliases, or enabled must be provided",
+					"At least one of brandName, domains, aliases, enabled, country, or language must be provided",
 				),
 				mapError: (err) => {
 					if (err instanceof InvalidDomainsError) {

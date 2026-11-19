@@ -1,0 +1,32 @@
+meta {
+  name: create a prompt in a country
+  type: http
+  seq: 39
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno E2E — bestes Monitoring-Tool",
+    "country": "de",
+    "language": "DE"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.country: eq DE
+  res.body.language: eq de
+  res.body.effectiveCountry: eq DE
+  res.body.effectiveLanguage: eq de
+}
+
+script:post-response {
+  bru.setVar("localePromptId", res.getBody().id);
+}

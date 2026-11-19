@@ -160,6 +160,7 @@ describe("cloro provider", () => {
 			payload: {
 				query: "best running shoes for beginners",
 				country: "US",
+				hl: "en",
 				include: { aioverview: { markdown: true } },
 			},
 		});

@@ -1,0 +1,25 @@
+meta {
+  name: create prompt unsupported country 400
+  type: http
+  seq: 42
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "x",
+    "country": "ZZ"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+  res.body.message: contains Unsupported country
+}

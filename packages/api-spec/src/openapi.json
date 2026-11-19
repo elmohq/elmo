@@ -54,6 +54,22 @@
 						"format": "uuid",
 						"description": "Set on a variant: the prompt whose question this one asks in other words. Each variant is tracked and billed as its own prompt. Null on a prompt that isn't a variant. Variants are one level deep, and when a parent is disabled or deleted its oldest enabled variant becomes the parent of the rest."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "The country this prompt sets for itself. Null follows the brand's country."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "The language this prompt sets for itself. Null follows the brand's language."
+					},
+					"effectiveCountry": {
+						"type": "string",
+						"description": "The country the prompt is asked from: its own `country`, or the brand's where it sets none. Read-only."
+					},
+					"effectiveLanguage": {
+						"type": "string",
+						"description": "The language the prompt is written in: its own `language`, or the brand's where it sets none. Read-only."
+					},
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
@@ -95,6 +111,10 @@
 					"brandId",
 					"value",
 					"parentId",
+					"country",
+					"language",
+					"effectiveCountry",
+					"effectiveLanguage",
 					"enabled",
 					"tags",
 					"systemTags",
@@ -127,6 +147,14 @@
 						"type": "string",
 						"format": "uuid",
 						"description": "The id of an existing prompt in the same brand, to add this prompt as a variant of it. Naming a variant adds this one beside it, under the same parent."
+					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Omit or send null to follow the brand. Each model uses it where its provider accepts a country."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Omitted, it is detected from the text when that is clearly not the brand's language; send null to follow the brand regardless. The text is sent as written; it is not translated."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -162,6 +190,14 @@
 						"type": ["string", "null"],
 						"format": "uuid",
 						"description": "Makes the prompt a variant of another prompt in the same brand, taking its own variants with it. Naming one of its own variants swaps the two. Null makes a variant stand on its own."
+					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Null follows the brand."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "Language the prompt is written in. ISO 639-1 language, from the supported list in the countries and languages guide. Null follows the brand. Changing `value` never changes it. The text is not translated."
 					}
 				}
 			},
@@ -504,6 +540,14 @@
 							"required": ["value"]
 						}
 					},
+					"country": {
+						"type": "string",
+						"description": "The country prompts are asked from unless they set their own. ISO 3166-1 alpha-2, from the supported list in the countries and languages guide. Defaults to `US`."
+					},
+					"language": {
+						"type": "string",
+						"description": "The language prompts are written in unless they set their own. ISO 639-1, from the supported list in the countries and languages guide. Defaults to `en`."
+					},
 					"organizationId": {
 						"type": "string",
 						"description": "Organization to create the brand in.\n\n| | Omitted | Present |\n| --- | --- | --- |\n| **Organization key** | creates in the key's own organization | must name the key's own organization; any other value is a `400` |\n| **Admin key** | provisions a new organization named after the brand id | creates in the named organization, which must already exist — `404` if it does not |\n\nAn admin key omitting this field is currently the only way to create an organization over the API.",
@@ -538,6 +582,14 @@
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the brand is sampled at all. **Modifiable only with an instance admin key**: setting it with an organization key is a `403`, because disabling ends tracking silently while the plan keeps being billed and no dashboard control does it at any role."
+					},
+					"country": {
+						"type": "string",
+						"description": "The brand's default country. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Changing it moves every prompt that sets none of its own."
+					},
+					"language": {
+						"type": "string",
+						"description": "The brand's default language. ISO 639-1 language, from the supported list in the countries and languages guide. Changing it does not translate any prompt."
 					}
 				}
 			},
@@ -592,6 +644,14 @@
 					"delayOverrideHours": {
 						"type": ["integer", "null"],
 						"description": "Sampling cadence override in hours. Null means the plan cadence."
+					},
+					"country": {
+						"type": "string",
+						"description": "The country prompts are asked from unless they set their own. Defaults to `US`."
+					},
+					"language": {
+						"type": "string",
+						"description": "The language prompts are written in unless they set their own. Defaults to `en`."
 					}
 				},
 				"required": [
@@ -605,7 +665,9 @@
 					"updatedAt",
 					"organizationId",
 					"enabledModels",
-					"delayOverrideHours"
+					"delayOverrideHours",
+					"country",
+					"language"
 				]
 			},
 			"BrandsList": {
@@ -1516,6 +1578,14 @@
 						"type": "boolean",
 						"description": "Whether the engine answered with its own web search on."
 					},
+					"country": {
+						"type": ["string", "null"],
+						"description": "The country the provider was asked to answer from. Null where it was told none: a model called without web search, a provider answering from its own default location, or a run from before prompts had a country."
+					},
+					"language": {
+						"type": ["string", "null"],
+						"description": "The language the provider was sent as a parameter. Null where the prompt's own wording was all that carried it."
+					},
 					"brandMentioned": {
 						"type": "boolean"
 					},
@@ -1550,6 +1620,8 @@
 					"model",
 					"provider",
 					"webSearchEnabled",
+					"country",
+					"language",
 					"brandMentioned",
 					"competitorsMentioned",
 					"assessments",
@@ -2304,6 +2376,22 @@
 					"type": "string"
 				}
 			},
+			"CountriesFilter": {
+				"name": "countries",
+				"in": "query",
+				"description": "Comma-separated ISO 3166-1 alpha-2 country codes, e.g. `DE,CH`. Only prompts asked from one of them are counted. A code outside the supported list is a `400`.",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"LanguagesFilter": {
+				"name": "languages",
+				"in": "query",
+				"description": "Comma-separated ISO 639-1 language codes, e.g. `de,fr`. Only prompts written in one of them are counted. Combined with `countries`, a prompt must match both. A code outside the supported list is a `400`.",
+				"schema": {
+					"type": "string"
+				}
+			},
 			"AnalyticsListLimit": {
 				"name": "limit",
 				"in": "query",
@@ -2643,6 +2731,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2703,6 +2797,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -2780,6 +2880,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -2911,6 +3017,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					}
 				],
 				"responses": {
@@ -2971,6 +3083,12 @@
 					},
 					{
 						"$ref": "#/components/parameters/TagsFilter"
+					},
+					{
+						"$ref": "#/components/parameters/CountriesFilter"
+					},
+					{
+						"$ref": "#/components/parameters/LanguagesFilter"
 					},
 					{
 						"$ref": "#/components/parameters/Page"
@@ -3593,6 +3711,22 @@
 						}
 					},
 					{
+						"name": "countries",
+						"in": "query",
+						"description": "Comma-separated ISO 3166-1 alpha-2 country codes, e.g. `DE,CH`. A prompt matches if it is asked from any of them. A code outside the supported list is a `400`.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "languages",
+						"in": "query",
+						"description": "Comma-separated ISO 639-1 language codes, e.g. `de,fr`. A prompt matches if it is written in any of them. A code outside the supported list is a `400`.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
 						"name": "q",
 						"in": "query",
 						"description": "Case-insensitive substring match on prompt text.",
@@ -3647,6 +3781,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"

@@ -7,6 +7,8 @@ export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 	search?: string;
 }
 
@@ -20,6 +22,8 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 			filters?.lookback,
 			filters?.model,
 			filters?.tags?.join(","),
+			filters?.countries?.join(","),
+			filters?.languages?.join(","),
 			filters?.search,
 		],
 		queryFn: () =>
@@ -29,6 +33,8 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

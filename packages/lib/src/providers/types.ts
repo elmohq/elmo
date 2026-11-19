@@ -1,3 +1,4 @@
+import type { Market } from "@workspace/config/markets";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
 
@@ -13,6 +14,11 @@ export interface ScrapeResult {
 export interface ProviderOptions {
 	webSearch?: boolean;
 	version?: string;
+	/**
+	 * Where the prompt is asked from and in what language. A provider sends on
+	 * only the half it declares through `localizes` and `sendsLanguage`.
+	 */
+	market?: Market;
 }
 
 export interface StructuredResearchOptions<T> {
@@ -45,6 +51,14 @@ export interface Provider {
 	docsAnchor?: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	/**
+	 * Whether a target answers as if asked from `country`. A target that can't
+	 * only runs prompts in the default market, which is what every provider
+	 * answers for when it is told nothing.
+	 */
+	localizes?(config: ModelConfig, country: string): boolean;
+	/** Whether a target passes the market's language on. The rest answer in the language the prompt is written in. */
+	sendsLanguage?(config: ModelConfig): boolean;
 	/** An error message for a target this provider can't serve. Omitted by providers that accept any model. */
 	validateTarget?(config: ModelConfig): string | null;
 

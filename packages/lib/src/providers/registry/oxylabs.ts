@@ -1,3 +1,4 @@
+import { countryName } from "@workspace/config/markets";
 import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromOxylabs } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -23,6 +24,19 @@ const OXYLABS_SOURCES: Record<string, { source: string; field: "prompt" | "query
 	"google-ai-mode": { source: "google_ai_mode", field: "query", render: "html" },
 	"google-ai-overview": { source: "google_search", field: "query", render: "html" },
 };
+
+/** Where Oxylabs' proxy location list names a country differently from everyone else. */
+const OXYLABS_COUNTRY_NAMES: Record<string, string> = {
+	CZ: "Czechia",
+	KR: "Korea",
+	TW: "Taiwan Province of China",
+};
+
+/** ChatGPT routes through a proxy picked by country name; the Google sources also take the ISO code. */
+function geoLocation(source: string, country: string): string {
+	if (source !== "chatgpt") return country;
+	return OXYLABS_COUNTRY_NAMES[country] ?? countryName(country);
+}
 
 // AI answers can outlive the Realtime API's connection TTL. Use single-job
 // Push-Pull for every source; ChatGPT does not support batch jobs.
@@ -151,6 +165,10 @@ export const oxylabs: Provider = {
 		return null;
 	},
 
+	localizes() {
+		return true;
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const sourceConfig = OXYLABS_SOURCES[model];
 		if (!sourceConfig) {
@@ -166,6 +184,7 @@ export const oxylabs: Provider = {
 		};
 		if (sourceConfig.render) body.render = sourceConfig.render;
 		if (hasWebSearchToggle(model)) body.search = options?.webSearch ?? false;
+		if (options?.market) body.geo_location = geoLocation(sourceConfig.source, options.market.country);
 
 		const payload = await runAsyncQuery(body);
 		const content = payload.results?.[0]?.content ?? {};

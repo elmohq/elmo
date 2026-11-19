@@ -3,6 +3,7 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { countryFilterSchema, countrySchema, languageFilterSchema, languageSchema } from "@workspace/config/markets";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
@@ -20,6 +21,8 @@ const listPromptsQuery = z.object({
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),
 	parentId: z.uuid().optional(),
+	countries: countryFilterSchema.optional(),
+	languages: languageFilterSchema.optional(),
 	q: z.string().optional(),
 });
 
@@ -28,6 +31,8 @@ const createPromptBody = z.object({
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
 	parentId: z.uuid().optional(),
+	country: countrySchema.nullable().optional(),
+	language: languageSchema.nullable().optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
@@ -44,6 +49,8 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						enabled: query.enabled,
 						tags: (query.tags ?? "").split(","),
 						parentId: query.parentId,
+						countries: query.countries,
+						languages: query.languages,
 						q: query.q,
 						limit: query.limit,
 						offset: offsetOf(query),
@@ -68,9 +75,18 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [{ value: body.value, tags: body.tags, parentId: body.parentId, enabled: true }],
+						prompts: [
+							{
+								value: body.value,
+								tags: body.tags,
+								parentId: body.parentId,
+								country: body.country,
+								language: body.language,
+								enabled: true,
+							},
+						],
 					});
-					return toPromptSummary(created);
+					return toPromptSummary(created, brand);
 				},
 			}),
 		}),

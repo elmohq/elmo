@@ -1,5 +1,7 @@
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { Market } from "@workspace/config/markets";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -8,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type CitationData, CitationsDisplay } from "@/components/citations-display";
+import { CountryLabel } from "@/components/country-picker";
 import {
 	InfoTip,
 	QueryWordsSection,
@@ -46,6 +49,7 @@ type PromptMetadata = {
 	tags: string[];
 	systemTags: string[];
 	nextRunAt?: string | null;
+	market: Market;
 	variants: PromptVariant[];
 };
 
@@ -123,6 +127,7 @@ function PromptHeader({
 					)}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
+					{promptMeta && <CountryLabel country={promptMeta.market.country} className="mr-1.5 text-sm" />}
 					{promptMeta && <PromptVariantsMenu promptId={promptMeta.id} variants={promptMeta.variants} tab={tab} />}
 					<LookbackSelector onLookbackChange={onLookbackChange} />
 				</div>

@@ -1,5 +1,5 @@
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
 import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
@@ -9,6 +9,7 @@ import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
+import { CountrySelect } from "@/components/country-picker";
 import { SlugField } from "@/components/slug-field";
 import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
@@ -40,6 +41,7 @@ function BrandSettingsPage() {
 	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
 	const [aliases, setAliases] = useState<string[]>([]);
 	const [slug, setSlug] = useState("");
+	const [country, setCountry] = useState<string | null>(null);
 
 	// Reseed the fields when the brand changes server-side, without discarding
 	// whatever is being typed in between.
@@ -49,6 +51,7 @@ function BrandSettingsPage() {
 		setAdditionalDomains(brand.additionalDomains || []);
 		setAliases(brand.aliases || []);
 		setSlug(brandSegment(brand));
+		setCountry(brand.country);
 	}
 
 	const validateDomain = useCallback(
@@ -100,12 +103,14 @@ function BrandSettingsPage() {
 					...(slugMoved && { slug: nextSlug }),
 					additionalDomains,
 					aliases,
+					...(country && { country }),
 				},
 			});
 
 			// Domain/alias changes affect citation categorization and mention detection
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			queryClient.invalidateQueries({ queryKey: ["market-support", brand.id] });
 
 			setSuccess("Brand details updated successfully!");
 			await refetchBrand();
@@ -215,6 +220,30 @@ function BrandSettingsPage() {
 							maxItems={10}
 						/>
 					</div>
+
+					{country && (
+						<div className="space-y-2">
+							<Label htmlFor="default-country" className="flex items-center gap-1.5">
+								Default Country
+								<Tooltip>
+									<TooltipTrigger
+										render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
+									/>
+									<TooltipContent className="max-w-xs text-xs font-normal">
+										Where prompts are asked from, unless a prompt sets its own. Each model uses it where its provider
+										can.
+									</TooltipContent>
+								</Tooltip>
+							</Label>
+							<CountrySelect
+								id="default-country"
+								value={country}
+								onChange={(next) => next && setCountry(next)}
+								disabled={isSubmitting}
+								className="max-w-sm"
+							/>
+						</div>
+					)}
 				</div>
 
 				{error && (

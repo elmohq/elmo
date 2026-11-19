@@ -1,0 +1,32 @@
+meta {
+  name: list prompts filtered by country and language
+  type: http
+  seq: 40
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{brandId}}&countries=DE&languages=de
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{brandId}}
+  countries: DE
+  languages: de
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("only prompts asked from the country in the language come back, the new one among them", function() {
+    const prompts = res.getBody().data;
+    expect(prompts.map((prompt) => prompt.id)).to.include(bru.getVar("localePromptId"));
+    for (const prompt of prompts) {
+      expect(prompt.effectiveCountry).to.equal("DE");
+      expect(prompt.effectiveLanguage).to.equal("de");
+    }
+  });
+}

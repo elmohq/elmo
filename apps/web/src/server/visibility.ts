@@ -1,4 +1,5 @@
 /** Server functions for visibility and chart data. */
+
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
@@ -7,6 +8,7 @@ import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { type ProcessedBatchChartDataPoint, toBatchChartData } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
+import { promptScopeFields, promptScopeOf } from "@/lib/prompt-scope";
 import { getPerPromptDailyCompetitors, getPerPromptDailyRuns } from "@/lib/rollup-read";
 import { getBrandVisibility } from "@/server/analytics-core";
 import { resolveBrandWindow } from "@/server/brand-window";
@@ -48,7 +50,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -59,7 +61,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = await resolveBrandWindow(data.brandId, data.lookback, data.timezone);
 
 		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
+			...promptScopeOf(data),
 			search: data.search,
 		});
 		const promptIds = resolvedPrompts.map((p) => p.id);
@@ -112,7 +114,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: lookbackSchema.default("1m"),
 			model: z.string().optional(),
-			tags: z.string().optional(),
+			...promptScopeFields,
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
@@ -127,7 +129,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		const result = await getBrandVisibility(
 			data.brandId,
 			{ from: fromDateStr, to: toDateStr, timezone },
-			{ model: data.model, tags: data.tags, search: data.search },
+			{ model: data.model, ...promptScopeOf(data), search: data.search },
 		);
 
 		// The single place the dashboard converts the shared ratios to percentages.

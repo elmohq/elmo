@@ -1,11 +1,12 @@
 import * as Sentry from "@sentry/node";
 import type { Entitlements } from "@workspace/config/entitlements";
+import { type Market, resolveMarket } from "@workspace/config/markets";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { getProvider, type ModelConfig, marketToSend, type Provider, sentMarket } from "@workspace/lib/providers";
 import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS, promptSingletonKey } from "@workspace/lib/queues/prompt-jobs";
 import {
 	afterPromptCycle,
@@ -105,8 +106,8 @@ async function resolvePlanForPrompt(
 		defaultDelayHours: getDefaultDelayHours(),
 		entitlements,
 		orgPrompts,
-		brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
-		prompts: [{ id: prompt.id, premiumModels: prompt.premiumModels }],
+		brand,
+		prompts: [prompt],
 	});
 	const plan = plans.get(prompt.id) ?? { targets: [], rescheduleHours: null };
 	return { plan, entitlements };
@@ -180,6 +181,7 @@ async function recordUsageEvent(input: {
 async function runModelIteration({
 	promptId,
 	promptValue,
+	market,
 	brand,
 	config,
 	providerImpl,
@@ -187,6 +189,7 @@ async function runModelIteration({
 }: {
 	promptId: string;
 	promptValue: string;
+	market: Market;
 	brand: Brand;
 	config: ModelConfig;
 	providerImpl: Provider;
@@ -198,6 +201,7 @@ async function runModelIteration({
 		const result = await providerImpl.run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
+			market: marketToSend(config, market),
 		});
 
 		// `webQueries` is stored exactly as the provider reported it — engines do
@@ -219,6 +223,7 @@ async function runModelIteration({
 				provider: config.provider,
 				version: recordedVersion,
 				webSearchEnabled: config.webSearch,
+				...sentMarket(config, market),
 				rawOutput,
 				webQueries,
 			})
@@ -323,12 +328,14 @@ async function runCycle(
 	targets: TargetPlan[],
 ): Promise<{ attempted: number; succeeded: number }> {
 	const { prompt, brand } = context;
+	const market = resolveMarket(prompt, brand);
 	const runPromises = targets.flatMap((target) => {
 		const providerImpl = getProvider(target.config.provider);
 		return Array.from({ length: target.replication }, (_, i) =>
 			runModelIteration({
 				promptId: prompt.id,
 				promptValue: prompt.value,
+				market,
 				brand,
 				config: target.config,
 				providerImpl,

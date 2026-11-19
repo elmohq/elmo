@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { languageName, type Market } from "@workspace/config/markets";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -7,6 +8,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { List } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
+import { CountryFlag } from "@/components/country-flag";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -55,6 +57,8 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 export interface PromptCardVariant {
 	id: string;
 	value: string;
+	/** Where and in what language the variant is asked, when that differs from the card's prompt. */
+	market?: Market | null;
 }
 
 const NO_VARIANTS: PromptCardVariant[] = [];
@@ -83,9 +87,15 @@ function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
 							<Link
 								to="/app/org/$org/brand/$brand/prompts/$promptId"
 								params={{ ...params, promptId: variant.id }}
-								className="block px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent"
+								className="flex items-baseline justify-between gap-3 px-3 py-2 outline-none hover:bg-accent focus-visible:bg-accent"
 							>
-								{variant.value}
+								<span className="min-w-0 text-left">{variant.value}</span>
+								{variant.market && (
+									<span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+										<CountryFlag country={variant.market.country} />
+										{languageName(variant.market.language)}
+									</span>
+								)}
 							</Link>
 						</li>
 					))}

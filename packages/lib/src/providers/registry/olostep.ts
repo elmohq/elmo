@@ -1,3 +1,4 @@
+import { googleLanguageCode, type Market } from "@workspace/config/markets";
 import Olostep from "olostep";
 import { getCredential } from "../../secrets";
 import { type Citation, normalizeCitationTitle } from "../../text-extraction";
@@ -5,28 +6,48 @@ import { configuredWhen, reportedWebQueries } from "../config";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 import { nonEmptyStrings } from "./scrape-shared";
 
-const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
+interface OlostepParser {
+	parserId: string;
+	urlTemplate: (q: string) => string;
+	credits: number;
+	/** Google reads its interface language off the URL. */
+	googleUrl?: boolean;
+	/** Countries in Elmo's list that the parser's own country list leaves out. */
+	unservedCountries?: readonly string[];
+}
+
+const OLOSTEP_PARSERS: Record<string, OlostepParser> = {
 	chatgpt: {
 		parserId: "@olostep/chatgpt-results",
 		urlTemplate: (q) => `https://chatgpt.com/?q=${encodeURIComponent(q)}`,
 		credits: 5,
+		unservedCountries: ["HK"],
 	},
 	"google-ai-mode": {
 		parserId: "@olostep/google-aimode-results",
 		urlTemplate: (q) => `https://google.com/aimode?q=${encodeURIComponent(q)}`,
 		credits: 3,
+		googleUrl: true,
 	},
 	"google-ai-overview": {
 		parserId: "@olostep/google-ai-overview-results",
 		urlTemplate: (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}`,
 		credits: 3,
+		googleUrl: true,
 	},
 	gemini: {
 		parserId: "@olostep/gemini-results",
 		urlTemplate: (q) => `https://gemini.google.com/?q=${encodeURIComponent(q)}`,
 		credits: 3,
+		unservedCountries: ["LU", "CY", "BG", "QA", "KW", "KE"],
 	},
 };
+
+function requestUrl(parser: OlostepParser, prompt: string, market: Market | undefined): string {
+	const url = parser.urlTemplate(prompt);
+	if (!market || !parser.googleUrl) return url;
+	return `${url}&${new URLSearchParams({ gl: market.country.toLowerCase(), hl: googleLanguageCode(market) })}`;
+}
 
 let _client: Olostep | null = null;
 let _clientApiKey: string | undefined;
@@ -94,15 +115,26 @@ export const olostep: Provider = {
 		return null;
 	},
 
-	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
+	localizes(config: ModelConfig, country: string) {
+		return !OLOSTEP_PARSERS[config.model]?.unservedCountries?.includes(country);
+	},
+
+	sendsLanguage(config: ModelConfig) {
+		return OLOSTEP_PARSERS[config.model]?.googleUrl ?? false;
+	},
+
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const parserConfig = OLOSTEP_PARSERS[model];
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
 		const client = getClient();
-		const url = parserConfig.urlTemplate(prompt);
+		const url = requestUrl(parserConfig, prompt, options?.market);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
+		const batch = await client.batches.create([{ url, customId: "1" }], {
+			parser: { id: parserConfig.parserId },
+			...(options?.market ? { country: options.market.country } : {}),
+		});
 
 		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 

@@ -57,6 +57,9 @@ function rebuildRawOutput(result: { text: string; sources: readonly { sourceType
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const webSearch = options?.webSearch === true;
+	const userLocation = options?.market
+		? { userLocation: { type: "approximate" as const, country: options.market.country } }
+		: {};
 
 	const result = await generateText({
 		// Routed through getOpenAIResponsesModel (not the bare `openai` global,
@@ -67,7 +70,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		toolChoice: webSearch ? "auto" : "none",
 		...(webSearch
 			? {
-					tools: { web_search: openai.tools.webSearch({ searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE }) },
+					tools: {
+						web_search: openai.tools.webSearch({
+							searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+							...userLocation,
+						}),
+					},
 					providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } },
 				}
 			: {}),
@@ -98,6 +106,9 @@ export const openaiApi: Provider = {
 	docsAnchor: "direct-model-apis",
 
 	isConfigured: configuredWhen("OPENAI_API_KEY"),
+
+	// The search tool takes a location; without search there is nothing to locate.
+	localizes: (config) => config.webSearch,
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;

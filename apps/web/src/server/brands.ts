@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getFanoutSupport } from "@workspace/config/fanout-support";
+import { countrySchema, languageSchema } from "@workspace/config/markets";
 import { targetFilterValue } from "@workspace/config/model-filter";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
@@ -40,6 +41,7 @@ import {
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import type { TrackedTarget } from "@/lib/model-filter";
+import { type LocaleUse, localesInUse } from "@/lib/prompt-scope";
 import { INVALID_SLUG, TAKEN_SLUG } from "@/lib/slug-errors";
 
 /**
@@ -130,6 +132,7 @@ async function getBrandDetailFromDb(
 			promptCount: number;
 			trackedTargets: TrackedTarget[];
 			trackingState: BrandTrackingState;
+			locales: { countries: LocaleUse[]; languages: LocaleUse[] };
 	  })
 	| undefined
 > {
@@ -140,7 +143,15 @@ async function getBrandDetailFromDb(
 		if (!brand) return undefined;
 
 		const [brandPrompts, resolved] = await Promise.all([
-			db.select({ premiumModels: prompts.premiumModels }).from(prompts).where(eq(prompts.brandId, brandId)),
+			db
+				.select({
+					premiumModels: prompts.premiumModels,
+					enabled: prompts.enabled,
+					country: prompts.country,
+					language: prompts.language,
+				})
+				.from(prompts)
+				.where(eq(prompts.brandId, brandId)),
 			entitlements ?? getOrgEntitlements(brand.organizationId),
 		]);
 
@@ -148,6 +159,8 @@ async function getBrandDetailFromDb(
 			...brand,
 			promptCount: brandPrompts.length,
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
+			/** What its enabled prompts use; more than one country or language is what brings up that filter. */
+			locales: localesInUse(brand, brandPrompts),
 			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {
@@ -298,6 +311,8 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			slug: z.string().trim().toLowerCase().max(MAX_SLUG_LENGTH).optional(),
 			additionalDomains: z.array(z.string()).optional(),
 			aliases: z.array(z.string()).optional(),
+			country: countrySchema.optional(),
+			language: languageSchema.optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -328,7 +343,13 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 					}
 					return tx
 						.update(brands)
-						.set({ ...updateData, ...(data.slug !== undefined && { slug: data.slug }), updatedAt: new Date() })
+						.set({
+							...updateData,
+							...(data.slug !== undefined && { slug: data.slug }),
+							...(data.country !== undefined && { country: data.country }),
+							...(data.language !== undefined && { language: data.language }),
+							updatedAt: new Date(),
+						})
 						.where(eq(brands.id, data.brandId))
 						.returning();
 				}),

@@ -10,9 +10,9 @@ import {
 	assertPromptLength,
 	createDfsAiApi,
 	createDfsSerpApi,
-	DFS_LANGUAGE_CODE,
-	DFS_LOCATION_CODE,
+	type DfsLocale,
 	dfsFirstResult,
+	dfsLocale,
 	dfsResultOrError,
 	fanOutQueries,
 	isDataforseoConfigured,
@@ -37,27 +37,39 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 
 /** LLM Scraper API: the default route, since it drives the real consumer products. */
 const SCRAPER_CALLS = {
-	chatgpt: (api: client.AiOptimizationApi, prompt: string) =>
+	chatgpt: (api: client.AiOptimizationApi, prompt: string, locale: DfsLocale) =>
 		api.chatGptLlmScraperLiveAdvanced([
 			new client.AiOptimizationChatGptLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				...locale,
 				// ChatGPT decides per prompt whether to search; force it so a tracked
 				// run always reflects the browsing experience. Gemini always searches
 				// and has no equivalent flag.
 				force_web_search: true,
 			}),
 		]),
-	gemini: (api: client.AiOptimizationApi, prompt: string) =>
+	gemini: (api: client.AiOptimizationApi, prompt: string, locale: DfsLocale) =>
 		api.geminiLlmScraperLiveAdvanced([
 			new client.AiOptimizationGeminiLlmScraperLiveAdvancedRequestInfo({
 				keyword: prompt,
-				location_code: DFS_LOCATION_CODE,
-				language_code: DFS_LANGUAGE_CODE,
+				...locale,
 			}),
 		]),
 } as const;
+
+/** In Elmo's country list but not in the LLM Scraper's location list. */
+const SCRAPER_UNSERVED_COUNTRIES = new Set(["HK"]);
+
+/** LLM Responses passes a search country on for these models only; o1 and o3-mini ignore it. */
+function llmResponseLocalizes({ model, version }: ModelConfig): boolean {
+	if (model === "chatgpt") return !/^(o1|o3-mini)/.test(version ?? "");
+	return model === "perplexity" && (version ?? "sonar").startsWith("sonar");
+}
+
+function dataforseoLocalizes(config: ModelConfig, country: string): boolean {
+	if (dataforseoAccess(config) === "api") return config.webSearch && llmResponseLocalizes(config);
+	return !(config.model in SCRAPER_CALLS && SCRAPER_UNSERVED_COUNTRIES.has(country));
+}
 
 // AI Overview comes from the Organic SERP endpoint, not AI Mode's, so it has its own runner.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
@@ -73,6 +85,7 @@ interface DataForSeoLlmRequest {
 	user_prompt: string;
 	model_name: string;
 	web_search: boolean;
+	web_search_country_iso_code?: string;
 }
 
 const LLM_CALLS = {
@@ -84,13 +97,12 @@ const LLM_CALLS = {
 		api.geminiLlmResponsesLive(body.map((b) => new client.AiOptimizationGeminiLlmResponsesLiveRequestInfo(b))),
 } as const;
 
-async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiMode(prompt: string, locale: DfsLocale): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		...locale,
 		depth: 10,
 	});
 
@@ -108,13 +120,12 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	};
 }
 
-function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+function runGoogleAiOverview(prompt: string, locale: DfsLocale): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: DFS_LOCATION_CODE,
-		language_code: DFS_LANGUAGE_CODE,
+		...locale,
 		depth: 10,
 		// AI Overviews are generated on demand; without this DataForSEO only
 		// returns whatever it had cached, so most runs would come back empty.
@@ -205,9 +216,10 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 		model_name: modelName,
 		web_search: webSearch,
 	};
-	// Do not expose country localization yet: DataForSEO's LLM Responses
-	// support differs by surface/model (ChatGPT has model caveats, Perplexity
-	// only documents it for Sonar models, and Gemini does not document it).
+	const config = { model, provider: "dataforseo", version: options?.version, webSearch };
+	if (options?.market && dataforseoLocalizes(config, options.market.country)) {
+		body.web_search_country_iso_code = options.market.country;
+	}
 
 	const response = await LLM_CALLS[spec.call](api, [body]);
 	const result = dfsFirstResult<{ model_name?: string; fan_out_queries?: unknown }>(response);
@@ -222,8 +234,12 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	};
 }
 
-async function runLlmScraper(model: keyof typeof SCRAPER_CALLS, prompt: string): Promise<ScrapeResult> {
-	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt);
+async function runLlmScraper(
+	model: keyof typeof SCRAPER_CALLS,
+	prompt: string,
+	locale: DfsLocale,
+): Promise<ScrapeResult> {
+	const response = await SCRAPER_CALLS[model](createDfsAiApi(), prompt, locale);
 	const result = dfsFirstResult<{ model?: string; fan_out_queries?: unknown }>(response);
 	const raw = sanitizeForJson(response);
 	const citations = extractCitationsFromDataforseoScraper(raw);
@@ -245,6 +261,9 @@ export const dataforseo: Provider = {
 
 	isConfigured: isDataforseoConfigured,
 
+	localizes: dataforseoLocalizes,
+	sendsLanguage: (config) => dataforseoAccess(config) === "scraped",
+
 	validateTarget(config: ModelConfig) {
 		if (!SUPPORTED_MODELS.has(config.model)) {
 			return `DataForSEO only supports: ${[...SUPPORTED_MODELS].join(", ")}`;
@@ -261,13 +280,13 @@ export const dataforseo: Provider = {
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
-			return runGoogleAiMode(prompt);
+			return runGoogleAiMode(prompt, dfsLocale(options?.market, "ai-mode"));
 		}
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, dfsLocale(options?.market));
 		}
 		if (!options?.version && model in SCRAPER_CALLS) {
-			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt);
+			return runLlmScraper(model as keyof typeof SCRAPER_CALLS, prompt, dfsLocale(options?.market));
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);

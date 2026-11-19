@@ -10,6 +10,9 @@ export interface SubmittedPrompt {
 	premiumModels?: string[];
 	/** Only read on an insert: the saved prompt, or the new prompts saved alongside, it is a variant of. */
 	variantOf?: string;
+	/** Null follows the brand; omitted, an update keeps what it has. */
+	country?: string | null;
+	language?: string | null;
 }
 
 export interface StoredPrompt {

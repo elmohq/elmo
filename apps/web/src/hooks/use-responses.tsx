@@ -9,6 +9,8 @@ export interface ResponseSearchFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 	promptIds?: string[];
 	sentiment?: SentimentFilter;
 	sort?: ResponseSort;
@@ -26,6 +28,8 @@ const scopeParams = (brandId: string, filters?: ResponseSearchFilters) => ({
 	lookback: filters?.lookback ?? "1m",
 	model: filters?.model,
 	tags: filters?.tags?.join(","),
+	countries: filters?.countries?.join(","),
+	languages: filters?.languages?.join(","),
 	prompts: filters?.promptIds?.length ? filters.promptIds.join(",") : undefined,
 	timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });

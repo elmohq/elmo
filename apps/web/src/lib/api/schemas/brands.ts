@@ -13,6 +13,8 @@ export const brandSchema = z.object({
 	organizationId: z.string(),
 	enabledModels: z.array(z.string()).nullable(),
 	delayOverrideHours: z.int().nullable(),
+	country: z.string(),
+	language: z.string(),
 });
 
 export const brandsListSchema = z.object({

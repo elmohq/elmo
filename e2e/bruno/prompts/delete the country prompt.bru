@@ -1,0 +1,15 @@
+meta {
+  name: delete the country prompt
+  type: http
+  seq: 43
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/prompts/{{localePromptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}

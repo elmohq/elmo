@@ -1,5 +1,7 @@
 /** Server functions for citation data. */
+
 import { createServerFn } from "@tanstack/react-start";
+import { DEFAULT_MARKET } from "@workspace/config/markets";
 import {
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
@@ -47,6 +49,7 @@ import {
 	pageGoogleList,
 } from "@/lib/google-module";
 import { customRangeEnd, lookbackSchema } from "@/lib/lookback";
+import { localeFilter, promptScopeFields } from "@/lib/prompt-scope";
 import {
 	getPerPromptCitationDomains,
 	getPerPromptDailyCitationClasses,
@@ -258,7 +261,7 @@ function buildCompetitorOnlyPrompts(args: {
 const citationFiltersSchema = z.object({
 	brandId: z.string(),
 	lookback: lookbackSchema.default("1w"),
-	tags: z.string().optional(),
+	...promptScopeFields,
 	model: z.string().optional(),
 });
 
@@ -274,7 +277,14 @@ async function resolveCitationScope(data: CitationFilters) {
 		db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 		db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 		db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
+				country: prompts.country,
+				language: prompts.language,
+			})
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 	]);
@@ -287,7 +297,8 @@ async function resolveCitationScope(data: CitationFilters) {
 	const owned: OwnedDomains = { brandDomains: [...brandDomains], competitorDomains: [...competitorDomains] };
 
 	const tagFilter = parseTagFilter(data.tags);
-	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(allPrompts, tagFilter) : allPrompts.map((p) => p.id);
+	const inLocale = allPrompts.filter(localeFilter(data, brand ?? DEFAULT_MARKET));
+	const promptIds = tagFilter.length > 0 ? promptIdsMatchingTags(inLocale, tagFilter) : inLocale.map((p) => p.id);
 	const scope = {
 		brandId: data.brandId,
 		from: window.fromDateStr,

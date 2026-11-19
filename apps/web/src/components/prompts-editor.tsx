@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
 import { Sparkles } from "lucide-react";
@@ -9,11 +11,15 @@ import {
 	usePromptSuggestions,
 } from "@/components/prompt-suggestions";
 import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@/components/prompts-list-editor";
+import type { TranslateFn } from "@/components/translate-prompts-dialog";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { brandKeys } from "@/hooks/use-brands";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import type { MarketSupport } from "@/lib/market-support";
 import { trackEvent } from "@/lib/posthog";
 import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import { useWriteErrorMessage } from "@/lib/write-errors";
+import { detectPromptLanguageFn, translatePromptsFn } from "@/server/prompt-translation";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
@@ -25,6 +31,8 @@ interface PromptRow {
 	tags?: string[] | null;
 	systemTags?: string[] | null;
 	premiumModels?: string[] | null;
+	country: string | null;
+	language: string | null;
 }
 
 interface PromptsEditorProps {
@@ -33,6 +41,7 @@ interface PromptsEditorProps {
 	pageTitle: string;
 	pageDescription: string;
 	premium?: PremiumAllowance;
+	marketSupport: MarketSupport;
 }
 
 /** Order-insensitive, since the picker appends and the server returns catalog order. */
@@ -50,6 +59,8 @@ function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
 		tags: p.tags || [],
 		systemTags: p.systemTags || [],
 		premiumModels: p.premiumModels ?? [],
+		country: p.country,
+		language: p.language,
 	}));
 }
 
@@ -71,6 +82,8 @@ function classifyPrompt(
 	const edited =
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
+		prompt.country !== prev.country ||
+		prompt.language !== prev.language ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -99,7 +112,14 @@ function diffPrompts(baseline: EditablePrompt[], prompts: EditablePrompt[]) {
 	};
 }
 
-export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, premium }: PromptsEditorProps) {
+export function PromptsEditor({
+	initialPrompts,
+	brandId,
+	pageTitle,
+	pageDescription,
+	premium,
+	marketSupport,
+}: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
@@ -107,6 +127,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const suggestionsRef = useRef<HTMLDivElement>(null);
 	const saveInProgress = useRef(false);
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
+	const queryClient = useQueryClient();
+	const router = useRouter();
 	const writeError = useWriteErrorMessage();
 
 	const { changedKeys, removedCount, addedCount, editedCount } = useMemo(
@@ -115,6 +137,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	);
 
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const locales = useMemo(() => {
+		const translate: TranslateFn = (market, texts, languages) =>
+			translatePromptsFn({ data: { brandId, market, texts, languages } });
+		const detectLanguage = (text: string) => detectPromptLanguageFn({ data: { brandId, text } });
+		return { support: marketSupport, translate, detectLanguage };
+	}, [brandId, marketSupport]);
 	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
 	const isDirty = changedKeys.size > 0 || removedCount > 0;
 	const summary = [
@@ -139,6 +167,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				.filter((p) => !currentIds.has(p.id))
 				.map((p) => ({ id: p.id, value: p.value, enabled: false, tags: p.tags, premiumModels: [] }));
 
+			const savedLanguages = new Map(baseline.map((p) => [p.id, p.language]));
 			const allPrompts = [
 				...validPrompts.map((p) => ({
 					// A saved prompt keeps its parent; only a new one needs telling whose variant it is.
@@ -147,6 +176,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					enabled: p.enabled,
 					tags: p.tags,
 					premiumModels: p.premiumModels,
+					country: p.country,
+					// Sent only where someone chose it; otherwise it is detected from the wording.
+					...(p.language !== (savedLanguages.get(p.id) ?? null) ? { language: p.language } : {}),
 				})),
 				...removedPrompts,
 			];
@@ -166,6 +198,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			setPrompts(next);
 			setBaseline(next);
 			invalidatePromptsSummary(brandId);
+			// The country and language filters and the plan's prompt count both follow what was just saved.
+			queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+			router.invalidate();
 		} catch (err) {
 			console.error("Error saving prompts:", err);
 			setError(writeError(err, "Failed to save prompts."));
@@ -199,6 +234,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				changedKeys={changedKeys}
 				premium={premium}
 				variants
+				locales={locales}
 				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
 				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
 			/>
