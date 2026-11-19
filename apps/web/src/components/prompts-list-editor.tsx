@@ -666,8 +666,9 @@ export function PromptsListEditor({
 		const lead = leads.get(row.groupId) ?? row;
 		onChange(insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags })));
 	};
-	/** A blank row has nothing to reword yet, and a full list has no room for the result. */
-	const canAddVariant = (prompt: EditablePrompt) => variants && !atCapacity && prompt.value.trim().length > 0;
+	/** Only a prompt that isn't itself a variant gains them. A blank one has nothing to reword yet, and a full list has no room. */
+	const canAddVariant = (prompt: EditablePrompt) =>
+		variants && !atCapacity && leads.get(prompt.groupId) === prompt && prompt.value.trim().length > 0;
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
