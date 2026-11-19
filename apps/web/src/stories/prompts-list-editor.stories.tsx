@@ -144,8 +144,8 @@ export const Variants: StoryObj = {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText(/including 1 variant\./)).toBeVisible();
 
-		await userEvent.click(canvas.getAllByRole("checkbox", { name: "Select prompt" })[0]!);
-		await userEvent.click(canvas.getByRole("button", { name: "Add Variant" }));
+		await userEvent.click(canvas.getAllByRole("button", { name: 'Actions for "best crm for small business"' }).at(-1)!);
+		await userEvent.click(await within(document.body).findByRole("menuitem", { name: "Add Variant" }));
 		const added = canvas.getAllByRole("textbox", { name: 'Variant of "best crm for small business"' });
 		await userEvent.type(added.at(-1)!, "top crm tools for small teams");
 

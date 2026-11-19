@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { List } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
@@ -57,31 +59,31 @@ export interface PromptCardVariant {
 
 const NO_VARIANTS: PromptCardVariant[] = [];
 
-/** Beside the title of a prompt that has variants: says how many, and opens to links to each. */
+/** Beside the title of a prompt that has variants: how many, opening to a list that links to each. */
 function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
 	const params = useBrandParams();
 	if (variants.length === 0) return null;
+	const label = variants.length === 1 ? "1 variant" : `${variants.length} variants`;
 	return (
 		<Popover>
 			<PopoverTrigger
+				openOnHover
 				render={
-					<button
-						type="button"
-						className="shrink-0 cursor-pointer text-xs text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
-					/>
+					<Button type="button" variant="ghost" size="sm" aria-label={label} className="h-6 shrink-0 gap-1 px-1.5" />
 				}
 			>
-				{variants.length === 1 ? "1 variant" : `${variants.length} variants`}
+				<List className="size-3.5" />
+				<span className="text-xs tabular-nums">{variants.length}</span>
 			</PopoverTrigger>
-			<PopoverContent align="start" initialFocus={false} className="w-80 space-y-2 p-3">
-				<p className="text-xs font-medium text-muted-foreground">Also Tracked As</p>
-				<ul className="space-y-1.5 text-left text-sm">
+			<PopoverContent align="start" initialFocus={false} className="w-80 p-0">
+				<p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Variants</p>
+				<ul className="divide-y text-left text-sm">
 					{variants.map((variant) => (
 						<li key={variant.id}>
 							<Link
 								to="/app/org/$org/brand/$brand/prompts/$promptId"
 								params={{ ...params, promptId: variant.id }}
-								className="block text-left outline-none hover:underline focus-visible:underline"
+								className="block px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent"
 							>
 								{variant.value}
 							</Link>

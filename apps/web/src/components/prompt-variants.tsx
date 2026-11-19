@@ -51,9 +51,7 @@ export function PromptVariantsMenu({
 			<DropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
 				<DropdownMenuRadioGroup value={promptId} onValueChange={open}>
 					<DropdownMenuGroup>
-						<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-							Wordings of This Question
-						</DropdownMenuLabel>
+						<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">Variants</DropdownMenuLabel>
 						{variants.map((variant) => (
 							<DropdownMenuRadioItem key={variant.id} value={variant.id} className="cursor-pointer gap-2">
 								<span className="min-w-0 flex-1 truncate">{variant.value}</span>
