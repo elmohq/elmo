@@ -47,6 +47,7 @@
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
 		"auth0": "catalog:",
+		"country-flag-icons": "^1.6.20",
 		"d3-shape": "3.2.0",
 		"drizzle-orm": "catalog:",
 		"html2canvas-pro": "^2.6.3",

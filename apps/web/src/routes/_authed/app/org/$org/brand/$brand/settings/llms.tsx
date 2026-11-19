@@ -22,31 +22,35 @@ import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
 import { Fragment, type ReactNode, useState } from "react";
+import { LocaleHandlingCard } from "@/components/locale-handling-card";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
+import type { MarketSupport } from "@/lib/market-support";
 import { groupPlatformOptions, type PlatformGroup, platformGroupCopy } from "@/lib/platform-groups";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
+import { getMarketSupportFn } from "@/server/market-support";
 import { getModelPickerStateFn, type ModelPickerState, updateEnabledModelsFn } from "@/server/platform-picks";
 import { getPremiumPoolFn, type PremiumPool } from "@/server/premium-tracking";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/llms")({
 	staticData: { crumb: "LLMs" },
-	loader: async ({ context }): Promise<{ picker: ModelPickerState; premium: PremiumPool }> => {
-		const [picker, premium] = await Promise.all([
+	loader: async ({ context }): Promise<{ picker: ModelPickerState; premium: PremiumPool; locales: MarketSupport }> => {
+		const [picker, premium, locales] = await Promise.all([
 			getModelPickerStateFn({ data: { brandId: context.brandId } }),
 			getPremiumPoolFn({ data: { brandId: context.brandId } }),
+			getMarketSupportFn({ data: { brandId: context.brandId } }),
 		]);
-		return { picker, premium };
+		return { picker, premium, locales };
 	},
 	head: pageHead({ description: "Choose which AI models this brand is tracked against." }),
 	component: LlmsSettingsPage,
 });
 
 function LlmsSettingsPage() {
-	const { picker, premium } = Route.useLoaderData();
+	const { picker, premium, locales } = Route.useLoaderData();
 
 	return (
 		<div className="max-w-6xl space-y-8">
@@ -61,6 +65,8 @@ function LlmsSettingsPage() {
 			{picker.retiredTargets.length > 0 && <RetiredTargetsAlert targets={picker.retiredTargets} />}
 
 			{picker.editable ? <PlatformGroups picker={picker} /> : <TrackedPlatforms picker={picker} />}
+
+			<LocaleHandlingCard targets={locales.targets} />
 
 			{premium.available && <PremiumApiPool premium={premium} />}
 			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}

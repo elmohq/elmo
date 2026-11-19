@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type CitationData, CitationsDisplay } from "@/components/citations-display";
+import { CountryLabel } from "@/components/country-picker";
 import {
 	InfoTip,
 	QueryWordsSection,
@@ -20,7 +21,6 @@ import {
 import { ListPagination } from "@/components/list-pagination";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { PromptCountryInfo } from "@/components/prompt-country-info";
 import { type PromptVariant, PromptVariantsMenu } from "@/components/prompt-variants";
 import { ResponseCard, ResponseCardSkeletons } from "@/components/response-card";
 import { SentimentFilterCard } from "@/components/sentiment-filter";
@@ -39,7 +39,6 @@ import { pageHead } from "@/lib/route-head";
 import type { SentimentFilterCounts } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
 import { getModelDisplayName } from "@/lib/utils";
-import { getMarketSupportFn } from "@/server/market-support";
 import { getPromptMetadataFn } from "@/server/prompts";
 
 type PromptMetadata = {
@@ -51,7 +50,6 @@ type PromptMetadata = {
 	systemTags: string[];
 	nextRunAt?: string | null;
 	market: Market;
-	countryOverridden: boolean;
 	variants: PromptVariant[];
 };
 
@@ -114,11 +112,6 @@ function PromptHeader({
 	tab?: PromptDetailTab;
 }) {
 	const brandParams = useBrandParams();
-	const { data: marketSupport } = useQuery({
-		queryKey: ["market-support", promptMeta?.brandId],
-		queryFn: () => getMarketSupportFn({ data: { brandId: promptMeta!.brandId } }),
-		enabled: Boolean(promptMeta?.brandId),
-	});
 	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
 	const hasTags = systemTags.length > 0 || userTags.length > 0;
@@ -134,14 +127,8 @@ function PromptHeader({
 					)}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-1.5">
+					{promptMeta && <CountryLabel country={promptMeta.market.country} className="mr-1.5 text-sm" />}
 					{promptMeta && <PromptVariantsMenu promptId={promptMeta.id} variants={promptMeta.variants} tab={tab} />}
-					{promptMeta && (
-						<PromptCountryInfo
-							market={promptMeta.market}
-							overridden={promptMeta.countryOverridden}
-							support={marketSupport}
-						/>
-					)}
 					<LookbackSelector onLookbackChange={onLookbackChange} />
 				</div>
 			</div>

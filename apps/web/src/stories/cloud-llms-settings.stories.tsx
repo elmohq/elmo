@@ -5,10 +5,12 @@ import { parseScrapeTargets, retiredScrapeTargets } from "@workspace/config/scra
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import type { ComponentType, ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
+import type { MarketSupport } from "@/lib/market-support";
 import { platformGroupCopy } from "@/lib/platform-groups";
 import { Route } from "@/routes/_authed/app/org/$org/brand/$brand/settings/llms";
 import type { ModelPickerState, PlatformOption } from "@/server/platform-picks";
 import type { PremiumPool } from "@/server/premium-tracking";
+import { selfHostedMarketSupport } from "./_mocks/market-support";
 import { setMockLoaderData } from "./_mocks/tanstack-router";
 
 const LlmsSettingsPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
@@ -103,8 +105,14 @@ const CARD_TITLES = PLATFORM_TIER_LABELS;
 
 const NO_PREMIUM_POOL: PremiumPool = { available: false, assigned: 0, total: 0 };
 
-function loader(picker: ModelPickerState, premium: PremiumPool = NO_PREMIUM_POOL) {
-	setMockLoaderData({ picker, premium });
+const NO_LOCALE_TARGETS: MarketSupport = { ...selfHostedMarketSupport, targets: [] };
+
+function loader(
+	picker: ModelPickerState,
+	premium: PremiumPool = NO_PREMIUM_POOL,
+	locales: MarketSupport = NO_LOCALE_TARGETS,
+) {
+	setMockLoaderData({ picker, premium, locales });
 }
 
 /** A standard cloud plan: the full menu, four picks. */
@@ -179,6 +187,22 @@ export const CloudAtPickLimit: Story = {
 		await expect(await canvas.findByText(CARD_TITLES.api)).toBeVisible();
 		await expect(await canvas.findByRole("checkbox", { name: /claude/i })).toBeChecked();
 		await expect(await canvas.findByRole("checkbox", { name: /mistral/i })).toHaveAttribute("aria-disabled", "true");
+	},
+};
+
+/** One table says what each tracked model is told about a prompt's country and language. */
+export const CountryAndLanguageHandling: Story = {
+	render: () => {
+		loader(standardPicker(), NO_PREMIUM_POOL, selfHostedMarketSupport);
+		return <LlmsSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const table = within(await canvas.findByRole("table"));
+		await expect(table.getByRole("row", { name: /ChatGPT Sent From the prompt's wording/ })).toBeVisible();
+		await expect(table.getByRole("row", { name: /Google AI Mode Sent Sent/ })).toBeVisible();
+		await expect(table.getByRole("row", { name: /Claude Not used: answers without web search/ })).toBeVisible();
+		await expect(table.getByRole("row", { name: /Perplexity Sent, except Germany, France, Japan/ })).toBeVisible();
 	},
 };
 

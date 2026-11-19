@@ -41,7 +41,7 @@ Elmo skips a retired target left in `SCRAPE_TARGETS` and keeps running the rest.
 
 ### Countries and languages
 
-A prompt is asked from a [country and in a language](/docs/user-guide/countries-and-languages) set on the brand or on the prompt, not in `SCRAPE_TARGETS`. Providers differ in which countries they can answer from, and a target that can't answer from a prompt's country skips that prompt. That guide lists what each provider and surface supports.
+A prompt is asked from a [country and in a language](/docs/user-guide/countries-and-languages) set on the brand or on the prompt, not in `SCRAPE_TARGETS`. Country is best effort: a provider is told the country where it accepts one, and otherwise answers from its usual location. That guide lists what each provider and surface supports.
 
 ### Query fan-out
 

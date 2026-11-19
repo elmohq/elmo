@@ -39,9 +39,9 @@ const handlingIn = (target: ModelConfig, country: string) =>
 
 function describeTarget(target: ModelConfig): string {
 	const elsewhere = COUNTRIES.filter((country) => country.code !== DEFAULT_MARKET.country);
-	const unsupported = elsewhere.filter((country) => !handlingIn(target, country.code).runs);
+	const unsupported = elsewhere.filter((country) => handlingIn(target, country.code).country !== "localized");
 	if (handlingIn(target, DEFAULT_MARKET.country).country === "location-free") return "No location";
-	if (unsupported.length === elsewhere.length) return `${countryName(DEFAULT_MARKET.country)} only`;
+	if (unsupported.length === elsewhere.length) return "Provider default";
 
 	const language = handlingIn(target, DEFAULT_MARKET.country).sendsLanguage ? " + language" : "";
 	if (unsupported.length === 0) return `Country${language}`;

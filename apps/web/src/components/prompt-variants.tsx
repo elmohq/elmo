@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { type Market, marketId, marketName } from "@workspace/config/markets";
+import { languageName, type Market, marketId } from "@workspace/config/markets";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Layers } from "lucide-react";
+import { CountryFlag } from "@/components/country-flag";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import { useBrandParams } from "@/hooks/use-route-params";
 import type { PromptDetailTab } from "@/lib/prompt-detail-tabs";
@@ -52,17 +53,18 @@ export function PromptVariantsMenu({
 					<FilterTriggerButton icon={<Layers className="size-3.5" />} label="Variants" badgeCount={variants.length} />
 				}
 			/>
-			<DropdownMenuContent align="end" className="w-[28rem] max-w-[calc(100vw-2rem)]">
+			<DropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
 				<DropdownMenuRadioGroup value={promptId} onValueChange={open}>
 					<DropdownMenuGroup>
-						<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-							Wordings of This Question
-						</DropdownMenuLabel>
+						<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">Variants</DropdownMenuLabel>
 						{variants.map((variant) => (
 							<DropdownMenuRadioItem key={variant.id} value={variant.id} className="cursor-pointer gap-2">
 								<span className="min-w-0 flex-1 truncate">{variant.value}</span>
 								{showLocales && (
-									<span className="shrink-0 text-xs text-muted-foreground">{marketName(variant.market)}</span>
+									<span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+										<CountryFlag country={variant.market.country} />
+										{languageName(variant.market.language)}
+									</span>
 								)}
 								{!variant.enabled && <span className="shrink-0 text-xs text-muted-foreground">Disabled</span>}
 							</DropdownMenuRadioItem>

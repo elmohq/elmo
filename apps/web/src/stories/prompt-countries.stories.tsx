@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, within } from "storybook/test";
-import { PromptCountryInfo } from "@/components/prompt-country-info";
+import { CountryLabel } from "@/components/country-picker";
 import { PromptVariantsMenu } from "@/components/prompt-variants";
-import { selfHostedMarketSupport } from "./_mocks/market-support";
 
 const meta = {
 	title: "Components/PromptCountries",
@@ -21,38 +20,24 @@ const VARIANTS = [
 function Controls() {
 	return (
 		<div className="flex items-center justify-end gap-1.5 p-8">
+			<CountryLabel country={germany.country} className="mr-1.5 text-sm" />
 			<PromptVariantsMenu promptId="2" variants={VARIANTS} />
-			<PromptCountryInfo market={germany} overridden support={selfHostedMarketSupport} />
 		</div>
 	);
 }
 
-/**
- * The prompt page's country control names the country like a filter would, and
- * opens to whose setting it is and which tracked models can't answer from there.
- */
-export const Country: StoryObj = {
-	render: () => <Controls />,
-	play: async ({ canvasElement }) => {
-		await userEvent.click(within(canvasElement).getByRole("button", { name: "Country: Germany" }));
-		const page = within(document.body);
-		await expect(await page.findByText("Set on This Prompt")).toBeVisible();
-		await expect(page.getByText(/3 of 4 models run prompts asked from Germany/)).toBeVisible();
-	},
-};
-
-/** The variants menu lists every wording of the question with the country and language each is asked in. */
+/** The prompt page says where the prompt is asked from, and the one menu beside it switches between its variants. */
 export const Variants: StoryObj = {
 	render: () => <Controls />,
 	play: async ({ canvasElement }) => {
-		await userEvent.click(within(canvasElement).getByRole("button", { name: /Variants/ }));
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("Germany")).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: /Variants/ }));
 		const page = within(document.body);
 		await expect(await page.findByRole("menuitemradio", { name: /welches CRM für Start-ups/ })).toHaveAttribute(
 			"aria-checked",
 			"true",
 		);
-		await expect(
-			page.getByRole("menuitemradio", { name: /meilleur CRM pour PME.*France · French.*Disabled/ }),
-		).toBeVisible();
+		await expect(page.getByRole("menuitemradio", { name: /meilleur CRM pour PME.*French.*Disabled/ })).toBeVisible();
 	},
 };

@@ -14,6 +14,12 @@ import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -22,10 +28,10 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
+import { CornerDownRight, Inbox, ListPlus, MoreHorizontal, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { CountryCostNote, CountryPicker } from "@/components/country-picker";
+import { CountrySelect, describePromptCost, LanguageSelect } from "@/components/country-picker";
 import { type TranslatedDraft, type TranslateFn, TranslatePromptsDialog } from "@/components/translate-prompts-dialog";
 import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
 import type { MarketSupport } from "@/lib/market-support";
@@ -45,8 +51,6 @@ export interface EditablePrompt {
 	country: string | null;
 	language: string | null;
 	suggested?: boolean;
-	/** A machine translation nobody has saved yet. */
-	translated?: boolean;
 }
 
 /** What the editor needs to offer countries and languages. Omitted where prompts are only being drafted, like onboarding. */
@@ -73,7 +77,6 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		language: partial?.language ?? null,
 		...(partial?.id ? { id: partial.id } : {}),
 		...(partial?.suggested ? { suggested: true } : {}),
-		...(partial?.translated ? { translated: true } : {}),
 	};
 }
 
@@ -176,13 +179,13 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
-	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_13rem_2.75rem]",
-	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_13rem_5.5rem_2.75rem]",
-	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_13rem_2.75rem]",
-	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_13rem_5.5rem_2.75rem]",
+	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_11rem_8rem_2.75rem]",
+	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_11rem_8rem_5.5rem_2.75rem]",
+	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_11rem_8rem_2.75rem]",
+	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_11rem_8rem_5.5rem_2.75rem]",
 };
 
-/** Columns: [select] [text] [system?] [tags] [country?] [premium?] [switch]. */
+/** Columns: [select] [text] [system?] [tags] [country and language?] [premium?] [switch]. */
 function gridColsFor(columns: { system: boolean; premium: boolean; country: boolean }): string {
 	const key = `${columns.system ? "system" : "plain"}-${columns.premium ? "premium" : "basic"}`;
 	return GRID_COLS[columns.country ? `${key}-country` : key];
@@ -321,20 +324,7 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
-			{showCountry && (
-				<div className="flex items-center gap-1">
-					Country
-					<Tooltip>
-						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
-						<TooltipContent>
-							<p className="max-w-xs">
-								The country a prompt is asked from. Default follows the brand. Changing it does not translate the text,
-								and the prompt&apos;s history moves with it. To compare countries, translate the prompt instead.
-							</p>
-						</TooltipContent>
-					</Tooltip>
-				</div>
-			)}
+			{showCountry && <LocaleHeaders />}
 			{premium && (
 				<div className="flex items-center justify-center gap-1">
 					Premium
@@ -358,28 +348,41 @@ function ColumnHeader({
 	);
 }
 
+const ACTIONS_PADDING = ["", "pr-8", "pr-14"];
+
 const FIELD_ACTION_CLASS =
 	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
 
-function DraftMarker({ prompt, inset }: { prompt: EditablePrompt; inset: boolean }) {
-	if (!prompt.suggested && !prompt.translated) return null;
+function RowMenu({
+	prompt,
+	onAddVariant,
+	onTranslate,
+}: {
+	prompt: EditablePrompt;
+	onAddVariant?: () => void;
+	onTranslate?: () => void;
+}) {
+	if (!onAddVariant && !onTranslate) return null;
 	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={
-					<span
-						className={cn("absolute inset-y-0 flex items-center text-primary", inset ? "left-[1.375rem]" : "left-2.5")}
-					>
-						<Sparkles className="size-3.5" aria-label={prompt.translated ? "Translated" : "Suggested"} />
-					</span>
-				}
-			/>
-			<TooltipContent>
-				{prompt.translated
-					? "Translated. Check the wording, then save to start tracking it, or remove it."
-					: "Suggested. Save to start tracking it, or remove it."}
-			</TooltipContent>
-		</Tooltip>
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={<button type="button" aria-label={`Actions for "${prompt.value}"`} className={FIELD_ACTION_CLASS} />}
+			>
+				<MoreHorizontal className="size-4" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				{onAddVariant && (
+					<DropdownMenuItem onClick={onAddVariant} className="cursor-pointer">
+						Add Variant
+					</DropdownMenuItem>
+				)}
+				{onTranslate && (
+					<DropdownMenuItem onClick={onTranslate} className="cursor-pointer">
+						Translate
+					</DropdownMenuItem>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -388,6 +391,8 @@ function PromptTextField({
 	lead,
 	onValueChange,
 	onRemove,
+	onAddVariant,
+	onTranslate,
 	className,
 }: {
 	prompt: EditablePrompt;
@@ -395,51 +400,110 @@ function PromptTextField({
 	lead?: EditablePrompt;
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
+	onAddVariant?: () => void;
+	onTranslate?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
-	const marked = prompt.suggested || prompt.translated;
+	const actions = Number(removable) + Number(Boolean(onAddVariant || onTranslate));
 	return (
-		<div className={cn("relative min-w-0", lead && "ml-3 border-l-2 pl-3", className)}>
-			<DraftMarker prompt={prompt} inset={Boolean(lead)} />
-			<Input
-				value={prompt.value}
-				onChange={(e) => onValueChange(e.target.value)}
-				placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
-				aria-label={lead ? `Variant of "${lead.value}"` : undefined}
-				className={cn("min-w-0", marked && "pl-8", removable && "pr-8")}
-			/>
-			{removable && (
-				<button
-					type="button"
-					onClick={onRemove}
-					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
-					className={cn("absolute inset-y-0 right-1.5 my-auto", FIELD_ACTION_CLASS)}
-				>
-					<X className="size-3.5" />
-				</button>
-			)}
+		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
+			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+			<div className="relative min-w-0 flex-1">
+				{prompt.suggested && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+									<Sparkles className="size-3.5" aria-label="Suggested" />
+								</span>
+							}
+						/>
+						<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+					</Tooltip>
+				)}
+				<Input
+					value={prompt.value}
+					onChange={(e) => onValueChange(e.target.value)}
+					placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
+					aria-label={lead ? `Variant of "${lead.value}"` : undefined}
+					className={cn("min-w-0", prompt.suggested && "pl-8", ACTIONS_PADDING[actions])}
+				/>
+				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
+					<RowMenu prompt={prompt} onAddVariant={onAddVariant} onTranslate={onTranslate} />
+					{removable && (
+						<button
+							type="button"
+							onClick={onRemove}
+							aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+							className={FIELD_ACTION_CLASS}
+						>
+							<X className="size-3.5" />
+						</button>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 }
 
-function PromptCountryField({
+function LocaleHeaders() {
+	const params = useBrandParams();
+	return (
+		<>
+			<div className="flex items-center gap-1">
+				Country
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">
+							Where the prompt is asked from. Each model uses it where its provider can.{" "}
+							<Link to="/app/org/$org/brand/$brand/settings/llms" params={params} className="underline">
+								See what each model does
+							</Link>
+						</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+			<div className="flex items-center gap-1">
+				Language
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">
+							The language the prompt is written in. It is detected when you save; change it here if it is wrong.
+						</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+		</>
+	);
+}
+
+function PromptLocaleFields({
 	prompt,
 	support,
 	onChange,
 }: {
 	prompt: EditablePrompt;
 	support: MarketSupport;
-	onChange: (patch: Pick<EditablePrompt, "country">) => void;
+	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language">>) => void;
 }) {
 	return (
-		<CountryPicker
-			country={prompt.country}
-			onCountryChange={(country) => onChange({ country })}
-			support={support}
-			allowDefault
-			disabled={!prompt.enabled}
-		/>
+		<>
+			<CountrySelect
+				value={prompt.country}
+				onChange={(country) => onChange({ country })}
+				defaultCountry={support.brandMarket.country}
+				disabled={!prompt.enabled}
+			/>
+			<LanguageSelect
+				// A saved prompt with no language of its own is in the brand's; a new one is detected on save.
+				value={prompt.language ?? (prompt.id ? support.brandMarket.language : null)}
+				onChange={(language) => onChange({ language })}
+				disabled={!prompt.enabled}
+			/>
+		</>
 	);
 }
 
@@ -473,6 +537,8 @@ function PromptRow({
 	selected,
 	onToggleSelect,
 	lead,
+	onAddVariant,
+	onTranslate,
 	support,
 }: {
 	prompt: EditablePrompt;
@@ -489,6 +555,8 @@ function PromptRow({
 	selected: boolean;
 	onToggleSelect: () => void;
 	lead?: EditablePrompt;
+	onAddVariant?: () => void;
+	onTranslate?: () => void;
 	support?: MarketSupport;
 }) {
 	return (
@@ -507,6 +575,8 @@ function PromptRow({
 						lead={lead}
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
+						onAddVariant={onAddVariant}
+						onTranslate={onTranslate}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -525,7 +595,11 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
-				{support && <PromptCountryField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />}
+				{support && (
+					<div className="grid grid-cols-2 gap-2">
+						<PromptLocaleFields prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
+					</div>
+				)}
 				{premium && (
 					<PremiumModelsField
 						selected={prompt.premiumModels}
@@ -546,6 +620,8 @@ function PromptRow({
 					lead={lead}
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
+					onAddVariant={onAddVariant}
+					onTranslate={onTranslate}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -557,8 +633,8 @@ function PromptRow({
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
 				{support && (
-					<div className="pt-0.5">
-						<PromptCountryField prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
+					<div className="col-span-2 grid grid-cols-subgrid pt-0.5">
+						<PromptLocaleFields prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
 					</div>
 				)}
 				{premium && (
@@ -667,14 +743,10 @@ function AddControls({
 function SelectionBar({
 	count,
 	onSetEnabled,
-	onAddVariant,
-	onTranslate,
 	onClear,
 }: {
 	count: number;
 	onSetEnabled: (enabled: boolean) => void;
-	onAddVariant?: () => void;
-	onTranslate?: () => void;
 	onClear: () => void;
 }) {
 	return (
@@ -695,16 +767,6 @@ function SelectionBar({
 				>
 					Disable
 				</Button>
-				{onAddVariant && (
-					<Button type="button" size="sm" variant="outline" onClick={onAddVariant} className="cursor-pointer">
-						Add Variant
-					</Button>
-				)}
-				{onTranslate && (
-					<Button type="button" size="sm" variant="outline" onClick={onTranslate} className="cursor-pointer">
-						Translate
-					</Button>
-				)}
 				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="cursor-pointer">
 					Clear
 				</Button>
@@ -728,24 +790,13 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 	);
 }
 
-function DefaultsNote({ support }: { support: MarketSupport }) {
-	const params = useBrandParams();
-	const { country } = support.brandMarket;
+/** Shown while a new prompt is being written, beside the country it will be asked from. */
+function NewPromptNote({ support }: { support: MarketSupport }) {
 	return (
-		<div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-			<p>
-				Prompts are asked from <span className="font-medium">{countryName(country)}</span> unless a prompt sets its own
-				country.{" "}
-				<Link to="/app/org/$org/brand/$brand/settings/brand" params={params} className="underline">
-					Change the default
-				</Link>
-			</p>
-			<CountryCostNote support={support} country={country} className="mt-1" />
-			<p className="mt-1 text-xs text-muted-foreground">
-				Select prompts to add a variant or translate them for other countries. Each one added is another prompt, tracked
-				and paid for on its own.
-			</p>
-		</div>
+		<p className="text-xs text-muted-foreground">
+			New prompts are asked from {countryName(support.brandMarket.country)} unless you choose another country.{" "}
+			{describePromptCost(support)}
+		</p>
 	);
 }
 
@@ -754,16 +805,9 @@ function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): E
 		groupId: draft.source.groupId,
 		value: draft.value,
 		tags: lead?.tags ?? [],
-		country: draft.market.country,
-		language: draft.market.language,
-		translated: draft.value !== draft.source.value,
+		country: draft.source.country,
+		language: draft.language,
 	});
-}
-
-/** The selected rows a variant or translation can be made from: a blank row has nothing to reword, and a full list has no room for the result. */
-function growableSelection(prompts: EditablePrompt[], selectedKeys: ReadonlySet<string>, atCapacity: boolean) {
-	if (atCapacity) return [];
-	return prompts.filter((prompt) => selectedKeys.has(prompt._key) && prompt.value.trim().length > 0);
 }
 
 export function PromptsListEditor({
@@ -778,11 +822,11 @@ export function PromptsListEditor({
 	pendingRows = 0,
 }: PromptsListEditorProps) {
 	// The sources outlive `open`, so the dialog still names them while it animates shut.
-	const [translation, setTranslation] = useState<{ open: boolean; sources: EditablePrompt[] }>({
+	const [translation, setTranslation] = useState<{ open: boolean; source: EditablePrompt | null }>({
 		open: false,
-		sources: [],
+		source: null,
 	});
-	const translate = (sources: EditablePrompt[]) => setTranslation({ open: true, sources });
+	const translate = (source: EditablePrompt) => setTranslation({ open: true, source });
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of prompts) for (const t of p.tags) set.add(t);
@@ -817,17 +861,11 @@ export function PromptsListEditor({
 	};
 
 	const leads = useMemo(() => groupLeads(prompts), [prompts]);
-	/** One blank variant under each selected question, however many of its rows are ticked. */
-	const addVariants = (selection: EditablePrompt[]) => {
-		const parents = [...new Set(selection.flatMap((row) => leads.get(row.groupId) ?? []))];
+	const addVariant = (row: EditablePrompt) => {
+		const lead = leads.get(row.groupId) ?? row;
 		onChange(
-			parents.reduce(
-				(rows, lead) =>
-					insertIntoGroup(rows, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
-				prompts,
-			),
+			insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
 		);
-		clearSelection();
 	};
 	const addTranslations = (drafts: TranslatedDraft[]) =>
 		onChange(
@@ -840,7 +878,9 @@ export function PromptsListEditor({
 		const lead = leads.get(prompt.groupId);
 		return lead === prompt ? undefined : lead;
 	};
-	const growable = growableSelection(prompts, selectedKeys, atCapacity);
+	/** A blank row has nothing to reword or translate yet, and a full list has no room for the result. */
+	const canGrow = (prompt: EditablePrompt) => !atCapacity && prompt.value.trim().length > 0;
+	const hasNewPrompt = prompts.some((prompt) => !prompt.id);
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
@@ -852,16 +892,8 @@ export function PromptsListEditor({
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<SelectionBar
-					count={liveSelectedCount}
-					onSetEnabled={applyEnabledToSelection}
-					onAddVariant={variants && growable.length > 0 ? () => addVariants(growable) : undefined}
-					onTranslate={locales && growable.length > 0 ? () => translate(growable) : undefined}
-					onClear={clearSelection}
-				/>
+				<SelectionBar count={liveSelectedCount} onSetEnabled={applyEnabledToSelection} onClear={clearSelection} />
 			)}
-
-			{locales && <DefaultsNote support={locales.support} />}
 
 			{premium && (
 				<p className="text-sm text-muted-foreground">
@@ -919,11 +951,15 @@ export function PromptsListEditor({
 							selected={selectedKeys.has(prompt._key)}
 							onToggleSelect={() => toggleSelect(prompt._key)}
 							lead={leadOf(prompt)}
+							onAddVariant={variants && canGrow(prompt) ? () => addVariant(prompt) : undefined}
+							onTranslate={locales && canGrow(prompt) ? () => translate(prompt) : undefined}
 							support={locales?.support}
 						/>
 					))}
 				</div>
 			)}
+
+			{locales && hasNewPrompt && <NewPromptNote support={locales.support} />}
 
 			<AddControls atCapacity={atCapacity} canAddRow={prompts.length < MAX_PROMPTS} onAdd={add} bulk={bulk} />
 
@@ -931,9 +967,9 @@ export function PromptsListEditor({
 
 			{locales && (
 				<TranslatePromptsDialog
-					open={translation.open && translation.sources.length > 0}
+					open={translation.open && translation.source !== null}
 					onOpenChange={(open) => setTranslation((current) => ({ ...current, open }))}
-					sources={translation.sources}
+					source={translation.source}
 					existing={prompts}
 					support={locales.support}
 					room={MAX_PROMPTS - filledValues.length}

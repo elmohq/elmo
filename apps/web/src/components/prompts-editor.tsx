@@ -83,6 +83,7 @@ function classifyPrompt(
 		prompt.value.trim() !== prev.value.trim() ||
 		prompt.enabled !== prev.enabled ||
 		prompt.country !== prev.country ||
+		prompt.language !== prev.language ||
 		!sameModels(prompt.premiumModels, prev.premiumModels) ||
 		!sameTags(prompt.tags, prev.tags);
 	return edited ? "edited" : null;
@@ -165,6 +166,7 @@ export function PromptsEditor({
 				.filter((p) => !currentIds.has(p.id))
 				.map((p) => ({ id: p.id, value: p.value, enabled: false, tags: p.tags, premiumModels: [] }));
 
+			const savedLanguages = new Map(baseline.map((p) => [p.id, p.language]));
 			const allPrompts = [
 				...validPrompts.map((p) => ({
 					// A saved prompt keeps its parent; only a new one needs telling whose variant it is.
@@ -174,8 +176,8 @@ export function PromptsEditor({
 					tags: p.tags,
 					premiumModels: p.premiumModels,
 					country: p.country,
-					// Only an unsaved translation says its language; the rest is detected from the wording.
-					...(p.id ? {} : { language: p.language }),
+					// Sent only where someone chose it; otherwise it is detected from the wording.
+					...(p.language !== (savedLanguages.get(p.id) ?? null) ? { language: p.language } : {}),
 				})),
 				...removedPrompts,
 			];

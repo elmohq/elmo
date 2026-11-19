@@ -173,12 +173,16 @@ export function googleLanguageCode(market: Market): string {
 	}
 }
 
-/** The language as a translator should be asked for it: "Portuguese as written in Brazil". */
+/** The language as a translator should be asked for it: "Portuguese as written in Brazil", or just the language where the country isn't one it is spoken in. */
 export function describeLanguageForMarket(market: Market): string {
 	if (market.language === "zh") {
 		return TRADITIONAL_CHINESE_COUNTRIES.has(market.country) ? "Traditional Chinese" : "Simplified Chinese";
 	}
-	return `${languageName(market.language)} as written in ${countryName(market.country)}`;
+	const spoken = COUNTRIES.find((country) => country.code === market.country)?.languages ?? [];
+	const spokenThere = spoken.includes(market.language) || (market.language === "en" && spoken.length === 0);
+	return spokenThere
+		? `${languageName(market.language)} as written in ${countryName(market.country)}`
+		: languageName(market.language);
 }
 
 /** A market written as a locale, `de-CH`. */

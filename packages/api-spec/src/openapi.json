@@ -150,7 +150,7 @@
 					},
 					"country": {
 						"type": ["string", "null"],
-						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Omit or send null to follow the brand. Models that can't answer from the country skip the prompt."
+						"description": "Country to ask the prompt from. ISO 3166-1 alpha-2 country, from the supported list in the countries and languages guide. Omit or send null to follow the brand. Each model uses it where its provider accepts a country."
 					},
 					"language": {
 						"type": ["string", "null"],

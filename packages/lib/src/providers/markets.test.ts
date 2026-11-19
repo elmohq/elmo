@@ -1,15 +1,14 @@
 import { DEFAULT_MARKET } from "@workspace/config/markets";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { describe, expect, it } from "vitest";
-import { describeMarketHandling, sentMarket } from "./index";
+import { describeMarketHandling, marketToSend, sentMarket } from "./index";
 
 const target = (spec: string) => parseScrapeTargets(spec)[0];
 const germany = { country: "DE", language: "de" };
 
 describe("describeMarketHandling", () => {
-	it("runs a target that can be told the country, and says so", () => {
+	it("says when a target can be told the country", () => {
 		expect(describeMarketHandling(target("chatgpt:cloro:online"), germany)).toEqual({
-			runs: true,
 			country: "localized",
 			sendsLanguage: false,
 		});
@@ -22,7 +21,6 @@ describe("describeMarketHandling", () => {
 
 	it("runs a model called without web search anywhere, since its answer has no location", () => {
 		expect(describeMarketHandling(target("claude:anthropic-api:claude-sonnet-5"), germany)).toEqual({
-			runs: true,
 			country: "location-free",
 			sendsLanguage: false,
 		});
@@ -35,26 +33,22 @@ describe("describeMarketHandling", () => {
 		expect(describeMarketHandling(target("chatgpt:openai-api:gpt-5-mini:online"), germany).country).toBe("localized");
 	});
 
-	it("skips a target that can't be told the country rather than file its answer under it", () => {
+	it("still runs a target that can't be told the country, on its provider's default", () => {
 		const grounded = target("perplexity:openrouter:perplexity/sonar:online");
-		expect(describeMarketHandling(grounded, germany)).toEqual({
-			runs: false,
-			country: "unsupported",
-			sendsLanguage: false,
-		});
-		expect(describeMarketHandling(grounded, DEFAULT_MARKET).country).toBe("provider-default");
+		expect(describeMarketHandling(grounded, germany)).toEqual({ country: "provider-default", sendsLanguage: false });
+		expect(marketToSend(grounded, germany).country).toBe(DEFAULT_MARKET.country);
 	});
 
-	it("skips only the countries a provider's surface leaves out", () => {
+	it("falls back only for the countries a provider's surface leaves out", () => {
 		const bing = target("bing-ai-mode:cloro:online");
-		expect(describeMarketHandling(bing, { country: "KR", language: "ko" }).runs).toBe(false);
-		expect(describeMarketHandling(bing, { country: "JP", language: "ja" }).runs).toBe(true);
+		expect(marketToSend(bing, { country: "KR", language: "ko" }).country).toBe(DEFAULT_MARKET.country);
+		expect(marketToSend(bing, { country: "JP", language: "ja" }).country).toBe("JP");
 	});
 
 	it("does not vouch for a BrightData collector named by a custom dataset id", () => {
 		expect(describeMarketHandling(target("chatgpt:brightdata:online"), germany).country).toBe("localized");
 		expect(describeMarketHandling(target("chatgpt:brightdata:gd_custom123:online"), germany).country).toBe(
-			"unsupported",
+			"provider-default",
 		);
 	});
 });

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { countrySchema, languageSchema, marketName, resolveMarket, sameMarket } from "@workspace/config/markets";
+import { countrySchema, languageSchema, type Market, resolveMarket, sameMarket } from "@workspace/config/markets";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
@@ -117,7 +117,6 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
 			market: resolveMarket(prompt, brand),
-			countryOverridden: prompt.country !== null,
 			/** Every wording of this question, this one included: the parent, then its variants oldest first. */
 			variants: variants.map(({ country, language, ...variant }) => ({
 				...variant,
@@ -137,7 +136,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
-	variants: { id: string; value: string; locale: string | null }[],
+	variants: { id: string; value: string; market: Market | null }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -246,7 +245,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 					return {
 						id: other.id,
 						value: other.value,
-						locale: sameMarket(elsewhere, market) ? null : marketName(elsewhere),
+						market: sameMarket(elsewhere, market) ? null : elsewhere,
 					};
 				});
 			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
@@ -475,10 +474,10 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/** A detected language, null included, wins over the one the editor sent back unchanged. */
+/** The editor only sends a language someone chose, which wins over what the wording suggests. */
 function languageChange(submitted: string | null | undefined, detected: string | null | undefined) {
-	if (detected !== undefined) return { language: detected };
-	return submitted !== undefined ? { language: submitted } : {};
+	if (submitted !== undefined) return { language: submitted };
+	return detected !== undefined ? { language: detected } : {};
 }
 
 export const updatePromptsFn = createServerFn({ method: "POST" })
@@ -544,7 +543,10 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 				.map(({ prompt }) => ({ prompt, stored: null })),
 			...updates
 				.map(({ id, prompt }) => ({ prompt, stored: existingById.get(id) }))
-				.filter(({ prompt, stored }) => stored !== undefined && stored.value !== prompt.value)
+				.filter(
+					({ prompt, stored }) =>
+						stored !== undefined && stored.value !== prompt.value && prompt.language === undefined,
+				)
 				.map(({ prompt, stored }) => ({ prompt, stored: stored?.language ?? null })),
 		];
 		const detected = new Map(

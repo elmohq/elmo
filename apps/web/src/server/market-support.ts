@@ -22,13 +22,16 @@ function toMarketTarget(plan: TargetPlan, showCost: boolean): MarketTarget {
 		value: targetFilterValue(config.model, isGroundedApiTarget(config)),
 		runsPerDay: 24 / plan.intervalHours,
 		replication: plan.replication,
-		unsupportedCountries: COUNTRIES.filter((country) => !handlingOf(country.code).runs).map((country) => country.code),
 		locationFree: handlingOf(DEFAULT_MARKET.country).country === "location-free",
+		defaultLocationCountries: COUNTRIES.filter(
+			(country) => handlingOf(country.code).country === "provider-default",
+		).map((country) => country.code),
+		sendsLanguage: handlingOf(DEFAULT_MARKET.country).sendsLanguage,
 		costPerRunUsd: showCost ? estimateRunCostUsd(config.provider, config.webSearch) : null,
 	};
 }
 
-/** The plan the worker resolves, before any market rules a target out. A bad SCRAPE_TARGETS already fails boot validation. */
+/** A bad SCRAPE_TARGETS already fails boot validation. */
 function plannedTargets(resolve: () => { targets: TargetPlan[] }): TargetPlan[] {
 	try {
 		return resolve().targets;

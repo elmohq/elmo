@@ -6,7 +6,7 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { type Brand, brands, promptRuns, prompts, usageEvents } from "@workspace/lib/db/schema";
 import { getOrgEntitlements } from "@workspace/lib/entitlements";
-import { getProvider, type ModelConfig, type Provider, sentMarket } from "@workspace/lib/providers";
+import { getProvider, type ModelConfig, marketToSend, type Provider, sentMarket } from "@workspace/lib/providers";
 import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS, promptSingletonKey } from "@workspace/lib/queues/prompt-jobs";
 import {
 	afterPromptCycle,
@@ -201,7 +201,7 @@ async function runModelIteration({
 		const result = await providerImpl.run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
-			market,
+			market: marketToSend(config, market),
 		});
 
 		// `webQueries` is stored exactly as the provider reported it — engines do

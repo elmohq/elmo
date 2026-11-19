@@ -133,8 +133,6 @@ async function getBrandDetailFromDb(
 			trackedTargets: TrackedTarget[];
 			trackingState: BrandTrackingState;
 			locales: { countries: LocaleUse[]; languages: LocaleUse[] };
-			/** Enabled prompts with no country of their own, which a change of default would move. */
-			promptsFollowingCountry: number;
 	  })
 	| undefined
 > {
@@ -163,7 +161,6 @@ async function getBrandDetailFromDb(
 			trackedTargets: computeTrackedTargets(brand, brandPrompts, resolved),
 			/** What its enabled prompts use; more than one country or language is what brings up that filter. */
 			locales: localesInUse(brand, brandPrompts),
-			promptsFollowingCountry: brandPrompts.filter((prompt) => prompt.enabled && !prompt.country).length,
 			trackingState: brandTrackingState(brand, resolved),
 		};
 	} catch (error) {

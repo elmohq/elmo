@@ -4,20 +4,21 @@ const target = (value: string, overrides: Partial<MarketTarget> = {}): MarketTar
 	value,
 	runsPerDay: 1,
 	replication: 1,
-	unsupportedCountries: [],
 	locationFree: false,
+	defaultLocationCountries: [],
+	sendsLanguage: false,
 	costPerRunUsd: 0.01,
 	...overrides,
 });
 
-/** Self-hosted: every target is priced, and one of them can only answer from the default market. */
+/** Self-hosted: every target is priced, and one of them can't be told a country. */
 export const selfHostedMarketSupport: MarketSupport = {
 	brandMarket: { country: "US", language: "en" },
 	targets: [
 		target("chatgpt"),
-		target("google-ai-mode", { costPerRunUsd: 0.005 }),
+		target("google-ai-mode", { costPerRunUsd: 0.005, sendsLanguage: true }),
 		target("claude", { locationFree: true }),
-		target("perplexity", { unsupportedCountries: ["DE", "FR", "JP", "BR", "GB"], costPerRunUsd: 0.005 }),
+		target("perplexity", { defaultLocationCountries: ["DE", "FR", "JP"], costPerRunUsd: 0.005 }),
 	],
 	promptAllowance: null,
 };

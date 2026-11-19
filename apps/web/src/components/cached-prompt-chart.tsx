@@ -1,10 +1,14 @@
 import { Link } from "@tanstack/react-router";
+import { languageName, type Market } from "@workspace/config/markets";
 import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { List } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
+import { CountryFlag } from "@/components/country-flag";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -53,41 +57,46 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 export interface PromptCardVariant {
 	id: string;
 	value: string;
-	/** Where the variant is asked, named when it differs from the card's prompt. */
-	locale?: string | null;
+	/** Where and in what language the variant is asked, when that differs from the card's prompt. */
+	market?: Market | null;
 }
 
 const NO_VARIANTS: PromptCardVariant[] = [];
 
-/** Beside the title of a prompt that has variants: says how many, and opens to links to each. */
+/** Beside the title of a prompt that has variants: how many, opening to a list that links to each. */
 function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
 	const params = useBrandParams();
 	if (variants.length === 0) return null;
+	const label = variants.length === 1 ? "1 variant" : `${variants.length} variants`;
 	return (
 		<Popover>
 			<PopoverTrigger
+				openOnHover
 				render={
-					<button
-						type="button"
-						className="shrink-0 cursor-pointer text-xs text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
-					/>
+					<Button type="button" variant="ghost" size="sm" aria-label={label} className="h-6 shrink-0 gap-1 px-1.5" />
 				}
 			>
-				{variants.length === 1 ? "1 variant" : `${variants.length} variants`}
+				<List className="size-3.5" />
+				<span className="text-xs tabular-nums">{variants.length}</span>
 			</PopoverTrigger>
-			<PopoverContent align="start" initialFocus={false} className="w-80 space-y-2 p-3">
-				<p className="text-xs font-medium text-muted-foreground">Also Tracked As</p>
-				<ul className="space-y-1.5 text-left text-sm">
+			<PopoverContent align="start" initialFocus={false} className="w-80 p-0">
+				<p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Variants</p>
+				<ul className="divide-y text-left text-sm">
 					{variants.map((variant) => (
 						<li key={variant.id}>
 							<Link
 								to="/app/org/$org/brand/$brand/prompts/$promptId"
 								params={{ ...params, promptId: variant.id }}
-								className="block text-left outline-none hover:underline focus-visible:underline"
+								className="flex items-baseline justify-between gap-3 px-3 py-2 outline-none hover:bg-accent focus-visible:bg-accent"
 							>
-								{variant.value}
+								<span className="min-w-0 text-left">{variant.value}</span>
+								{variant.market && (
+									<span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+										<CountryFlag country={variant.market.country} />
+										{languageName(variant.market.language)}
+									</span>
+								)}
 							</Link>
-							{variant.locale && <span className="block text-xs text-muted-foreground">{variant.locale}</span>}
 						</li>
 					))}
 				</ul>

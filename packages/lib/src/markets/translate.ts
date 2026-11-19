@@ -4,7 +4,7 @@
  * draft: it becomes an ordinary prompt the user edits and saves.
  */
 import { createHash } from "node:crypto";
-import { countryName, describeLanguageForMarket, type Market, marketId } from "@workspace/config/markets";
+import { describeLanguageForMarket, type Market, marketId } from "@workspace/config/markets";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/db";
@@ -54,7 +54,7 @@ function buildTranslationPrompt(texts: string[], market: Market, keepAsWritten: 
 		names.length > 0 ? `\nLeave these names exactly as written, whatever the language: ${names.join(", ")}.` : "";
 	return `Translate each prompt below into ${describeLanguageForMarket(market)}.
 
-Each one is a question a person types into an AI assistant such as ChatGPT. Phrase it the way someone in ${countryName(market.country)} would naturally ask it rather than word for word, and keep its meaning, length, and tone. Do not answer the question, and do not add or drop details.${keep}
+Each one is a question a person types into an AI assistant such as ChatGPT. Phrase it the way a native speaker would naturally ask it rather than word for word, and keep its meaning, length, and tone. Do not answer the question, and do not add or drop details.${keep}
 
 ${texts.map((text, index) => `${index + 1}. ${text}`).join("\n")}`;
 }

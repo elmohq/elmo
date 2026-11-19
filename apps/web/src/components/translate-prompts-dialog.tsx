@@ -1,12 +1,4 @@
-import {
-	countryName,
-	languageName,
-	MARKETS,
-	type Market,
-	marketId,
-	marketName,
-	resolveMarket,
-} from "@workspace/config/markets";
+import { LANGUAGES, type Market, resolveMarket } from "@workspace/config/markets";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
@@ -26,9 +18,9 @@ import {
 	DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { useMemo, useState } from "react";
-import { coverageNote, describeCost } from "@/components/country-picker";
-import { type MarketSupport, promptCostIn } from "@/lib/market-support";
+import { useState } from "react";
+import { describeAddedCost } from "@/components/country-picker";
+import type { MarketSupport } from "@/lib/market-support";
 
 export interface TranslationSource {
 	groupId: string;
@@ -39,7 +31,7 @@ export interface TranslationSource {
 
 export interface TranslatedDraft {
 	source: TranslationSource;
-	market: Market;
+	language: string;
 	value: string;
 }
 
@@ -53,8 +45,8 @@ export type TranslateFn = (
 interface TranslatePromptsDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	sources: TranslationSource[];
-	/** Every row in the editor, so a country and language a question is already asked in isn't offered twice. */
+	source: TranslationSource | null;
+	/** Every row in the editor, so a language the question is already asked in isn't offered twice. */
 	existing: readonly TranslationSource[];
 	support: MarketSupport;
 	room: number;
@@ -63,85 +55,13 @@ interface TranslatePromptsDialogProps {
 }
 
 /**
- * The sources a market would add a prompt for: one per question that isn't asked
- * there yet, so selecting a prompt along with its variants translates it once.
- */
-function sourcesMissing(
-	market: Market,
-	sources: TranslationSource[],
-	existing: readonly TranslationSource[],
-	brandMarket: Market,
-): TranslationSource[] {
-	const covered = new Set(
-		existing.filter((row) => marketId(resolveMarket(row, brandMarket)) === marketId(market)).map((row) => row.groupId),
-	);
-	return sources.filter((source) => {
-		if (covered.has(source.groupId)) return false;
-		covered.add(source.groupId);
-		return true;
-	});
-}
-
-function AddedCost({
-	support,
-	additions,
-}: {
-	support: MarketSupport;
-	additions: { market: Market; prompts: number }[];
-}) {
-	const prompts = additions.reduce((total, addition) => total + addition.prompts, 0);
-	if (prompts === 0) {
-		return <p className="text-sm text-muted-foreground">Pick where else to ask this.</p>;
-	}
-	const noun = prompts === 1 ? "prompt" : "prompts";
-	if (support.promptAllowance) {
-		const { used, max } = support.promptAllowance;
-		return (
-			<p className="text-sm">
-				Adds <strong>{prompts}</strong> {noun}, each counted toward your plan: {used + prompts} of {max} in use after
-				saving.
-			</p>
-		);
-	}
-	const costs = additions.map(({ market, prompts: count }) => ({ ...promptCostIn(support, market.country), count }));
-	const callsPerDay = costs.reduce((total, cost) => total + cost.callsPerDay * cost.count, 0);
-	const priced = costs.some((cost) => cost.monthlyUsd !== null);
-	const monthlyUsd = priced ? costs.reduce((total, cost) => total + (cost.monthlyUsd ?? 0) * cost.count, 0) : null;
-	return (
-		<p className="text-sm">
-			Adds <strong>{prompts}</strong> {noun}, each tracked on its own: {describeCost(callsPerDay, monthlyUsd)}
-			{priced && " at estimated provider prices"}.
-		</p>
-	);
-}
-
-async function draftsFor(
-	additions: { market: Market; missing: TranslationSource[] }[],
-	translate: TranslateFn,
-): Promise<TranslatedDraft[]> {
-	const drafts: TranslatedDraft[] = [];
-	for (const { market, missing } of additions) {
-		if (missing.length === 0) continue;
-		const translated = await translate(
-			market,
-			missing.map((source) => source.value),
-			missing.map((source) => source.language),
-		);
-		missing.forEach((source, index) => {
-			drafts.push({ source, market, value: translated[index].translation });
-		});
-	}
-	return drafts;
-}
-
-/**
- * Turns prompts into drafts for other countries and languages. Nothing is tracked or billed
- * until the editor saves the rows this hands back.
+ * Adds a prompt in other languages as variants, asked from the same country.
+ * Nothing is tracked or billed until the editor saves the rows this hands back.
  */
 export function TranslatePromptsDialog({
 	open,
 	onOpenChange,
-	sources,
+	source,
 	existing,
 	support,
 	room,
@@ -152,20 +72,9 @@ export function TranslatePromptsDialog({
 	const [working, setWorking] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const options = useMemo(
-		() =>
-			MARKETS.map((market) => ({
-				market,
-				id: marketId(market),
-				missing: sourcesMissing(market, sources, existing, support.brandMarket),
-			})),
-		[sources, existing, support.brandMarket],
-	);
-	const additions = options
-		.filter((option) => selected.includes(option.id))
-		.map((option) => ({ market: option.market, prompts: option.missing.length, missing: option.missing }));
-	const adding = additions.reduce((total, addition) => total + addition.prompts, 0);
-	const overCapacity = adding > room;
+	const languageOf = (row: TranslationSource) => resolveMarket(row, support.brandMarket).language;
+	const taken = new Set(existing.filter((row) => row.groupId === source?.groupId).map(languageOf));
+	const overCapacity = selected.length > room;
 
 	const close = (next: boolean) => {
 		if (working) return;
@@ -176,71 +85,65 @@ export function TranslatePromptsDialog({
 		onOpenChange(next);
 	};
 
-	const toggle = (id: string) =>
-		setSelected((prev) => (prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]));
+	const toggle = (code: string) =>
+		setSelected((prev) => (prev.includes(code) ? prev.filter((entry) => entry !== code) : [...prev, code]));
 
 	const run = async () => {
+		if (!source) return;
 		setWorking(true);
 		setError(null);
 		try {
-			const drafts = await draftsFor(additions, translate);
+			const { country } = resolveMarket(source, support.brandMarket);
+			const drafts: TranslatedDraft[] = [];
+			for (const language of selected) {
+				const [translated] = await translate({ country, language }, [source.value], [source.language]);
+				drafts.push({ source, language, value: translated.translation });
+			}
 			onTranslated(drafts);
 			setSelected([]);
 			onOpenChange(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Couldn't translate these prompts. Please try again.");
+			setError(err instanceof Error ? err.message : "Couldn't translate this prompt. Please try again.");
 		} finally {
 			setWorking(false);
 		}
 	};
 
-	const title = sources.length === 1 ? "Translate Prompt" : `Translate ${sources.length} Prompts`;
-
 	return (
 		<Dialog open={open} onOpenChange={close}>
-			<DialogContent className="sm:max-w-lg">
+			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
+					<DialogTitle>Translate Prompt</DialogTitle>
 					<DialogDescription>
-						{sources.length === 1 ? `“${sources[0].value}”` : "Each prompt"} is added as a variant for every country and
-						language you pick, translated once where the language differs. You can edit the wording before saving.
+						Choose the languages to translate “{source?.value}” into. Each becomes a variant you can edit before saving.
 					</DialogDescription>
 				</DialogHeader>
 
 				<Command className="rounded-md border">
-					<CommandInput placeholder="Search countries and languages..." />
+					<CommandInput placeholder="Search languages..." />
 					<CommandList className="max-h-60">
-						<CommandEmpty>No country or language matches.</CommandEmpty>
+						<CommandEmpty>No language matches.</CommandEmpty>
 						<CommandGroup>
-							{options.map(({ market, id, missing }) => {
-								const tracked = missing.length === 0;
-								const note = coverageNote(support, market.country);
-								return (
-									<CommandItem
-										key={id}
-										value={id}
-										keywords={[countryName(market.country), languageName(market.language), market.country]}
-										disabled={tracked || working}
-										onSelect={() => toggle(id)}
-									>
-										<Checkbox checked={selected.includes(id)} className="pointer-events-none" />
-										<span className="flex-1">{marketName(market)}</span>
-										{tracked ? (
-											<span className="text-xs text-muted-foreground">Already tracked</span>
-										) : (
-											note && <span className="text-xs text-amber-700">{note}</span>
-										)}
-									</CommandItem>
-								);
-							})}
+							{LANGUAGES.map((language) => (
+								<CommandItem
+									key={language.code}
+									value={language.name}
+									disabled={taken.has(language.code) || working}
+									onSelect={() => toggle(language.code)}
+								>
+									<Checkbox checked={selected.includes(language.code)} className="pointer-events-none" />
+									<span className="flex-1">{language.name}</span>
+									{taken.has(language.code) && <span className="text-xs text-muted-foreground">Already added</span>}
+								</CommandItem>
+							))}
 						</CommandGroup>
 					</CommandList>
 				</Command>
 
-				<AddedCost support={support} additions={additions} />
+				{selected.length > 0 && <p className="text-sm">{describeAddedCost(support, selected.length)}</p>}
 				{overCapacity && (
 					<p role="alert" className="text-sm text-destructive">
-						That is {adding - room} more than the list has room for. Pick fewer countries or prompts.
+						That is {selected.length - room} more than the list has room for. Choose fewer languages.
 					</p>
 				)}
 				{error && (
@@ -253,9 +156,9 @@ export function TranslatePromptsDialog({
 					<Button variant="outline" onClick={() => close(false)} disabled={working} className="cursor-pointer">
 						Cancel
 					</Button>
-					<Button onClick={run} disabled={adding === 0 || overCapacity || working} className="cursor-pointer">
+					<Button onClick={run} disabled={selected.length === 0 || overCapacity || working} className="cursor-pointer">
 						{working && <Spinner className="size-3.5" />}
-						{adding > 0 ? `Add ${adding} ${adding === 1 ? "Prompt" : "Prompts"}` : "Add Prompts"}
+						{selected.length > 1 ? `Add ${selected.length} Variants` : "Add Variant"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

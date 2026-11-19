@@ -12,8 +12,7 @@ import { type ProcessPromptData, processPromptJob } from "./process-prompt";
 
 let brandId: string;
 
-/** The stub answers from anywhere; OpenRouter can't be told a country, and is never reached in these tests. */
-const TARGETS = "chatgpt:stub:online,perplexity:openrouter:perplexity/sonar:online";
+const TARGETS = "chatgpt:stub:online";
 
 beforeEach(async () => {
 	vi.stubEnv("SCRAPE_TARGETS", TARGETS);
@@ -61,7 +60,6 @@ describe("processPromptJob markets", () => {
 
 		const runs = await runPrompt({ value: "bestes CRM" });
 
-		// OpenRouter can't answer from Germany, so only the target that can has run.
 		expect(runs).toEqual([{ model: "chatgpt", country: "DE", language: "de" }]);
 	});
 

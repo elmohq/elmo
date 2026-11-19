@@ -9,7 +9,7 @@ import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
-import { CountryPicker } from "@/components/country-picker";
+import { CountrySelect } from "@/components/country-picker";
 import { SlugField } from "@/components/slug-field";
 import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
@@ -17,58 +17,15 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { useOrganization, useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useBrandParams } from "@/hooks/use-route-params";
-import type { MarketSupport } from "@/lib/market-support";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updateBrandFn } from "@/server/brands";
-import { getMarketSupportFn } from "@/server/market-support";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/settings/brand")({
 	staticData: { crumb: "Brand" },
 	head: pageHead({ title: "Brand Settings", description: "Manage your brand name and website." }),
 	component: BrandSettingsPage,
 });
-
-function promptCount(count: number): string {
-	return count === 1 ? "the 1 prompt" : `all ${count} prompts`;
-}
-
-function DefaultCountryField({
-	country,
-	onChange,
-	support,
-	saved,
-	following,
-	disabled,
-}: {
-	country: string;
-	onChange: (country: string) => void;
-	support: MarketSupport;
-	saved: string;
-	/** How many prompts follow the default and would move with it. */
-	following: number;
-	disabled: boolean;
-}) {
-	return (
-		<div className="space-y-2">
-			<Label>Default Country</Label>
-			<CountryPicker
-				country={country}
-				onCountryChange={(next) => next && onChange(next)}
-				support={support}
-				disabled={disabled}
-				className="max-w-sm"
-			/>
-			<p className="text-xs text-muted-foreground">Where prompts are asked from, unless a prompt sets its own.</p>
-			{country !== saved && following > 0 && (
-				<p className="text-xs text-amber-700">
-					Saving moves {promptCount(following)} that follow the default. Their earlier answers stay in their history and
-					count under the new country, and models that can&apos;t answer from it stop running them.
-				</p>
-			)}
-		</div>
-	);
-}
 
 function BrandSettingsPage() {
 	const { data: brand, isLoading, refetch: refetchBrand } = useBrand();
@@ -85,11 +42,6 @@ function BrandSettingsPage() {
 	const [aliases, setAliases] = useState<string[]>([]);
 	const [slug, setSlug] = useState("");
 	const [country, setCountry] = useState<string | null>(null);
-	const { data: marketSupport } = useQuery({
-		queryKey: ["market-support", brand?.id],
-		queryFn: () => getMarketSupportFn({ data: { brandId: brand!.id } }),
-		enabled: Boolean(brand?.id),
-	});
 
 	// Reseed the fields when the brand changes server-side, without discarding
 	// whatever is being typed in between.
@@ -269,15 +221,28 @@ function BrandSettingsPage() {
 						/>
 					</div>
 
-					{country && marketSupport && (
-						<DefaultCountryField
-							country={country}
-							onChange={setCountry}
-							support={marketSupport}
-							saved={brand.country}
-							following={brand.promptsFollowingCountry}
-							disabled={isSubmitting}
-						/>
+					{country && (
+						<div className="space-y-2">
+							<Label htmlFor="default-country" className="flex items-center gap-1.5">
+								Default Country
+								<Tooltip>
+									<TooltipTrigger
+										render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />}
+									/>
+									<TooltipContent className="max-w-xs text-xs font-normal">
+										Where prompts are asked from, unless a prompt sets its own. Each model uses it where its provider
+										can.
+									</TooltipContent>
+								</Tooltip>
+							</Label>
+							<CountrySelect
+								id="default-country"
+								value={country}
+								onChange={(next) => next && setCountry(next)}
+								disabled={isSubmitting}
+								className="max-w-sm"
+							/>
+						</div>
 					)}
 				</div>
 

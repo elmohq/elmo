@@ -244,7 +244,7 @@ export const SuccessStates = () => {
 	);
 };
 
-/** A prompt with variants says how many beside its title, and opens to links to the other wordings. */
+/** A prompt with variants shows a list button with their count beside its title, which opens to links to each. */
 export const WithVariants: StoryObj = {
 	render: () => {
 		setupMocks();

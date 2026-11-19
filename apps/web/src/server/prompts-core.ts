@@ -57,7 +57,7 @@ const VARIANT_COST = "A variant is tracked and billed as its own prompt.";
 const promptCountrySchema = countrySchema
 	.nullable()
 	.describe(
-		"ISO 3166-1 alpha-2 country to ask the prompt from, e.g. `DE`. Null follows the brand's country. Models that can't answer from the country skip the prompt.",
+		"ISO 3166-1 alpha-2 country to ask the prompt from, e.g. `DE`. Null follows the brand's country. Each model uses it where its provider accepts a country.",
 	);
 
 const promptLanguageSchema = languageSchema

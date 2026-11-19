@@ -30,8 +30,6 @@ function orgPrompts(count: number, premiumModels: string[] = []) {
 		id: `p${i + 1}`,
 		createdAt: new Date(Date.UTC(2026, 0, i + 1)),
 		premiumModels,
-		country: null as string | null,
-		language: null as string | null,
 	}));
 }
 
@@ -41,7 +39,7 @@ function input(overrides: Partial<ResolveBrandPromptRunPlansInput>): ResolveBran
 		defaultDelayHours: 24,
 		entitlements: cloudEntitlements("pro"),
 		orgPrompts: [],
-		brand: { enabledModels: ["chatgpt"], delayOverrideHours: null, country: "US", language: "en" },
+		brand: { enabledModels: ["chatgpt"], delayOverrideHours: null },
 		prompts: [],
 		...overrides,
 	};
@@ -139,47 +137,12 @@ describe("resolveBrandPromptRunPlans", () => {
 				// Non-cloud callers read nothing extra and pass no org prompts.
 				orgPrompts: [],
 				prompts,
-				brand: { enabledModels: ["chatgpt"], delayOverrideHours: null, country: "US", language: "en" },
+				brand: { enabledModels: ["chatgpt"], delayOverrideHours: null },
 			}),
 		);
 
 		for (const prompt of prompts) {
 			expect(plans.get(prompt.id)?.targets).toHaveLength(1);
 		}
-	});
-});
-
-describe("markets", () => {
-	const targets = parseScrapeTargets("chatgpt:brightdata:online,perplexity:openrouter:perplexity/sonar:online");
-	const marketInput = (overrides: Partial<ResolveBrandPromptRunPlansInput>) =>
-		input({ scrapeTargets: targets, entitlements: UNLIMITED_ENTITLEMENTS, ...overrides });
-	const plannedModels = (plan: { targets: { config: { model: string } }[] } | undefined) =>
-		plan?.targets.map((target) => target.config.model);
-
-	it("asks a prompt in its brand's market unless it sets its own", () => {
-		const [inherits, overrides] = orgPrompts(2);
-		const plans = resolveBrandPromptRunPlans(
-			marketInput({
-				brand: { enabledModels: null, delayOverrideHours: null, country: "DE", language: "de" },
-				prompts: [inherits, { ...overrides, country: "US", language: "en" }],
-			}),
-		);
-
-		// OpenRouter can't be told a country, so it only answers the default market.
-		expect(plannedModels(plans.get(inherits.id))).toEqual(["chatgpt"]);
-		expect(plannedModels(plans.get(overrides.id))).toEqual(["chatgpt", "perplexity"]);
-	});
-
-	it("stops a prompt no configured target can answer from its country", () => {
-		const [prompt] = orgPrompts(1);
-		const plans = resolveBrandPromptRunPlans(
-			marketInput({
-				scrapeTargets: parseScrapeTargets("perplexity:openrouter:perplexity/sonar:online"),
-				brand: { enabledModels: null, delayOverrideHours: null, country: "JP", language: "ja" },
-				prompts: [prompt],
-			}),
-		);
-
-		expect(plans.get(prompt.id)).toEqual({ targets: [], rescheduleHours: null });
 	});
 });
