@@ -244,7 +244,7 @@ export const SuccessStates = () => {
 	);
 };
 
-/** A prompt with variants carries a small mark beside its title; hovering it lists the other wordings. */
+/** A prompt with variants says how many beside its title, and opens to links to the other wordings. */
 export const WithVariants: StoryObj = {
 	render: () => {
 		setupMocks();
@@ -265,7 +265,7 @@ export const WithVariants: StoryObj = {
 		);
 	},
 	play: async ({ canvasElement }) => {
-		await userEvent.hover(within(canvasElement).getByRole("img", { name: "2 variants" }));
+		await userEvent.click(within(canvasElement).getByRole("button", { name: "2 variants" }));
 		const page = within(document.body);
 		await expect(await page.findByText("which project management tool suits a remote team")).toBeVisible();
 		await expect(page.getByText("top project tools for distributed teams")).toBeVisible();
