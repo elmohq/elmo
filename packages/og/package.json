@@ -16,7 +16,7 @@
 	},
 	"dependencies": {
 		"@takumi-rs/core": "catalog:",
-		"@takumi-rs/helpers": "^2.19.0",
+		"@takumi-rs/helpers": "^2.20.0",
 		"@workspace/config": "workspace:*",
 		"react": "catalog:"
 	},
