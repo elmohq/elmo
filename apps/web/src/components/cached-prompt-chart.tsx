@@ -290,14 +290,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 				<Separator className="py-0 my-0" />
 				<CardContent className="pl-0 pr-6">
 					{brand && data && competitors && (
-						<BaseChart
-							data={data}
-							lookback={lookback}
-							brand={brand}
-							competitors={competitors}
-							isAnimationActive={false}
-							chartType="line"
-						/>
+						<BaseChart data={data} lookback={lookback} brand={brand} competitors={competitors} />
 					)}
 				</CardContent>
 				<div className="print:hidden">

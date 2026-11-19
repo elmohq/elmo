@@ -11,6 +11,8 @@ export type LookbackPreset = (typeof LOOKBACK_PERIODS)[number];
 export type CustomLookback = `${string}..${string}`;
 export type LookbackPeriod = LookbackPreset | CustomLookback;
 
+export const DEFAULT_LOOKBACK: LookbackPeriod = "1m";
+
 export interface DateRange {
 	from: string | null;
 	to: string | null;

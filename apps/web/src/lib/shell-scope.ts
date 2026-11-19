@@ -1,4 +1,4 @@
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import type { Brand } from "@workspace/lib/db/schema";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 import { routeSubjects } from "@/lib/route-subject";
 
@@ -13,7 +13,7 @@ declare module "@tanstack/react-router" {
 export interface ShellScope {
 	section: ShellSection;
 	organization?: OrganizationSummary;
-	brand?: BrandWithPrompts;
+	brand?: Brand;
 }
 
 interface ScopeMatch {

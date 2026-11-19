@@ -23,25 +23,32 @@ const customers: Customer[] = [
 		render: () => <SpeakeasyLockup />,
 	},
 	{
-		name: "TradeSites",
-		url: "https://www.tradesites.ai/?ref=elmo",
-		linkClass: "group/ts flex h-6 items-center",
-		render: () => (
-			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
-		),
-	},
-	{
-		name: "Record Ranks",
-		url: "https://recordranks.com/?ref=elmo",
-		linkClass: "group/rr flex h-6 items-center",
+		name: "Airbyte",
+		url: "https://airbyte.com/?ref=elmo",
+		linkClass: "group/ab flex h-6 items-center",
 		render: () => (
 			<img
-				src="/recordranks-logo.svg"
-				width={106}
+				src="/airbyte-logo.svg"
+				width={94}
 				height={24}
 				alt=""
 				aria-hidden="true"
-				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
+				className="block h-6 w-auto opacity-60 grayscale transition-[filter,opacity] duration-150 group-hover/ab:opacity-100 group-hover/ab:grayscale-0"
+			/>
+		),
+	},
+	{
+		name: "Cura",
+		url: "https://cura.inc/?ref=elmo",
+		linkClass: "group/cura flex h-6 items-center",
+		render: () => (
+			<img
+				src="/cura-logo.svg"
+				width={64}
+				height={18}
+				alt=""
+				aria-hidden="true"
+				className="block h-[18px] w-auto opacity-60 transition-opacity duration-150 group-hover/cura:opacity-100"
 			/>
 		),
 	},
@@ -76,17 +83,25 @@ const customers: Customer[] = [
 		),
 	},
 	{
-		name: "Cura",
-		url: "https://cura.inc/?ref=elmo",
-		linkClass: "group/cura flex h-6 items-center",
+		name: "TradeSites",
+		url: "https://www.tradesites.ai/?ref=elmo",
+		linkClass: "group/ts flex h-6 items-center",
+		render: () => (
+			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
+		),
+	},
+	{
+		name: "Record Ranks",
+		url: "https://recordranks.com/?ref=elmo",
+		linkClass: "group/rr flex h-6 items-center",
 		render: () => (
 			<img
-				src="/cura-logo.svg"
-				width={64}
-				height={18}
+				src="/recordranks-logo.svg"
+				width={106}
+				height={24}
 				alt=""
 				aria-hidden="true"
-				className="block h-[18px] w-auto opacity-60 transition-opacity duration-150 group-hover/cura:opacity-100"
+				className="block h-6 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
 			/>
 		),
 	},
@@ -101,10 +116,10 @@ export function LogoStrip() {
 						id="social-proof"
 						className="max-w-[24ch] text-2xl font-semibold tracking-[-0.025em] text-balance text-zinc-950 md:text-3xl"
 					>
-						Used by 250+ brands to optimize their AI visibility
+						Used by 300+ brands to optimize their AI visibility
 					</h2>
 				</div>
-				<ul className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-14">
+				<ul className="mx-auto mt-10 grid max-w-4xl grid-cols-2 items-center justify-items-center gap-x-10 gap-y-8 sm:grid-cols-4 md:gap-x-14 md:gap-y-10">
 					{customers.map((c) => (
 						<li key={c.name} className="flex h-6 items-center">
 							<a

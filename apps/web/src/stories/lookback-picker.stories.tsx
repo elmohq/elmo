@@ -20,7 +20,7 @@ const meta = {
 	title: "Components/Lookback Picker",
 	decorators: [
 		(Story) => {
-			setMockBrand({ id: "brand-1", name: "Acme", earliestDataDate: "2024-01-01" });
+			setMockBrand({ id: "brand-1", name: "Acme" });
 			return (
 				<div className="p-8">
 					<Story />
