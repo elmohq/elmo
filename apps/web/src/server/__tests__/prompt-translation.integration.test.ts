@@ -82,6 +82,33 @@ describe("translatePrompts", () => {
 			await deleteBrand(limited);
 		}
 	});
+
+	it("holds parallel requests to the daily limit, and pays once for the same text asked twice at once", async () => {
+		const racing = await createBrand();
+		try {
+			await db.insert(promptTranslations).values(
+				Array.from({ length: DAILY_TRANSLATION_LIMIT - 2 }, (_, index) => ({
+					brandId: racing,
+					market: "de-DE",
+					sourceHash: `filler-${index}`,
+					translation: "filler",
+				})),
+			);
+			const request = (text: string) =>
+				translatePrompts({ brandId: racing, keepAsWritten: [], texts: [text], market: france });
+
+			const sameText = await Promise.all([request("asked twice"), request("asked twice")]);
+			expect(sameText.map(([entry]) => entry.translation)).toEqual(["asked twice (fr-FR)", "asked twice (fr-FR)"]);
+
+			const outcomes = await Promise.allSettled(["a", "b", "c", "d"].map((text) => request(`parallel ${text}`)));
+			expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+
+			const stored = await db.select().from(promptTranslations).where(eq(promptTranslations.brandId, racing));
+			expect(stored).toHaveLength(DAILY_TRANSLATION_LIMIT);
+		} finally {
+			await deleteBrand(racing);
+		}
+	});
 });
 
 describe("drafting a prompt for another country", () => {

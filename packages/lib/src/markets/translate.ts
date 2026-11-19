@@ -90,6 +90,33 @@ async function newTranslationsToday(brandId: string): Promise<number> {
 	return row?.value ?? 0;
 }
 
+async function storedTranslations(brandId: string, market: string, hashes: string[]): Promise<Map<string, string>> {
+	const stored = await db
+		.select({ sourceHash: promptTranslations.sourceHash, translation: promptTranslations.translation })
+		.from(promptTranslations)
+		.where(
+			and(
+				eq(promptTranslations.brandId, brandId),
+				eq(promptTranslations.market, market),
+				inArray(promptTranslations.sourceHash, [...new Set(hashes)]),
+			),
+		);
+	return new Map(stored.map((row) => [row.sourceHash, row.translation]));
+}
+
+/**
+ * One brand's translations run one request at a time. Otherwise parallel
+ * requests would each see the same allowance left and each pay to translate
+ * the same text. The transaction only holds the lock: rows are written outside
+ * it, so a later batch failing keeps what was already paid for.
+ */
+function withBrandTranslationLock<T>(brandId: string, work: () => Promise<T>): Promise<T> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-prompt-translations'), hashtext(${brandId}))`);
+		return work();
+	});
+}
+
 /** Returned in the order asked, one per input text. */
 export async function translatePrompts(input: TranslatePromptsInput): Promise<TranslatedPrompt[]> {
 	const market = marketId(input.market);
@@ -97,49 +124,46 @@ export async function translatePrompts(input: TranslatePromptsInput): Promise<Tr
 	const hashes = sources.map(sourceHash);
 	if (sources.length === 0) return [];
 
-	const stored = await db
-		.select({ sourceHash: promptTranslations.sourceHash, translation: promptTranslations.translation })
-		.from(promptTranslations)
-		.where(
-			and(
-				eq(promptTranslations.brandId, input.brandId),
-				eq(promptTranslations.market, market),
-				inArray(promptTranslations.sourceHash, [...new Set(hashes)]),
-			),
+	const answer = (known: Map<string, string>) =>
+		sources.map((source, index) => ({ source, translation: known.get(hashes[index]) ?? source }));
+
+	const cached = await storedTranslations(input.brandId, market, hashes);
+	if (hashes.every((hash) => cached.has(hash))) return answer(cached);
+
+	return withBrandTranslationLock(input.brandId, async () => {
+		// Read again under the lock: a request that was ahead of this one may have just stored some of these.
+		const known = await storedTranslations(input.brandId, market, hashes);
+		const missing = [...new Map(sources.map((text, index) => [hashes[index], text])).entries()].filter(
+			([hash]) => !known.has(hash),
 		);
-	const known = new Map(stored.map((row) => [row.sourceHash, row.translation]));
+		if (missing.length > 0 && (await newTranslationsToday(input.brandId)) + missing.length > DAILY_TRANSLATION_LIMIT) {
+			throw new TranslationLimitError();
+		}
 
-	const missing = [...new Map(sources.map((text, index) => [hashes[index], text])).entries()].filter(
-		([hash]) => !known.has(hash),
-	);
-	if (missing.length > 0 && (await newTranslationsToday(input.brandId)) + missing.length > DAILY_TRANSLATION_LIMIT) {
-		throw new TranslationLimitError();
-	}
+		for (let start = 0; start < missing.length; start += BATCH_SIZE) {
+			const batch = missing.slice(start, start + BATCH_SIZE);
+			const { translations, model } = await translateBatch(
+				batch.map(([, text]) => text),
+				input.market,
+				input.keepAsWritten,
+			);
+			await db
+				.insert(promptTranslations)
+				.values(
+					batch.map(([hash], index) => ({
+						brandId: input.brandId,
+						market,
+						sourceHash: hash,
+						translation: translations[index],
+						model,
+					})),
+				)
+				.onConflictDoNothing();
+			batch.forEach(([hash], index) => {
+				known.set(hash, translations[index]);
+			});
+		}
 
-	for (let start = 0; start < missing.length; start += BATCH_SIZE) {
-		const batch = missing.slice(start, start + BATCH_SIZE);
-		const { translations, model } = await translateBatch(
-			batch.map(([, text]) => text),
-			input.market,
-			input.keepAsWritten,
-		);
-		// Saved batch by batch, so a later batch failing doesn't throw away what was already paid for.
-		await db
-			.insert(promptTranslations)
-			.values(
-				batch.map(([hash], index) => ({
-					brandId: input.brandId,
-					market,
-					sourceHash: hash,
-					translation: translations[index],
-					model,
-				})),
-			)
-			.onConflictDoNothing();
-		batch.forEach(([hash], index) => {
-			known.set(hash, translations[index]);
-		});
-	}
-
-	return sources.map((source, index) => ({ source, translation: known.get(hashes[index]) ?? source }));
+		return answer(known);
+	});
 }
