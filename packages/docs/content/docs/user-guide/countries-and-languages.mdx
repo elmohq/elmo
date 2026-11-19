@@ -10,21 +10,21 @@ AI answers change with where a question is asked from and the language it is ask
 
 Every brand has a **Default Country** under **Settings → Brand**, which starts as **United States**. Prompts are asked from it unless they choose their own.
 
-In **Settings → Prompts**, the **Country** column sets a prompt's own country. **Default** follows the brand.
+In **Settings → Prompts**, the **Country** column sets a prompt's own country. Until you choose one, a prompt shows and follows the brand's.
 
-Country is best effort. Each model is told the country where its provider accepts one, and otherwise answers from the provider's usual location. Every model runs every prompt either way. **Settings → LLMs** lists what each of your models does with countries and languages.
+Country is best effort. Each model is told the country where its provider accepts one, and otherwise answers from the provider's usual location. Every model runs every prompt either way. **Settings → LLMs** shows which of your models can be asked from the countries your prompts use.
 
 Changing a prompt's country does not translate it, and the prompt's earlier answers stay in its history.
 
 ## Languages
 
-When you save a prompt, Elmo detects the language it is written in and shows it in the **Language** column. Brand and competitor names are ignored. If the detection is wrong, which is most likely on very short prompts, choose the language yourself and it stays as you set it.
+As you type a new prompt, Elmo fills in the **Language** column from its wording. Brand and competitor names are ignored. If it gets it wrong, which is most likely on very short prompts, choose the language yourself. A language you choose stays, and editing a saved prompt never changes its language.
 
-The language reaches every model through the prompt's wording. Google's surfaces also take it as their interface language.
+Every model answers in the language a prompt is written in. Google's surfaces also take the language as a setting.
 
 ## Variants and Translations
 
-To ask the same question in another language, open the **⋯** menu on a prompt in **Settings → Prompts**, click **Translate**, and choose the languages. Elmo adds a [variant](/docs/user-guide/settings#prompt-settings) under the prompt for each one, asked from the same country. Change a variant's country in its **Country** column if it should be asked from somewhere else.
+To ask the same question in another language, open the **⋯** menu on a prompt in **Settings → Prompts**, click **Translate**, and choose the languages. Variants don't have the menu: translate or add variants from the prompt they belong to. Elmo adds a [variant](/docs/user-guide/settings#prompt-settings) under the prompt for each one, asked from the same country. Change a variant's country in its **Country** column if it should be asked from somewhere else.
 
 A translation is not tracked until you save. Edit the wording first if it isn't how your customers would ask. Translations are stored, so translating the same text into the same language again costs nothing and returns the same wording.
 
@@ -32,7 +32,7 @@ A translation is not tracked until you save. Edit the wording first if it isn't 
 
 Every prompt is tracked on its own: it runs on each model you track, on your schedule. A variant or a translation is another prompt, so asking one question in three languages costs three prompts.
 
-- **Self-hosted** — you pay your providers for each run. Adding a prompt shows what one prompt costs in provider calls a day and an estimated monthly cost, and the translate dialog shows the total for what you are about to add. The estimates use each provider's published prices, not your invoices.
+- **Self-hosted** — you pay your providers for each run. Adding a prompt shows what one prompt costs in provider calls a day and an estimated monthly cost. The estimates use each provider's published prices, not your invoices.
 - **Elmo Cloud** — each prompt counts toward your plan's prompt limit.
 
 ## Filtering by Country and Language

@@ -3,7 +3,7 @@ import { countrySchema, languageSchema } from "@workspace/config/markets";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
-import { draftPromptTranslations } from "@/server/prompt-language";
+import { draftPromptTranslations, promptLanguageDetector } from "@/server/prompt-language";
 
 /** Drafts only: nothing is tracked until the prompts editor saves what comes back. */
 export const translatePromptsFn = createServerFn({ method: "POST" })
@@ -20,4 +20,12 @@ export const translatePromptsFn = createServerFn({ method: "POST" })
 		await requireBrandSession(data.brandId);
 
 		return draftPromptTranslations(data.brandId, data.market, data.texts, data.languages);
+	});
+
+/** What the editor shows in a new prompt's Language column as it is typed. */
+export const detectPromptLanguageFn = createServerFn({ method: "POST" })
+	.validator(z.object({ brandId: z.string().min(1), text: z.string().trim().min(1).max(2000) }))
+	.handler(async ({ data }) => {
+		await requireBrandSession(data.brandId);
+		return (await promptLanguageDetector(data.brandId))(data.text);
 	});

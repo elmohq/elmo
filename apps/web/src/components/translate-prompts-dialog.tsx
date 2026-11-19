@@ -19,7 +19,6 @@ import {
 } from "@workspace/ui/components/dialog";
 import { Spinner } from "@workspace/ui/components/spinner";
 import { useState } from "react";
-import { describeAddedCost } from "@/components/country-picker";
 import type { MarketSupport } from "@/lib/market-support";
 
 export interface TranslationSource {
@@ -140,7 +139,6 @@ export function TranslatePromptsDialog({
 					</CommandList>
 				</Command>
 
-				{selected.length > 0 && <p className="text-sm">{describeAddedCost(support, selected.length)}</p>}
 				{overCapacity && (
 					<p role="alert" className="text-sm text-destructive">
 						That is {selected.length - room} more than the list has room for. Choose fewer languages.

@@ -23,6 +23,8 @@ export interface MarketTarget {
 
 export interface MarketSupport {
 	brandMarket: Market;
+	/** The countries the brand's enabled prompts are asked from, the brand's own first. */
+	countriesInUse: string[];
 	targets: MarketTarget[];
 	/** Set where prompts come out of a plan's allowance rather than provider bills. */
 	promptAllowance: { used: number; max: number } | null;

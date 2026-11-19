@@ -14,6 +14,7 @@ const target = (value: string, overrides: Partial<MarketTarget> = {}): MarketTar
 /** Self-hosted: every target is priced, and one of them can't be told a country. */
 export const selfHostedMarketSupport: MarketSupport = {
 	brandMarket: { country: "US", language: "en" },
+	countriesInUse: ["US", "DE"],
 	targets: [
 		target("chatgpt"),
 		target("google-ai-mode", { costPerRunUsd: 0.005, sendsLanguage: true }),
@@ -26,6 +27,7 @@ export const selfHostedMarketSupport: MarketSupport = {
 /** Cloud: no prices, and prompts come out of the plan's allowance. */
 export const planMarketSupport: MarketSupport = {
 	brandMarket: { country: "US", language: "en" },
+	countriesInUse: ["US", "DE"],
 	targets: selfHostedMarketSupport.targets.map((entry) => ({ ...entry, costPerRunUsd: null })),
 	promptAllowance: { used: 42, max: 100 },
 };

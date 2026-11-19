@@ -190,7 +190,7 @@ export const CloudAtPickLimit: Story = {
 	},
 };
 
-/** One table says what each tracked model is told about a prompt's country and language. */
+/** One table says whether each tracked model can be asked from the countries in use, and how it learns the language. */
 export const CountryAndLanguageHandling: Story = {
 	render: () => {
 		loader(standardPicker(), NO_PREMIUM_POOL, selfHostedMarketSupport);
@@ -199,10 +199,13 @@ export const CountryAndLanguageHandling: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		const table = within(await canvas.findByRole("table"));
-		await expect(table.getByRole("row", { name: /ChatGPT Sent From the prompt's wording/ })).toBeVisible();
-		await expect(table.getByRole("row", { name: /Google AI Mode Sent Sent/ })).toBeVisible();
-		await expect(table.getByRole("row", { name: /Claude Not used: answers without web search/ })).toBeVisible();
-		await expect(table.getByRole("row", { name: /Perplexity Sent, except Germany, France, Japan/ })).toBeVisible();
+		await expect(table.getByRole("columnheader", { name: "Germany" })).toBeVisible();
+		await expect(table.getByRole("row", { name: /ChatGPT Supported Supported All 61 Inferred/ })).toBeVisible();
+		await expect(table.getByRole("row", { name: /Google AI Mode Supported Supported All 61 Set/ })).toBeVisible();
+		await expect(table.getByRole("row", { name: /Claude No location No location None Inferred/ })).toBeVisible();
+		await expect(
+			table.getByRole("row", { name: /Perplexity Supported Not supported 58 of 61 Inferred/ }),
+		).toBeVisible();
 	},
 };
 

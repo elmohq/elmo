@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import {
 	type EditablePrompt,
 	newPromptEntry,
@@ -174,6 +174,8 @@ export const Variants: StoryObj = {
 const localesFor = (support: MarketSupport): PromptLocales => ({
 	support,
 	translate: (market, texts, languages) => translatePromptsFn({ data: { market, texts, languages } }),
+	// Stands in for the detector: German once the wording has an umlaut or "für", otherwise the brand's language.
+	detectLanguage: async (text) => (/für|[äöü]/.test(text) ? "de" : null),
 });
 
 const MARKET_PROMPTS = [
@@ -195,9 +197,48 @@ export const Countries: StoryObj = {
 		const canvas = within(canvasElement);
 		const countries = canvas.getAllByRole("combobox", { name: "Country" });
 		await expect(countries.some((field) => field.textContent?.includes("Germany"))).toBe(true);
+		await expect(countries.some((field) => field.textContent?.includes("United States"))).toBe(true);
 		const languages = canvas.getAllByRole("combobox", { name: "Language" });
 		await expect(languages.some((field) => field.textContent?.includes("German"))).toBe(true);
 		await expect(canvas.queryByText(/New prompts are asked from/)).toBeNull();
+	},
+};
+
+/** Only a prompt that isn't a variant has the menu for adding variants and translations. */
+export const VariantsHaveNoMenu: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getAllByRole("button", { name: 'Actions for "best crm for small business"' })).not.toHaveLength(
+			0,
+		);
+		await expect(canvas.queryAllByRole("button", { name: /Actions for "bestes CRM/ })).toHaveLength(0);
+	},
+};
+
+/**
+ * A new prompt's language follows what is typed. Once someone picks a language
+ * it stays put, whatever the wording becomes.
+ */
+export const LanguageFollowsTypingUntilChosen: StoryObj = {
+	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(document.body);
+		await userEvent.click(canvas.getByRole("button", { name: "Add Prompt" }));
+		const language = () => canvas.getAllByRole("combobox", { name: "Language" }).at(-1)!;
+		await expect(language()).toHaveTextContent("English");
+
+		const text = canvas.getAllByPlaceholderText("Enter prompt text...").at(-1)!;
+		await userEvent.type(text, "bestes Werkzeug für Teams");
+		await waitFor(() => expect(language()).toHaveTextContent("German"));
+
+		await userEvent.click(language());
+		await userEvent.click(await page.findByRole("option", { name: "French" }));
+		await userEvent.clear(text);
+		await userEvent.type(text, "best tool for teams");
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await expect(language()).toHaveTextContent("French");
 	},
 };
 
@@ -227,7 +268,7 @@ export const NewPromptSaysWhatItCosts: StoryObj = {
 
 /**
  * Translating adds a variant per language under the prompt, asked from the
- * same country, after the dialog has said what they add to the bill.
+ * same country.
  */
 export const TranslateIntoLanguages: StoryObj = {
 	render: () => <Harness variants locales={localesFor(selfHostedMarketSupport)} initial={MARKET_PROMPTS} />,
@@ -244,9 +285,6 @@ export const TranslateIntoLanguages: StoryObj = {
 		);
 		await userEvent.click(dialog.getByRole("option", { name: /^French/ }));
 		await userEvent.click(dialog.getByRole("option", { name: /^Japanese/ }));
-		await expect(dialog.getByText(/^Adds 2 prompts/)).toHaveTextContent(
-			"Adds 2 prompts, each tracked on its own: 8 provider calls a day, roughly $1.80 a month at estimated provider prices.",
-		);
 		await userEvent.click(dialog.getByRole("button", { name: "Add 2 Variants" }));
 
 		await expect(await canvas.findAllByDisplayValue("best crm for small business (fr-US)")).not.toHaveLength(0);

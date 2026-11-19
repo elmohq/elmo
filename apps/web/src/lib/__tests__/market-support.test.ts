@@ -14,6 +14,7 @@ const target = (value: string, overrides: Partial<MarketTarget> = {}): MarketTar
 
 const support = (targets: MarketTarget[]): MarketSupport => ({
 	brandMarket: { country: "US", language: "en" },
+	countriesInUse: ["US", "DE"],
 	targets,
 	promptAllowance: null,
 });

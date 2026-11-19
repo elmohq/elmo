@@ -134,28 +134,20 @@ describe("detecting a prompt's language on save", () => {
 		expect(followsBrand.language).toBeNull();
 	});
 
-	it("detects again when a prompt is reworded, and keeps what it had when the new wording is unclear", async () => {
-		const [unset, spanish] = await createPrompts(english, {
+	it("leaves a prompt's language alone when it is reworded", async () => {
+		const [plain, spanish] = await createPrompts(english, {
 			prompts: [{ value: "best crm for startups" }, { value: "top crm tools", language: "es" }],
 		});
 
-		const german = await updatePrompt(english, unset.id, {
+		const reworded = await updatePrompt(english, plain.id, {
 			value: "beste CRM-Software für Gründer und Selbstständige",
 		});
-		expect(german.language).toBe("de");
+		expect(reworded.language).toBeNull();
 
-		const backToEnglish = await updatePrompt(english, unset.id, {
-			value: "what is the best crm software for founders and freelancers",
-		});
-		expect(backToEnglish.language).toBeNull();
+		const kept = await updatePrompt(english, spanish.id, { value: "meilleur CRM pour les petites entreprises" });
+		expect(kept.language).toBe("es");
 
-		const unclear = await updatePrompt(english, spanish.id, { value: "hubspot pricing" });
-		expect(unclear.language).toBe("es");
-
-		const named = await updatePrompt(english, spanish.id, {
-			value: "meilleur CRM pour les petites entreprises",
-			language: "es",
-		});
-		expect(named.language).toBe("es");
+		const set = await updatePrompt(english, plain.id, { language: "de" });
+		expect(set.language).toBe("de");
 	});
 });

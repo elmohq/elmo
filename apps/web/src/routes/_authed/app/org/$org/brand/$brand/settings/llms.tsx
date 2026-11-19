@@ -66,7 +66,7 @@ function LlmsSettingsPage() {
 
 			{picker.editable ? <PlatformGroups picker={picker} /> : <TrackedPlatforms picker={picker} />}
 
-			<LocaleHandlingCard targets={locales.targets} />
+			<LocaleHandlingCard support={locales} />
 
 			{premium.available && <PremiumApiPool premium={premium} />}
 			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}

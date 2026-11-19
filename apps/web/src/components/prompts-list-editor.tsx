@@ -29,7 +29,7 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { CornerDownRight, Inbox, ListPlus, MoreHorizontal, Plus, Sparkles, X } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { CountrySelect, describePromptCost, LanguageSelect } from "@/components/country-picker";
 import { type TranslatedDraft, type TranslateFn, TranslatePromptsDialog } from "@/components/translate-prompts-dialog";
@@ -50,6 +50,8 @@ export interface EditablePrompt {
 	/** Null follows the brand. */
 	country: string | null;
 	language: string | null;
+	/** Set once someone picks the language, which stops it following the wording. */
+	languageChosen?: boolean;
 	suggested?: boolean;
 }
 
@@ -57,6 +59,8 @@ export interface EditablePrompt {
 export interface PromptLocales {
 	support: MarketSupport;
 	translate: TranslateFn;
+	/** The language a new prompt's wording is in; null when it is the brand's or too unclear to say. */
+	detectLanguage: (text: string) => Promise<string | null>;
 }
 
 export interface PremiumAllowance {
@@ -76,6 +80,7 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		country: partial?.country ?? null,
 		language: partial?.language ?? null,
 		...(partial?.id ? { id: partial.id } : {}),
+		...(partial?.languageChosen ? { languageChosen: true } : {}),
 		...(partial?.suggested ? { suggested: true } : {}),
 	};
 }
@@ -487,7 +492,7 @@ function PromptLocaleFields({
 }: {
 	prompt: EditablePrompt;
 	support: MarketSupport;
-	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language">>) => void;
+	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language" | "languageChosen">>) => void;
 }) {
 	return (
 		<>
@@ -498,13 +503,45 @@ function PromptLocaleFields({
 				disabled={!prompt.enabled}
 			/>
 			<LanguageSelect
-				// A saved prompt with no language of its own is in the brand's; a new one is detected on save.
-				value={prompt.language ?? (prompt.id ? support.brandMarket.language : null)}
-				onChange={(language) => onChange({ language })}
+				value={prompt.language ?? support.brandMarket.language}
+				onChange={(language) => onChange({ language, languageChosen: true })}
 				disabled={!prompt.enabled}
 			/>
 		</>
 	);
+}
+
+const DETECT_DELAY_MS = 400;
+
+/**
+ * Fills in a new prompt's language from its wording as it is typed. A saved
+ * prompt, or one whose language someone picked, is left alone.
+ */
+function useLanguageAutofill(
+	prompt: EditablePrompt,
+	detect: PromptLocales["detectLanguage"] | undefined,
+	onDetected: (language: string | null) => void,
+) {
+	const follows = Boolean(detect) && !prompt.id && !prompt.languageChosen;
+	const text = prompt.value.trim();
+	const latest = useRef({ language: prompt.language, onDetected });
+	latest.current = { language: prompt.language, onDetected };
+
+	useEffect(() => {
+		if (!follows || !detect || text.length === 0) return;
+		let stale = false;
+		const timer = setTimeout(() => {
+			detect(text)
+				.then((language) => {
+					if (!stale && language !== latest.current.language) latest.current.onDetected(language);
+				})
+				.catch(() => {});
+		}, DETECT_DELAY_MS);
+		return () => {
+			stale = true;
+			clearTimeout(timer);
+		};
+	}, [follows, detect, text]);
 }
 
 const PENDING_WIDTHS = ["70%", "52%", "63%", "46%", "58%"];
@@ -540,6 +577,7 @@ function PromptRow({
 	onAddVariant,
 	onTranslate,
 	support,
+	detectLanguage,
 }: {
 	prompt: EditablePrompt;
 	index: number;
@@ -558,7 +596,9 @@ function PromptRow({
 	onAddVariant?: () => void;
 	onTranslate?: () => void;
 	support?: MarketSupport;
+	detectLanguage?: PromptLocales["detectLanguage"];
 }) {
+	useLanguageAutofill(prompt, detectLanguage, (language) => update(index, { language }));
 	return (
 		<div
 			className={cn(
@@ -807,6 +847,7 @@ function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): E
 		tags: lead?.tags ?? [],
 		country: draft.source.country,
 		language: draft.language,
+		languageChosen: true,
 	});
 }
 
@@ -878,8 +919,8 @@ export function PromptsListEditor({
 		const lead = leads.get(prompt.groupId);
 		return lead === prompt ? undefined : lead;
 	};
-	/** A blank row has nothing to reword or translate yet, and a full list has no room for the result. */
-	const canGrow = (prompt: EditablePrompt) => !atCapacity && prompt.value.trim().length > 0;
+	/** Only a prompt that isn't itself a variant gains them. A blank one has nothing to reword yet, and a full list has no room. */
+	const canGrow = (prompt: EditablePrompt) => !atCapacity && !leadOf(prompt) && prompt.value.trim().length > 0;
 	const hasNewPrompt = prompts.some((prompt) => !prompt.id);
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
@@ -954,6 +995,7 @@ export function PromptsListEditor({
 							onAddVariant={variants && canGrow(prompt) ? () => addVariant(prompt) : undefined}
 							onTranslate={locales && canGrow(prompt) ? () => translate(prompt) : undefined}
 							support={locales?.support}
+							detectLanguage={locales?.detectLanguage}
 						/>
 					))}
 				</div>

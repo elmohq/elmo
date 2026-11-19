@@ -19,7 +19,7 @@ import type { MarketSupport } from "@/lib/market-support";
 import { trackEvent } from "@/lib/posthog";
 import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import { useWriteErrorMessage } from "@/lib/write-errors";
-import { translatePromptsFn } from "@/server/prompt-translation";
+import { detectPromptLanguageFn, translatePromptsFn } from "@/server/prompt-translation";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
@@ -140,7 +140,8 @@ export function PromptsEditor({
 	const locales = useMemo(() => {
 		const translate: TranslateFn = (market, texts, languages) =>
 			translatePromptsFn({ data: { brandId, market, texts, languages } });
-		return { support: marketSupport, translate };
+		const detectLanguage = (text: string) => detectPromptLanguageFn({ data: { brandId, text } });
+		return { support: marketSupport, translate, detectLanguage };
 	}, [brandId, marketSupport]);
 	const suggestions = usePromptSuggestions({ brandId, prompts, setPrompts });
 	const isDirty = changedKeys.size > 0 || removedCount > 0;

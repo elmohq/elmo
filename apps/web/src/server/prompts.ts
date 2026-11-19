@@ -474,12 +474,6 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		};
 	});
 
-/** The editor only sends a language someone chose, which wins over what the wording suggests. */
-function languageChange(submitted: string | null | undefined, detected: string | null | undefined) {
-	if (submitted !== undefined) return { language: submitted };
-	return detected !== undefined ? { language: detected } : {};
-}
-
 export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -535,24 +529,11 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		assertAllowed(decidePromptCap(existingRows.length, inserts.length));
 		await assertPromptSaveAllowed(brand.organizationId, promptSaveDelta({ updates, inserts }));
 
-		// A translated draft arrives with its language; everything else gets it from its wording.
+		// Detected when a prompt is created and never again, so an edit can't change a language someone settled on.
 		const detectLanguage = await promptLanguageDetector(data.brandId);
-		const needsLanguage = [
-			...inserts
-				.filter(({ prompt }) => (prompt.language ?? null) === null)
-				.map(({ prompt }) => ({ prompt, stored: null })),
-			...updates
-				.map(({ id, prompt }) => ({ prompt, stored: existingById.get(id) }))
-				.filter(
-					({ prompt, stored }) =>
-						stored !== undefined && stored.value !== prompt.value && prompt.language === undefined,
-				)
-				.map(({ prompt, stored }) => ({ prompt, stored: stored?.language ?? null })),
-		];
+		const undetected = inserts.map(({ prompt }) => prompt).filter((prompt) => (prompt.language ?? null) === null);
 		const detected = new Map(
-			await Promise.all(
-				needsLanguage.map(async ({ prompt, stored }) => [prompt, await detectLanguage(prompt.value, stored)] as const),
-			),
+			await Promise.all(undetected.map(async (prompt) => [prompt, await detectLanguage(prompt.value)] as const)),
 		);
 
 		const saved = await db.transaction(async (tx) => {
@@ -566,7 +547,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 						systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
 						premiumModels: after.premiumModels,
 						...(prompt.country !== undefined ? { country: prompt.country } : {}),
-						...languageChange(prompt.language, detected.get(prompt)),
+						...(prompt.language !== undefined ? { language: prompt.language } : {}),
 					})
 					.where(and(eq(prompts.id, id), eq(prompts.brandId, data.brandId)));
 			}

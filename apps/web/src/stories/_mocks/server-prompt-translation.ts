@@ -11,3 +11,5 @@ export const translatePromptsFn = async ({
 				? source
 				: `${source} (${data.market.language}-${data.market.country})`,
 	}));
+
+export const detectPromptLanguageFn = async (_: { data: { text: string } }) => null;

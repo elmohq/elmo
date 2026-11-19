@@ -9,7 +9,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { Layers } from "lucide-react";
+import { List } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import { useBrandParams } from "@/hooks/use-route-params";
@@ -50,7 +50,7 @@ export function PromptVariantsMenu({
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={
-					<FilterTriggerButton icon={<Layers className="size-3.5" />} label="Variants" badgeCount={variants.length} />
+					<FilterTriggerButton icon={<List className="size-3.5" />} label="Variants" badgeCount={variants.length} />
 				}
 			/>
 			<DropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">

@@ -382,25 +382,8 @@ async function applyPromptUpdate(
 	return row;
 }
 
-/** New wording gets its language detected again, unless the caller names one. */
-async function withDetectedLanguage(
-	brand: PromptBrand,
-	promptId: string,
-	input: UpdatePromptInput,
-): Promise<UpdatePromptInput> {
-	if (input.value === undefined || input.language !== undefined) return input;
-	const [existing] = await db
-		.select({ value: prompts.value, language: prompts.language })
-		.from(prompts)
-		.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brand.id)));
-	if (!existing || existing.value === input.value) return input;
-	const language = await (await promptLanguageDetector(brand.id))(input.value, existing.language);
-	return language === existing.language ? input : { ...input, language };
-}
-
 export async function updatePrompt(brand: PromptBrand, promptId: string, changes: UpdatePromptInput): Promise<Prompt> {
-	const parsed = updatePromptInputSchema.parse(changes);
-	const input = await withDetectedLanguage(brand, promptId, parsed);
+	const input = updatePromptInputSchema.parse(changes);
 	const updated = await withQuotaLock(brand.organizationId, (tx, afterCommit) =>
 		applyPromptUpdate(tx, afterCommit, brand, promptId, input),
 	);
