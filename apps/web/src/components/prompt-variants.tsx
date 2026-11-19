@@ -9,6 +9,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { cn } from "@workspace/ui/lib/utils";
 import { List } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { FilterTriggerButton } from "@/components/filter-bar";
@@ -58,7 +59,11 @@ export function PromptVariantsMenu({
 					<DropdownMenuGroup>
 						<DropdownMenuLabel className="text-muted-foreground text-xs font-medium">Variants</DropdownMenuLabel>
 						{variants.map((variant) => (
-							<DropdownMenuRadioItem key={variant.id} value={variant.id} className="cursor-pointer gap-2">
+							<DropdownMenuRadioItem
+								key={variant.id}
+								value={variant.id}
+								className={cn("cursor-pointer gap-2", !variant.enabled && "opacity-50")}
+							>
 								<span className="min-w-0 flex-1 truncate">{variant.value}</span>
 								{showLocales && (
 									<span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
@@ -66,7 +71,7 @@ export function PromptVariantsMenu({
 										{languageName(variant.market.language)}
 									</span>
 								)}
-								{!variant.enabled && <span className="shrink-0 text-xs text-muted-foreground">Disabled</span>}
+								{!variant.enabled && <span className="sr-only">Disabled</span>}
 							</DropdownMenuRadioItem>
 						))}
 					</DropdownMenuGroup>
