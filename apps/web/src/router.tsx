@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { NotFoundPage } from "./components/not-found-page";
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
+import { rememberViewerTimezone } from "./lib/viewer-timezone";
 import { DefaultErrorComponent, DefaultPendingComponent } from "./router-default-components";
 import { routeTree } from "./routeTree.gen";
 
@@ -37,6 +38,8 @@ export const getRouter = () => {
 			ignoreErrors: BROWSER_NOISE,
 		});
 	}
+
+	if (!router.isServer) rememberViewerTimezone();
 
 	setupRouterSsrQueryIntegration({ router, queryClient: rqContext.queryClient });
 
