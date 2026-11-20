@@ -633,6 +633,10 @@ const EXTRACTORS: Record<string, Extractor> = {
 	brightdata: { text: extractTextFromBrightdata, citations: extractCitationsFromBrightdata },
 	oxylabs: { text: extractTextFromOxylabs, citations: extractCitationsFromOxylabs },
 	cloro: { text: extractTextFromCloro, citations: extractCitationsFromCloro },
+	treg: {
+		text: (rawOutput) => extractTextFromCloro(rawOutput?.response),
+		citations: (rawOutput) => extractCitationsFromCloro(rawOutput?.response),
+	},
 };
 
 /**

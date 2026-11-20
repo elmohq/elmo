@@ -21,7 +21,7 @@ export interface RetiredScrapeTarget {
 	replacements: string[];
 }
 
-const SCRAPERS = ["brightdata", "cloro", "olostep", "oxylabs", "searchapi"];
+const SCRAPERS = ["brightdata", "cloro", "olostep", "oxylabs", "searchapi", "treg"];
 
 /**
  * Perplexity and the Copilot app went behind a login, so no scraper reaches

@@ -185,6 +185,26 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Cloro API key.",
 	},
 	{
+		name: "TREG_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "treg",
+		description: "treg API key for Bing AI Mode through Cloro.",
+	},
+	{
+		name: "TREG_ORG",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "treg",
+		description: "treg organization slug used for collection requests.",
+	},
+	{
+		name: "TREG_MAX_COST_USD",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Per-request treg pre-reservation guard in USD, positive and at most 0.01 (default 0.01).",
+	},
+	{
 		name: "OPENROUTER_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
