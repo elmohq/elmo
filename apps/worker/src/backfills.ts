@@ -9,6 +9,7 @@ import { db } from "@workspace/lib/db/db";
 import type { HeapWalkOptions, HeapWalkPosition } from "@workspace/lib/db/heap-walk";
 import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { fillLegacyText } from "./jobs/fill-legacy-text";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const FIRST_RETRY_MS = 60_000;
 const MAX_RETRY_MS = 30 * 60_000;
@@ -52,7 +53,7 @@ async function runUntilDone(backfill: Backfill): Promise<void> {
 			const message = briefly(error);
 			console.error(`[background-migration] ${backfill.name} failed, retrying in ${retryMs / 60_000} min: ${message}`);
 			await recordBackgroundError(db, backfill.name, message).catch(() => {});
-			await new Promise((resolve) => setTimeout(resolve, retryMs));
+			await sleep(retryMs);
 		}
 	}
 }
