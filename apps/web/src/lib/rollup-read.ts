@@ -342,6 +342,17 @@ export async function getCitationTotal(scope: AnalyticsScope): Promise<number> {
 	return Number(rows[0]?.total ?? 0);
 }
 
+export async function getPerPromptCitationTotals(
+	scope: AnalyticsScope,
+): Promise<{ prompt_id: string; citations: number }[]> {
+	return queryPg<{ prompt_id: string; citations: number }>(sql`
+		SELECT prompt_id, coalesce(sum(citations), 0)::int AS citations
+		FROM rollup_citation_urls
+		WHERE ${rollupScope(scope)}
+		GROUP BY prompt_id
+	`);
+}
+
 export async function getCitationUrlStats(scope: AnalyticsScope): Promise<CitationUrlStats[]> {
 	return queryPg<CitationUrlStats>(sql`
 		SELECT

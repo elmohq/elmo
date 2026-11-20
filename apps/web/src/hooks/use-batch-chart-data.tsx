@@ -7,30 +7,19 @@ import { getBatchChartDataFn } from "@/server/visibility";
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	tags?: string[];
-	search?: string;
 }
 
 export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilters) {
 	const resolvedBrandId = useResolvedBrandId(brandId);
 
 	const query = useQuery({
-		queryKey: [
-			"batch-chart-data",
-			resolvedBrandId,
-			filters?.lookback,
-			filters?.model,
-			filters?.tags?.join(","),
-			filters?.search,
-		],
+		queryKey: ["batch-chart-data", resolvedBrandId, filters?.lookback, filters?.model],
 		queryFn: () =>
 			getBatchChartDataFn({
 				data: {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
-					tags: filters?.tags?.join(","),
-					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
