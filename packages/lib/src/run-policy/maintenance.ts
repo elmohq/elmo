@@ -30,7 +30,11 @@ export interface MaintenanceDecisions {
 	alertOverdueCount: number;
 }
 
-function isPromptOverdue(state: MaintenancePromptState, now: number, graceMs: number): boolean {
+function isPromptOverdue(
+	state: Pick<MaintenancePromptState, "promptCreatedAt" | "plan" | "lastRunAtByKey">,
+	now: number,
+	graceMs: number,
+): boolean {
 	return state.plan.targets.some(
 		(target) =>
 			targetOverdueStatus({
@@ -41,6 +45,15 @@ function isPromptOverdue(state: MaintenancePromptState, now: number, graceMs: nu
 				graceMs,
 			}).isOverdue,
 	);
+}
+
+/** Overdue beyond the alert grace — what Sentry and the local run delay banner report. Stopped prompts never are. */
+export function isPromptOverdueForAlert(
+	state: Pick<MaintenancePromptState, "promptCreatedAt" | "plan" | "lastRunAtByKey">,
+	now: Date,
+): boolean {
+	if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) return false;
+	return isPromptOverdue(state, now.getTime(), OVERDUE_ALERT_GRACE_MS);
 }
 
 type MaintenanceAction =
@@ -81,7 +94,7 @@ export function computeMaintenanceDecisions(promptStates: MaintenancePromptState
 	for (const state of promptStates) {
 		// No targets means the prompt is meant to be stopped, so it raises no alert.
 		if (state.plan.targets.length === 0 || state.plan.rescheduleHours === null) continue;
-		if (isPromptOverdue(state, nowMs, OVERDUE_ALERT_GRACE_MS)) decisions.alertOverdueCount++;
+		if (isPromptOverdueForAlert(state, now)) decisions.alertOverdueCount++;
 
 		const action = actionForPrompt(state, nowMs);
 		if (action.kind === "schedule") {

@@ -9,14 +9,17 @@ import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { RunDelayAlert } from "@/components/run-delay-alert";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { getAppName } from "@/lib/route-head";
+import { countOverduePrompts } from "@/server/run-delays";
 
 interface BrandData {
 	brand: Brand;
 	trackingState: BrandTrackingState;
 	organizationId: string;
+	overduePrompts: number;
 }
 
 const getBrandData = createServerFn({ method: "GET" })
@@ -38,6 +41,7 @@ const getBrandData = createServerFn({ method: "GET" })
 			brand,
 			trackingState: brandTrackingState(brand, entitlements),
 			organizationId: brand.organizationId,
+			overduePrompts: await countOverduePrompts(brand, brandPrompts, entitlements),
 		};
 	});
 
@@ -99,5 +103,18 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand")({
 	},
 	staleTime: 5 * 60 * 1000,
 	pendingComponent: BrandLayoutSkeleton,
-	component: () => <Outlet />,
+	component: BrandLayout,
 });
+
+function BrandLayout() {
+	const { brand, overduePrompts } = Route.useLoaderData();
+	return (
+		<>
+			<RunDelayAlert
+				overduePrompts={overduePrompts}
+				totalPrompts={brand.prompts.filter((prompt) => prompt.enabled).length}
+			/>
+			<Outlet />
+		</>
+	);
+}
