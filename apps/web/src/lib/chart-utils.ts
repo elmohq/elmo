@@ -124,6 +124,41 @@ export function toBatchChartData(
 	}));
 }
 
+/** One prompt's chart points, a column per field: every array has an entry per day the prompt ran. */
+interface PromptChartColumns {
+	date: string[];
+	total_runs: number[];
+	brand_mentioned_count: number[];
+	competitor_counts: Record<string, number>[];
+}
+
+export type BatchChartColumns = Record<string, PromptChartColumns>;
+
+export function toBatchChartColumns(points: ProcessedBatchChartDataPoint[]): BatchChartColumns {
+	const columns: BatchChartColumns = {};
+	for (const point of points) {
+		columns[point.prompt_id] ??= { date: [], total_runs: [], brand_mentioned_count: [], competitor_counts: [] };
+		const prompt = columns[point.prompt_id];
+		prompt.date.push(point.date);
+		prompt.total_runs.push(point.total_runs);
+		prompt.brand_mentioned_count.push(point.brand_mentioned_count);
+		prompt.competitor_counts.push(point.competitor_counts);
+	}
+	return columns;
+}
+
+export function fromBatchChartColumns(columns: BatchChartColumns): ProcessedBatchChartDataPoint[] {
+	return Object.entries(columns).flatMap(([prompt_id, prompt]) =>
+		prompt.date.map((date, day) => ({
+			prompt_id,
+			date,
+			total_runs: prompt.total_runs[day],
+			brand_mentioned_count: prompt.brand_mentioned_count[day],
+			competitor_counts: prompt.competitor_counts[day],
+		})),
+	);
+}
+
 /**
  * Seeded with each prompt's earliest observation so days before its first run
  * still count; otherwise a staggered schedule reads as a ramp-up.
