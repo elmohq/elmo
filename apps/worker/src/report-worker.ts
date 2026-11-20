@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -10,7 +11,6 @@ import { computeSystemTags, isPromptBranded } from "@workspace/lib/tag-utils";
 import { extractRun } from "@workspace/lib/text-extraction";
 import { and, eq, inArray } from "drizzle-orm";
 import { mentionAnalyzer } from "./mention-judge";
-import { setTimeout as sleep } from "node:timers/promises";
 
 interface CompetitorResult {
 	name: string;
@@ -283,7 +283,7 @@ async function testCandidates(args: {
 	for (let i = 0; i < candidatePrompts.length; i += CANDIDATE_BATCH_SIZE) {
 		results.push(...(await Promise.all(candidatePrompts.slice(i, i + CANDIDATE_BATCH_SIZE).map(testOne))));
 		// Avoid sending a new provider burst immediately after the previous batch.
-		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length) await sleep(CANDIDATE_BATCH_PAUSE_MS)
+		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length) await sleep(CANDIDATE_BATCH_PAUSE_MS);
 	}
 
 	// A report built from no answers would read as "never mentioned"; fail it instead.

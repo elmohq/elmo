@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import {
 	beginBackgroundMigration,
 	finishBackgroundMigration,
@@ -9,7 +10,6 @@ import { db } from "@workspace/lib/db/db";
 import type { HeapWalkOptions, HeapWalkPosition } from "@workspace/lib/db/heap-walk";
 import { resolveUnpagedCitations } from "@workspace/lib/rollups";
 import { fillLegacyText } from "./jobs/fill-legacy-text";
-import { setTimeout as sleep } from "node:timers/promises";
 
 const FIRST_RETRY_MS = 60_000;
 const MAX_RETRY_MS = 30 * 60_000;

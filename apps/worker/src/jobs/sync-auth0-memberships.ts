@@ -21,7 +21,6 @@ export interface SyncAuth0MembershipsData {
 const BATCH_SIZE = 5;
 const BATCH_DELAY_MS = 1000;
 
-
 type Auth0Account = Awaited<ReturnType<typeof listAuth0Accounts>>[number];
 
 /** Syncs one batch concurrently and reports how many of it landed. */
