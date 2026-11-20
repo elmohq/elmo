@@ -95,6 +95,25 @@ Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per r
 
 Cloro publishes [per-engine uptime](https://status.cloro.dev/), where most scraping providers only report on their API as a whole. Its status page tracks ChatGPT, Gemini, Google AI Mode, Google AI Overview, and Bing AI Mode separately, with incident history for each. When a surface's runs start failing in Elmo, that page tells you whether the problem is upstream before you start digging through your own setup.
 
+### Treg
+
+[treg](https://treg.to) can collect Bing AI Mode through Cloro without configuring a direct Cloro key. This integration supports only `bing-ai-mode:treg:online`; other treg endpoints are not interchangeable with Elmo's native providers.
+
+```bash
+TREG_API_KEY=your-treg-api-key
+TREG_ORG=your-organization-slug
+```
+
+Append `bing-ai-mode:treg:online` to `SCRAPE_TARGETS` alongside your existing targets. Your existing onboarding and mention-judging credentials are still required. The advanced CLI setup also offers Treg as an optional scraper.
+
+Treg uses a synchronous Cloro Bing endpoint, not Cloro's asynchronous task API. Bing submissions are serialized within each Elmo process; multiple workers still share treg's upstream capacity. Requests time out after three minutes once submitted. Failed or rate-limited submissions are not automatically retried by this provider, and there is no direct Cloro fallback. When a request is interrupted, use its idempotency key to reconcile it before submitting a replacement.
+
+`TREG_MAX_COST_USD` sets treg's per-request pre-reservation guard, defaults to `0.01`, and must be positive and no greater than `0.01`. It is not a monthly budget or a final invoice. Missing charge metadata stays unknown; a zero aggregate from an empty ledger does not confirm a final zero charge. Check current rates and billing in treg.
+
+<Callout type="warn">
+Adding a target to an existing deployment can make it immediately due: brands without explicit model picks use all configured targets, and maintenance may expedite prompts that have never run on the added target. Review activation timing before restarting the worker if you do not want an immediate collection batch.
+</Callout>
+
 ### BrightData
 
 ```bash

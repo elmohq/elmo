@@ -10,6 +10,7 @@ import { openrouter } from "./registry/openrouter";
 import { oxylabs } from "./registry/oxylabs";
 import { searchapi } from "./registry/searchapi";
 import { stub } from "./registry/stub";
+import { treg } from "./registry/treg";
 import type { ModelConfig, Provider, ProviderAccess } from "./types";
 
 export { validateScrapeTargets } from "./config";
@@ -31,6 +32,7 @@ const providerMap: Record<string, Provider> = {
 	brightdata,
 	oxylabs,
 	cloro,
+	treg,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
 	"mistral-api": mistralApi,

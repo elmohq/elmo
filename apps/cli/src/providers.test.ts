@@ -61,6 +61,18 @@ describe("collectProvider", () => {
 		expect(targets).toEqual(["claude:anthropic-api:claude-haiku-5-5:online"]);
 	});
 
+	it("adds treg Bing without replacing existing targets and masks only the API key", async () => {
+		answers.push(true, "test-treg-key", "example-team", ["bing-ai-mode:treg:online"]);
+		const env: Record<string, string> = {};
+		const targets = ["chatgpt:dataforseo:online"];
+
+		await collectProvider(providerSpec("treg"), env, targets);
+
+		expect(env).toEqual({ TREG_API_KEY: "test-treg-key", TREG_ORG: "example-team" });
+		expect(targets).toEqual(["chatgpt:dataforseo:online", "bing-ai-mode:treg:online"]);
+		expect(asked.map((a) => a.kind)).toEqual(["confirm", "password", "text", "multiselect"]);
+	});
+
 	it("collects both scraper credentials and the picked surfaces", async () => {
 		answers.push(true, "user@example.com", "hunter2", ["chatgpt:oxylabs:online", "google-ai-mode:oxylabs:online"]);
 		const env: Record<string, string> = {};

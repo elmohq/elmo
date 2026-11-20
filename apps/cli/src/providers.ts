@@ -147,6 +147,24 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 		picker: scraperPicker("Cloro", "cloro", CLORO_MODELS),
 	},
 	{
+		id: "treg",
+		kind: "scraper",
+		label: "Treg",
+		costHint: "Bing AI Mode through Cloro; billed by treg",
+		confirmDefault: false,
+		signup: { message: "Create an API key and find your organization slug", url: "https://treg.to" },
+		credentials: [
+			{ envKey: "TREG_API_KEY", message: "Treg API Key", secret: true, validate: required },
+			{ envKey: "TREG_ORG", message: "Treg Organization Slug", secret: false, validate: required },
+		],
+		picker: {
+			message: "Track Bing AI Mode via Treg",
+			options: [{ value: "bing-ai-mode:treg:online", label: "Bing AI Mode" }],
+			initialValues: ["bing-ai-mode:treg:online"],
+			required: true,
+		},
+	},
+	{
 		id: "brightdata",
 		kind: "scraper",
 		label: "BrightData",
