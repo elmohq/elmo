@@ -11,11 +11,11 @@ interface ParsedSitemap {
 function decode(value: string): string {
 	return value
 		.replace(/^<!\[CDATA\[|\]\]>$/g, "")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&apos;/g, "'")
-		.replace(/&amp;/g, "&")
+		.replaceAll("&lt;", "<")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&quot;", '"')
+		.replaceAll("&apos;", "'")
+		.replaceAll("&amp;", "&")
 		.trim();
 }
 

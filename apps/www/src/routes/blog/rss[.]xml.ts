@@ -3,11 +3,11 @@ import { canonicalUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 
 function escapeXml(value: string): string {
 	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&apos;");
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&apos;");
 }
 
 export const Route = createFileRoute("/blog/rss.xml")({
