@@ -659,7 +659,7 @@ function ProviderTitle({ provider, rest }: { provider: string; rest: string }) {
 					(
 					{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
 						? rest
-						: rest.replace(/online/g, "web search")}
+						: rest.replaceAll("online", "web search")}
 					)
 				</span>
 			)}
