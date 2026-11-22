@@ -8,6 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { brandSchema } from "@/lib/api/schemas/brands";
 import { requireBrandInScope } from "@/lib/api/scope";
 import {
 	apiUpdateInputToInternal,
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
 			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
+				response: brandSchema,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => {
 					return buildBrandResult(await requireBrandInScope(auth, params.brandId));
@@ -31,6 +33,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			}),
 
 			PATCH: createApiHandler({
+				response: brandSchema,
 				body: updateBrandBodySchema.refine(
 					(body) => Object.keys(body).length > 0,
 					"At least one of brandName, domains, aliases, or enabled must be provided",

@@ -6,6 +6,7 @@
  */
 
 import type { Entitlements } from "@workspace/config/entitlements";
+import { KNOWN_MODELS } from "@workspace/config/models";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
@@ -46,7 +47,12 @@ function intervalForRate(runsPerDay: number): number {
 
 function unlimitedRunPlan(input: ResolveRunPlanInput): PromptRunPlan {
 	const interval = input.brand.delayOverrideHours ?? input.defaultDelayHours;
-	const targets = selectTargetsForBrand(input.scrapeTargets, input.brand.enabledModels).map((config) => ({
+	// A pick can outlive its target: a retired scrape target is skipped when
+	// SCRAPE_TARGETS is parsed. The brand's other picks should keep running, so
+	// only a name Elmo has never tracked still fails.
+	const configured = new Set(input.scrapeTargets.map((target) => target.model));
+	const picks = input.brand.enabledModels?.filter((model) => configured.has(model) || !(model in KNOWN_MODELS)) ?? null;
+	const targets = selectTargetsForBrand(input.scrapeTargets, picks).map((config) => ({
 		config,
 		intervalHours: interval,
 		replication: getRunsPerPrompt(),

@@ -3,6 +3,8 @@ import { db } from "@workspace/lib/db/db";
 import { getAllProviders } from "@workspace/lib/providers";
 import { type SQL, sql } from "drizzle-orm";
 
+// Timestamps and dates come back as Postgres text, not `Date`s: drizzle only
+// converts them in typed selects, where it knows the column.
 export async function queryPg<T>(query: SQL): Promise<T[]> {
 	const result = await db.execute(query);
 	return result.rows as T[];

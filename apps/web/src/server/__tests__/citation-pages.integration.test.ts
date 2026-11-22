@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getCitationDomainPage, getCitationSummary, getCitationUrlPage } from "@/lib/citation-read";
+import {
+	getCitationChannelRows,
+	getCitationDomainPage,
+	getCitationSummary,
+	getCitationUrlPage,
+} from "@/lib/citation-read";
 import {
 	getPerPromptCitationDomains,
 	getPerPromptDailyCitationClasses,
@@ -182,5 +187,48 @@ describe("citation pages", () => {
 			byOwner[row.owner ?? "neither"] = (byOwner[row.owner ?? "neither"] ?? 0) + row.count;
 		}
 		expect(byOwner).toEqual({ brand: 1, competitor: 2, neither: 1 });
+	});
+});
+
+describe("citation channel rows", () => {
+	let channelBrandId: string;
+	let scope: { brandId: string; timezone: string; promptIds: string[]; from: string; to: string };
+
+	beforeAll(async () => {
+		channelBrandId = await createBrand({ name: "Acme", website: "https://acme.example" });
+		const prompt = await createPrompt(channelBrandId, { value: "best crm" });
+		const answer = async (at: string, mentions: { brand: boolean; competitors: string[] }, urls: string[]) => {
+			const run = await createRun(channelBrandId, prompt, {
+				at,
+				brandMentioned: mentions.brand,
+				competitors: mentions.competitors,
+			});
+			for (const url of urls) await createCitation(run, url);
+		};
+		await answer("2026-03-09T10:00:00Z", { brand: true, competitors: ["Rival"] }, [
+			"https://video.example/a",
+			"https://review.example/b",
+			GOOGLE_SEARCH,
+		]);
+		await answer("2026-03-10T10:00:00Z", { brand: false, competitors: ["Rival"] }, ["https://video.example/a"]);
+		await answer("2026-03-11T10:00:00Z", { brand: false, competitors: [] }, ["https://video.example/c"]);
+		await rebuildRollups(channelBrandId);
+		scope = { brandId: channelBrandId, timezone: "UTC", promptIds: [prompt], from: "2026-03-08", to: "2026-03-14" };
+	});
+
+	afterAll(async () => {
+		await deleteBrand(channelBrandId);
+	});
+
+	it("counts each domain's citations, and those from answers mentioning the brand and each competitor", async () => {
+		const { domains, competitors } = await getCitationChannelRows(scope);
+		expect(Object.fromEntries(domains.map((row) => [row.domain, [row.count, row.brand_count]]))).toEqual({
+			"video.example": [3, 1],
+			"review.example": [1, 1],
+		});
+		expect(Object.fromEntries(competitors.map((row) => [row.domain, [row.competitor_name, row.count]]))).toEqual({
+			"video.example": ["Rival", 2],
+			"review.example": ["Rival", 1],
+		});
 	});
 });

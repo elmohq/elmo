@@ -46,23 +46,23 @@ export const RENAMEABLE_BRAND_NAME = "Test Rename";
 export const TEST_BRAND_WEBSITE = "https://example.com";
 
 export const PROMPT_IDS = {
-  branded1: "00000000-0000-0000-0000-000000000001",
-  branded2: "00000000-0000-0000-0000-000000000002",
-  unbranded1: "00000000-0000-0000-0000-000000000003",
-  branded3: "00000000-0000-0000-0000-000000000004",
-  unbranded2: "00000000-0000-0000-0000-000000000005",
+  branded1: "00000000-0000-4000-8000-000000000001",
+  branded2: "00000000-0000-4000-8000-000000000002",
+  unbranded1: "00000000-0000-4000-8000-000000000003",
+  branded3: "00000000-0000-4000-8000-000000000004",
+  unbranded2: "00000000-0000-4000-8000-000000000005",
 } as const;
 
 export const COMPETITOR_IDS = {
-  competitorA: "00000000-0000-0000-0000-100000000001",
-  competitorB: "00000000-0000-0000-0000-100000000002",
+  competitorA: "00000000-0000-4000-8000-100000000001",
+  competitorB: "00000000-0000-4000-8000-100000000002",
 } as const;
 
 export const REPORT_IDS = {
-  completed: "00000000-0000-0000-0000-300000000001",
-  pending: "00000000-0000-0000-0000-300000000002",
-  processing: "00000000-0000-0000-0000-300000000003",
-  failed: "00000000-0000-0000-0000-300000000004",
+  completed: "00000000-0000-4000-8000-300000000001",
+  pending: "00000000-0000-4000-8000-300000000002",
+  processing: "00000000-0000-4000-8000-300000000003",
+  failed: "00000000-0000-4000-8000-300000000004",
 } as const;
 
 // A tenant the E2E user is not a member of.
@@ -71,12 +71,12 @@ export const NIKE_BRAND_ID = "nike";
 /** In the tenant the E2E user cannot see, so no dashboard spec's list changes. */
 export const NIKE_SECOND_BRAND_ID = "nike-jordan";
 export const NIKE_PROMPT_IDS = {
-  training: "00000000-0000-0000-0000-400000000001",
-  lifestyle: "00000000-0000-0000-0000-400000000002",
+  training: "00000000-0000-4000-8000-400000000001",
+  lifestyle: "00000000-0000-4000-8000-400000000002",
 } as const;
 export const NIKE_COMPETITOR_IDS = {
-  adidas: "00000000-0000-0000-0000-410000000001",
-  puma: "00000000-0000-0000-0000-410000000002",
+  adidas: "00000000-0000-4000-8000-410000000001",
+  puma: "00000000-0000-4000-8000-410000000002",
 } as const;
 
 /** Tiny limits, so a write can exceed one without seeding hundreds of rows. */

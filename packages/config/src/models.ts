@@ -10,13 +10,15 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	"google-ai-mode": { label: "Google AI Mode", iconId: "google" },
 	"google-ai-overview": { label: "Google AI Overview", iconId: "google" },
 	gemini: { label: "Gemini", iconId: "google" },
-	copilot: { label: "Copilot", iconId: "microsoft" },
+	copilot: { label: "Microsoft Copilot", iconId: "microsoft" },
+	"bing-ai-mode": { label: "Bing AI Mode", iconId: "microsoft" },
 	perplexity: { label: "Perplexity", iconId: "perplexity" },
 	grok: { label: "Grok", iconId: "x" },
 	mistral: { label: "Mistral", iconId: "mistral" },
 	deepseek: { label: "DeepSeek", iconId: "deepseek" },
 	kimi: { label: "Kimi", iconId: "moonshotai" },
 	qwen: { label: "Qwen", iconId: "qwen" },
+	meta: { label: "Meta", iconId: "meta" },
 };
 
 export function getModelMeta(model: string): ModelMeta {

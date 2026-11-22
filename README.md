@@ -35,7 +35,7 @@ Elmo is an open-source, self-hosted platform for optimizing your AI visibility, 
 
 Buyers increasingly ask AI before they search or visit a website. Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors, uncover citation gaps, and win more recommendations in AI answers.
 
-It's a free alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/elmo-vs-profound), [Peec](https://www.elmohq.com/ai-visibility-tools/elmo-vs-peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/elmo-vs-otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
+It's an open-source alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/alternatives/profound), [Peec](https://www.elmohq.com/ai-visibility-tools/alternatives/peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/alternatives/otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
 
 ## Demo
 
@@ -68,7 +68,7 @@ Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how E
 ## How Elmo Measures AI Visibility
 
 1. **Prompts** — the questions your buyers ask AI, generated from your website or written by hand.
-2. **Runs** — a worker runs every prompt several times a day on each engine you track. [Multi-engine tracking](https://www.elmohq.com/features/multi-engine-tracking) scrapes the real consumer apps (ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, Copilot) and calls model APIs for Claude, Grok, and others; the [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares the options.
+2. **Runs** — a worker runs every prompt several times a day on each engine you track. [Multi-engine tracking](https://www.elmohq.com/features/multi-engine-tracking) scrapes the real consumer apps (ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Bing AI Mode) and calls model APIs for Claude, Perplexity, Grok, and others; the [providers guide](https://www.elmohq.com/docs/user-guide/providers) compares the options.
 3. **Analysis** — each answer is stored raw in PostgreSQL with its citations and fan-out searches, then [Jev](https://typesafe.ai) judges which companies it really mentions, the sentiment toward each, and the passage that shows it.
 4. **Metrics** — visibility is the share of runs that mention you; sentiment scores positive 100, neutral and mixed 50, negative 0; position averages your rank among companies named. Everything filters by prompt, tag, engine, and date.
 
@@ -87,7 +87,7 @@ Most AI visibility platforms are closed SaaS. Here is how Elmo compares to the w
 
 | Tool | ChatGPT | Google AI Mode | Google AI Overviews | Gemini | Copilot | Claude |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Elmo** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Elmo** | ✅ | ✅ | ✅ | ✅ | Bing AI Mode | ✅ |
 | Profound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Peec AI | ✅ | ✅ | ✅ | ✅ | ✅ | Enterprise |
 | Otterly AI | ✅ | Add-on | ✅ | Add-on | ✅ | Add-on |
@@ -108,7 +108,7 @@ See how teams in specific industries use Elmo: [AEO by industry](https://www.elm
 
 The recommended setup uses two API keys:
 
-- **[Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme)** scrapes the real ChatGPT, Google AI Mode, Google AI Overviews, Gemini, Perplexity, and Copilot apps.
+- **[Cloro](https://cloro.dev?fpr=elmo&fp_sid=readme)** scrapes the real ChatGPT, Google AI Mode, Google AI Overviews, and Gemini apps.
 - **[OpenRouter](https://openrouter.ai)** runs onboarding, opportunities, and Jev, the model that judges mentions and sentiment.
 
 Then install the CLI, which walks you through configuration, and start the stack with Docker Compose:
@@ -120,6 +120,61 @@ elmo compose up -d
 ```
 
 See the [getting started guide](https://www.elmohq.com/docs/getting-started) for the full walkthrough and the [providers guide](https://www.elmohq.com/docs/user-guide/providers) for other scrapers and model APIs.
+
+## MCP Server
+
+Elmo's MCP server lets an AI client read your visibility data and manage the prompts Elmo tracks. Full setup for every client is in the [MCP docs](https://www.elmohq.com/docs/api/mcp).
+
+- **Endpoint:** `https://app.elmohq.com/api/mcp` on Elmo Cloud, or `<APP_URL>/api/mcp` on a self-hosted instance
+- **Transport:** Streamable HTTP (remote server, nothing to install locally)
+- **Authentication:** sign in from the client with OAuth (no app to register), or send an API key from **Settings → API Keys** as `Authorization: Bearer elmo_...`. A key can be read-only and limited to selected brands.
+
+| Tool | What It Does |
+| --- | --- |
+| `whoami` | What this connection is and what it can access |
+| `list_models` | The AI models this instance knows about and which it tracks |
+| `list_brands`, `get_brand` | Brands you track and their domains, aliases, models, and cadence |
+| `list_competitors` | Competitors tracked for a brand |
+| `list_prompts`, `list_prompt_tags` | Tracked prompts and their tags |
+| `get_analytics` | Visibility, share of voice, sentiment, and position over a time window |
+| `get_prompt_performance` | The same metrics broken down by prompt |
+| `get_citations` | The pages and domains AI answers cite |
+| `get_query_fanout` | The web searches models ran before answering |
+| `get_opportunities` | The latest opportunities report: what to write, what to fix, and the risks found |
+| `list_runs`, `get_run` | Recorded answers for a prompt, and one answer's full text and citations |
+| `get_billing` | Plan and usage |
+| `create_prompts`, `update_prompt` | Add and edit tracked prompts (needs write access) |
+
+A connection is only offered the tools its access allows. No tool deletes data.
+
+**Claude Code** — then run `/mcp` and choose **Authenticate**:
+
+```bash
+claude mcp add --transport http elmo https://app.elmohq.com/api/mcp
+```
+
+With an API key instead:
+
+```bash
+claude mcp add --transport http elmo https://app.elmohq.com/api/mcp \
+  --header "Authorization: Bearer elmo_..."
+```
+
+**VS Code** — run `code --add-mcp '{"name":"elmo","type":"http","url":"https://app.elmohq.com/api/mcp"}'`, or add it to `mcp.json` (omit `headers` to sign in with OAuth instead):
+
+```json
+{
+  "servers": {
+    "elmo": {
+      "type": "http",
+      "url": "https://app.elmohq.com/api/mcp",
+      "headers": { "Authorization": "Bearer elmo_..." }
+    }
+  }
+}
+```
+
+**Cursor, Codex, Claude.ai, ChatGPT, and others** — see the [MCP docs](https://www.elmohq.com/docs/api/mcp), or configure every client on your machine at once with `npx add-mcp https://app.elmohq.com/api/mcp --name elmo`.
 
 ## Skill
 

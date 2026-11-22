@@ -54,7 +54,7 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 - `typescriptSdk` / `pythonSdk` — an official, published client library for their API (not just curl snippets)
 - `mcpServer` — an MCP server for AI assistants
 - `biConnectors` — Looker Studio, NinjaCat, etc.
-- `whiteLabelAgency` — white-label or agency features
+- `whiteLabelAgency` — white-label: custom-branded dashboards or reports for agency clients (multi-client workspaces alone don't count)
 - `openSource` — source code available
 - `contentGeneration` — AI content creation
 

@@ -13,6 +13,7 @@ interface MockDomain {
 let _citations: unknown;
 let _domains: MockDomain[] = [];
 let _urls: { url: string; domain: string; count: number; category: string; title?: string }[] = [];
+let _channels: unknown = { totalCitations: 0, subjects: [], overall: {}, channels: [] };
 let _flowRows: CitationFlowRow[] = [];
 
 export function setMockCitations(data: unknown) {
@@ -27,10 +28,15 @@ export function setMockCitationUrls(urls: typeof _urls) {
 	_urls = urls;
 }
 
+export function setMockCitationChannels(channels: unknown) {
+	_channels = channels;
+}
+
 export function setMockCitationFlowRows(rows: CitationFlowRow[]) {
 	_flowRows = rows;
 }
 
+export const getCitationChannelsFn = async (..._args: unknown[]) => _channels;
 export const getCitationsFn = async (..._args: unknown[]) => _citations;
 export const getCitationUrlsFn = async ({ data }: { data: { category?: string; page: number; pageSize: number } }) => {
 	const matching = _urls.filter((u) => !data.category || u.category === data.category);

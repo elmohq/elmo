@@ -14,9 +14,23 @@ const COMPETITOR_COLUMNS = {
 	updatedAt: competitors.updatedAt,
 } as const;
 
+type Competitor = typeof competitors.$inferSelect;
+
 export type CompetitorSummary = {
-	[K in keyof typeof COMPETITOR_COLUMNS]: (typeof competitors.$inferSelect)[K];
+	[K in keyof typeof COMPETITOR_COLUMNS]: Competitor[K];
 };
+
+export function toCompetitorSummary(competitor: Competitor): CompetitorSummary {
+	return {
+		id: competitor.id,
+		brandId: competitor.brandId,
+		name: competitor.name,
+		domains: competitor.domains,
+		aliases: competitor.aliases,
+		createdAt: competitor.createdAt,
+		updatedAt: competitor.updatedAt,
+	};
+}
 
 export interface ListCompetitorsFilters {
 	brandId?: string;

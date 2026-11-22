@@ -1,6 +1,7 @@
 // Imported by the browser too, so it reads nothing from the database layer.
 import type { Sentiment } from "@workspace/lib/mentions";
 import { z } from "zod";
+import type { sentimentSummarySchema } from "@/lib/api/schemas/sentiment";
 
 export type { Sentiment };
 export const SENTIMENTS = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Sentiment[];
@@ -73,14 +74,7 @@ export const NO_ASSESSMENTS: AssessmentSums = {
 
 export type SentimentCounts = Record<Sentiment, number>;
 
-export interface SentimentSummary extends SentimentCounts {
-	/**
-	 * Net sentiment on a 0–1 scale: positive counts 1, neutral and mixed ½, negative 0. So ½ means AI is
-	 * neutral about the company on balance, rather than counting a factual mention against it. Null with
-	 * no mention that has a sentiment.
-	 */
-	score: number | null;
-}
+export type SentimentSummary = z.infer<typeof sentimentSummarySchema>;
 
 export interface MentionQuality {
 	sentiment: SentimentSummary;
@@ -91,12 +85,6 @@ export interface MentionQuality {
 /** Runs with a sentiment; shares are of these. */
 const sentimentRuns = (sums: AssessmentSums) =>
 	sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
-
-export interface PositionPoint {
-	date: string;
-	/** The brand's average position that day, 1 being named first; null when never ranked. */
-	average: number | null;
-}
 
 /** One decimal: positions are small whole numbers, so a finer average only adds noise. */
 export function averagePosition(sum: number, runs: number): number | null {

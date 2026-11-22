@@ -7,6 +7,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
@@ -44,17 +45,26 @@ interface WizardData {
 	prompts: EditablePrompt[];
 }
 
+const DOMAIN_PASTE_SPLITTER = /[\n,\t]+/;
+const normalizeDomain = (raw: string) => cleanAndValidateDomain(raw) ?? raw.trim();
+
 const EditableTagsInput = memo(
 	({
 		items,
 		onValueChange,
 		placeholder = "Add item...",
 		maxItems = 10,
+		normalizeValue,
+		pasteSplitter,
+		onValidate,
 	}: {
 		items: string[];
 		onValueChange: (value: string[]) => void;
 		placeholder?: string;
 		maxItems?: number;
+		normalizeValue?: (raw: string) => string;
+		pasteSplitter?: RegExp;
+		onValidate?: (value: string, current: string[]) => true | string;
 	}) => (
 		<div className="space-y-2">
 			<TagsInput
@@ -63,6 +73,9 @@ const EditableTagsInput = memo(
 				placeholder={placeholder}
 				searchPlaceholder={placeholder}
 				maxItems={maxItems}
+				normalizeValue={normalizeValue}
+				pasteSplitter={pasteSplitter}
+				onValidate={onValidate}
 			/>
 			<p className="text-xs text-muted-foreground">
 				<strong>
@@ -104,10 +117,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		poll: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
 		cancel: () => cancelAnalyzeBrandFn({ data: { brandId: brandId! } }),
 		onDone: ({ suggestion }) => {
+			const website = brand?.website || suggestion.website || "";
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
-				website: brand?.website || suggestion.website || "",
-				additionalDomains: suggestion.additionalDomains,
+				website,
+				additionalDomains: suggestion.additionalDomains.reduce<string[]>(
+					(kept, domain) => (validateAdditionalDomain(domain, [website, ...kept]) === true ? [...kept, domain] : kept),
+					[],
+				),
 				aliases: suggestion.aliases,
 				competitors: suggestion.competitors.map((c) =>
 					newCompetitorEntry({
@@ -150,6 +167,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		[],
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
+
+	const validateDomain = useCallback(
+		(val: string, current: string[]) =>
+			validateAdditionalDomain(val, [data.website.trim() || brand?.website, ...current]),
+		[data.website, brand?.website],
+	);
 
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
@@ -276,6 +299,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							onValueChange={updateAdditionalDomains}
 							placeholder="Add domain..."
 							maxItems={10}
+							normalizeValue={normalizeDomain}
+							pasteSplitter={DOMAIN_PASTE_SPLITTER}
+							onValidate={validateDomain}
 						/>
 					</div>
 					<div>

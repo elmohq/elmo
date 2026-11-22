@@ -6,6 +6,7 @@ import {
 import { GOOGLE_STATIC_CATEGORY, type StaticCategory } from "@workspace/lib/citations/page-classification";
 import { type SQL, sql } from "drizzle-orm";
 import { type AnalyticsScope, queryPg, scopeFilter } from "@/lib/analytics-sql";
+import type { ChannelRows } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 
 export type CitationOwner = "brand" | "competitor";
@@ -399,6 +400,65 @@ export async function getCitationDomainPage(
 		rows: rows.map(({ top_count: _count, top_url: _url, ...row }) => row),
 		total,
 	}));
+}
+
+/** Every rollup shares this key, which in practice holds one run: one answer and what it cited. */
+const RUN_KEY = sql`brand_id, bucket, prompt_id, model, provider, web_search_enabled`;
+
+/**
+ * Citations by domain, Google surfaces aside, with how many came from answers
+ * that mention the brand and each competitor.
+ */
+export async function getCitationChannelRows(scope: AnalyticsScope): Promise<ChannelRows> {
+	const [row] = await queryPg<{ [K in keyof ChannelRows]: ChannelRows[K] | null }>(sql`
+		WITH
+			cited AS (
+				SELECT
+					r.bucket, r.prompt_id, r.model, r.provider, r.web_search_enabled, r.page_id, r.citations,
+					coalesce(pr.brand_mentioned_runs, 0) > 0 AS brand_mentioned
+				FROM rollup_citation_urls r
+				LEFT JOIN rollup_prompt_runs pr USING (${RUN_KEY})
+				WHERE ${rollupScope(scope, "r")}
+			),
+			page_competitors AS (
+				SELECT c.page_id, m.competitor_name, sum(c.citations)::int AS count
+				FROM cited c
+				JOIN rollup_competitor_mentions m ON m.brand_id = ${scope.brandId} AND m.bucket = c.bucket
+					AND m.prompt_id = c.prompt_id AND m.model = c.model AND m.provider = c.provider
+					AND m.web_search_enabled = c.web_search_enabled AND m.runs > 0
+				GROUP BY c.page_id, m.competitor_name
+			),
+			pages AS (
+				SELECT t.page_id, j.domain, j.static_category, t.count, t.brand_count
+				FROM (
+					SELECT
+						page_id,
+						sum(citations)::int AS count,
+						coalesce(sum(citations) FILTER (WHERE brand_mentioned), 0)::int AS brand_count
+					FROM cited
+					GROUP BY page_id
+				) t
+				JOIN rollup_citation_pages j ON j.brand_id = ${scope.brandId} AND j.page_id = t.page_id
+				WHERE j.static_category <> ${GOOGLE_STATIC_CATEGORY}
+			)
+		SELECT
+			(
+				SELECT json_agg(d) FROM (
+					SELECT domain, static_category, sum(count)::int AS count, sum(brand_count)::int AS brand_count
+					FROM pages
+					GROUP BY domain, static_category
+				) d
+			) AS domains,
+			(
+				SELECT json_agg(c) FROM (
+					SELECT p.domain, p.static_category, pc.competitor_name, sum(pc.count)::int AS count
+					FROM page_competitors pc
+					JOIN pages p ON p.page_id = pc.page_id
+					GROUP BY p.domain, p.static_category, pc.competitor_name
+				) c
+			) AS competitors
+	`);
+	return { domains: row?.domains ?? [], competitors: row?.competitors ?? [] };
 }
 
 export async function getCitationTotals(

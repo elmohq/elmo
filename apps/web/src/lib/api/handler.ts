@@ -108,6 +108,8 @@ export interface ApiHandlerMeta {
 	kind: "endpoint" | "method-guard";
 	scopes: readonly ApiScope[];
 	adminOnly: boolean;
+	/** What the route answers when it works, where it states it. */
+	reply?: { status: number; schema: z.ZodType };
 }
 
 function brand<T extends object>(handler: T, meta: ApiHandlerMeta): T {
@@ -152,7 +154,24 @@ async function parseInputs<P, Q, B>(
 	return { params: parsedParams.data, query: parsedQuery.data, body: parsedBody.data };
 }
 
-export function createApiHandler<P = Record<string, string>, Q = undefined, B = undefined>(opts: {
+/**
+ * A value `Response.json` writes as `T`: it sends a `Date` as its ISO string,
+ * which is how a timestamp read from the database reaches the wire.
+ */
+type Sent<T> = T extends string
+	? T | Date
+	: T extends readonly (infer E)[]
+		? readonly Sent<E>[]
+		: T extends object
+			? { [K in keyof T]: Sent<T[K]> }
+			: T;
+
+export function createApiHandler<
+	P = Record<string, string>,
+	Q = undefined,
+	B = undefined,
+	R extends z.ZodType | undefined = undefined,
+>(opts: {
 	params?: z.ZodType<P>;
 	query?: z.ZodType<Q>;
 	body?: z.ZodType<B>;
@@ -161,7 +180,10 @@ export function createApiHandler<P = Record<string, string>, Q = undefined, B = 
 	adminOnly?: boolean;
 	adminOnlyHint?: string;
 	mapError?: (err: unknown) => ApiError | undefined;
-	handle: (ctx: ApiHandlerContext<P, Q, B>) => Promise<Response | object>;
+	/** The reply `handle` returns. Read by types and tests only: nothing parses it. */
+	response?: R;
+	/** Checked against `response` where the route states one. A `Response` is the route's own word. */
+	handle: (ctx: ApiHandlerContext<P, Q, B>) => Promise<Response | (R extends z.ZodType ? Sent<z.input<R>> : object)>;
 }) {
 	const handler = async ({
 		request,
@@ -199,6 +221,7 @@ export function createApiHandler<P = Record<string, string>, Q = undefined, B = 
 		kind: "endpoint",
 		scopes: opts.scopes ?? [],
 		adminOnly: opts.adminOnly === true,
+		...(opts.response ? { reply: { status: opts.status ?? 200, schema: opts.response } } : {}),
 	});
 }
 

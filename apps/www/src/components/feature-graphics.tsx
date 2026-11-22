@@ -391,13 +391,13 @@ const SCRAPED_ENGINES = [
 	{ name: "AI Overviews", iconId: "google" },
 	{ name: "AI Mode", iconId: "google" },
 	{ name: "Gemini", iconId: "gemini" },
-	{ name: "Perplexity", iconId: "perplexity" },
-	{ name: "Copilot", iconId: "microsoft" },
+	{ name: "Bing AI Mode", iconId: "microsoft" },
 ];
 
 const API_ENGINES = [
 	{ name: "Claude", iconId: "anthropic" },
 	{ name: "Grok", iconId: "x" },
+	{ name: "Perplexity", iconId: "perplexity" },
 	{ name: "Mistral", iconId: "mistral" },
 	{ name: "DeepSeek", iconId: "deepseek" },
 	{ name: "Qwen", iconId: "qwen" },

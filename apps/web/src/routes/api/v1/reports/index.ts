@@ -13,6 +13,7 @@ import { count, desc } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { createdReportSchema, reportListSchema } from "@/lib/api/schemas/reports";
 import { createReport, ReportCreateError, ReportQueueError } from "@/server/reports-core";
 
 const createReportBody = z.object({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
 		handlers: withMethodGuard({
 			POST: createApiHandler({
+				response: createdReportSchema,
 				adminOnly: true,
 				body: createReportBody,
 				status: 201,
@@ -52,7 +54,8 @@ export const Route = createFileRoute("/api/v1/reports/")({
 
 					return {
 						reportId: createdReport.id,
-						status: createdReport.status,
+						// createReport returns the row as inserted, or throws when it cannot queue it.
+						status: "pending" as const,
 						brandName: createdReport.brandName,
 						brandAliases: createdReport.brandAliases,
 						brandWebsite: createdReport.brandWebsite,
@@ -62,6 +65,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				response: reportListSchema,
 				query: z.object(paging),
 				adminOnly: true,
 				handle: async ({ query }) => {

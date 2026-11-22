@@ -69,7 +69,7 @@ test.describe("API keys", () => {
 
     // Refused because no scope reaches it, so a read-write key reads the same
     // way a read-only one does.
-    const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-0000-0000-000000000001", {
+    const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-4000-8000-000000000001", {
       headers: auth,
       failOnStatusCode: false,
     });

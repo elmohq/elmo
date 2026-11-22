@@ -364,8 +364,10 @@ const EXTRACTION_FAILURE_SENTINELS: ReadonlySet<string> = new Set([
 
 /** An answer worth storing, or null for a blank answer or an extraction placeholder. */
 export function storableText(text: unknown): string | null {
-	if (typeof text !== "string" || !text.trim() || EXTRACTION_FAILURE_SENTINELS.has(text)) return null;
-	return text;
+	if (typeof text !== "string") return null;
+	const storable = text.replaceAll("\u0000", "");
+	if (!storable.trim() || EXTRACTION_FAILURE_SENTINELS.has(storable)) return null;
+	return storable;
 }
 
 export function tryExtractTextContent(rawOutput: unknown, providerOrEngine: string): string | null {
@@ -382,9 +384,9 @@ export type Citation = {
 export const CITATION_TITLE_MAX_LENGTH = 256;
 
 export function normalizeCitationTitle(title: unknown): string | undefined {
-	if (typeof title !== "string" || !title) return undefined;
-	const chars = Array.from(title);
-	return chars.length > CITATION_TITLE_MAX_LENGTH ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : title;
+	if (typeof title !== "string") return undefined;
+	const chars = Array.from(title.replaceAll("\u0000", ""));
+	return chars.length > 0 ? chars.slice(0, CITATION_TITLE_MAX_LENGTH).join("") : undefined;
 }
 
 function parseCitationUrl(url: string, title: string | undefined, idx: number): Citation | null {

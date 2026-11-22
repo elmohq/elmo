@@ -26,16 +26,6 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		urlTemplate: (q) => `https://gemini.google.com/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
-	copilot: {
-		parserId: "@olostep/microsoft-copilot-results",
-		urlTemplate: (q) => `https://copilot.microsoft.com/chats?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
-	perplexity: {
-		parserId: "@olostep/perplexity-results",
-		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
 };
 
 let _client: Olostep | null = null;

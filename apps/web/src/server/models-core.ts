@@ -3,13 +3,10 @@
 import { getModelMeta, KNOWN_MODELS } from "@workspace/config/models";
 import { PREMIUM_MODELS } from "@workspace/config/plans";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
+import type * as z from "zod";
+import type { modelSchema } from "@/lib/api/schemas/models";
 
-export interface ModelSummary {
-	id: string;
-	label: string;
-	premiumCapable: boolean;
-	configured: boolean;
-}
+export type ModelSummary = z.infer<typeof modelSchema>;
 
 function configuredModels(): Set<string> {
 	try {

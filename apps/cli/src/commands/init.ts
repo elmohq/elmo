@@ -145,7 +145,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
 			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
 			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
-			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini/Copilot, $49/mo min`,
+			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini, $49/mo min`,
 			`     • ${pc.cyan("SearchApi")}  — flat per-search, every surface, ~$1.20/mo per prompt ($40/mo min)`,
 			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
 			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
@@ -186,7 +186,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		options: [
 			{ value: "cloro" as const, label: "Cloro — most reliable, every surface (~$0.65/mo per prompt, $30/mo min)" },
 			{ value: "brightdata" as const, label: "BrightData — pay-as-you-go, cheaper but slower (~$0.45/mo per prompt)" },
-			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini/Copilot ($49/mo min)" },
+			{ value: "oxylabs" as const, label: "Oxylabs — cheapest per run, no Gemini ($49/mo min)" },
 			{
 				value: "searchapi" as const,
 				label: "SearchApi — flat per-search, every surface (~$1.20/mo per prompt, $40/mo min)",

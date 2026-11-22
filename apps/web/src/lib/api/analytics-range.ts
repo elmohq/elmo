@@ -6,6 +6,7 @@
 import { bucketStart } from "@workspace/lib/rollups";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 import { ApiError } from "./handler";
+import { instant } from "./query";
 
 const BUCKET_ZONE = "UTC";
 
@@ -20,20 +21,17 @@ function invalid(message: string): never {
 /** Rejected rather than read as midnight UTC: it means a local day on the
  * legacy endpoint, and one string cannot mean two things. */
 function parseInstant(name: string, raw: string): string {
-	if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-		invalid(`${name} must be an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z — a bare date is not accepted`);
+	const result = instant.safeParse(raw);
+	if (!result.success) {
+		invalid(`${name} ${result.error.issues.map((issue) => issue.message).join("; ")}`);
 	}
-	const parsed = new Date(raw);
-	if (Number.isNaN(parsed.getTime())) {
-		invalid(`${name} must be an ISO 8601 timestamp, e.g. 2026-01-01T00:00:00Z`);
-	}
-	return parsed.toISOString();
+	return new Date(result.data).toISOString();
 }
 
 // Analytics are aggregated per quarter-hour bucket, which can't be split; flooring
 // lets the response echo the window that was actually answered.
-function alignToBucket(instant: string): string {
-	return bucketStart(new Date(instant)).toISOString();
+function alignToBucket(at: string): string {
+	return bucketStart(new Date(at)).toISOString();
 }
 
 /** Over plain values, so the MCP tools and the query schema refuse a bad window

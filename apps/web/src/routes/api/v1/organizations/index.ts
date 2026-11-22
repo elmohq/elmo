@@ -11,12 +11,14 @@ import { count } from "drizzle-orm";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { organizationListSchema } from "@/lib/api/schemas/organizations";
 import { organizationScopeCondition } from "@/lib/api/scope";
 
 export const Route = createFileRoute("/api/v1/organizations/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: organizationListSchema,
 				query: z.object(paging),
 				handle: async ({ query, auth }) => {
 					const where = organizationScopeCondition(auth, organization.id);

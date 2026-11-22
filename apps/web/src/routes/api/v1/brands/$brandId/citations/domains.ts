@@ -7,6 +7,7 @@ import { z } from "zod";
 import { publicRange, resolveAnalyticsWindow } from "@/lib/api/analytics-range";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { analyticsListPaging, analyticsQuery, offsetOf, paginationOf } from "@/lib/api/query";
+import { citationDomainListSchema } from "@/lib/api/schemas/citations";
 import { requireBrandInScope } from "@/lib/api/scope";
 import { getBrandCitationDomains } from "@/server/analytics-core";
 
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId/citations/domains"
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: citationDomainListSchema,
 				query: listCitationDomainsQuery,
 				scopes: ["read"],
 				handle: async ({ params, query, auth }) => {

@@ -232,6 +232,13 @@
       "when": 1793088892579,
       "tag": "0032_rollup_pages_and_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794269454270,
+      "tag": "0033_copilot_picks_to_bing_ai_mode",
+      "breakpoints": true
     }
   ]
 }

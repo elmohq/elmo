@@ -15,18 +15,17 @@ import {
 } from "./scrape-shared";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
-// ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
+// ChatGPT uses `prompt`; the Google surfaces use `query` and
 // require `render: html` — AI Mode via the `google_ai_mode` source, AI Overview
 // via a `google_search` SERP whose parsed result carries the overview block.
 const OXYLABS_SOURCES: Record<string, { source: string; field: "prompt" | "query"; render?: string }> = {
 	chatgpt: { source: "chatgpt", field: "prompt" },
-	perplexity: { source: "perplexity", field: "prompt" },
 	"google-ai-mode": { source: "google_ai_mode", field: "query", render: "html" },
 	"google-ai-overview": { source: "google_search", field: "query", render: "html" },
 };
 
 // AI answers can outlive the Realtime API's connection TTL. Use single-job
-// Push-Pull for every source; ChatGPT and Perplexity do not support batch jobs.
+// Push-Pull for every source; ChatGPT does not support batch jobs.
 const OXYLABS_JOBS_URL = "https://data.oxylabs.io/v1/queries";
 const OXYLABS_JOB_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -132,9 +131,6 @@ async function runAsyncQuery(body: Record<string, any>): Promise<OxylabsPayload>
 }
 
 // Oxylabs exposes search queries under different keys depending on the source.
-// `related_queries` is not one of them: Oxylabs documents it as the follow-up
-// questions Perplexity suggests below an answer, so counting it would report
-// searches that never ran.
 const OXYLABS_QUERY_KEYS = ["search_queries", "web_search_queries"] as const;
 
 export const oxylabs: Provider = {

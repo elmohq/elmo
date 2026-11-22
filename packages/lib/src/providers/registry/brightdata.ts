@@ -10,8 +10,6 @@ const AI_OVERVIEW_MODEL = "google-ai-overview";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
-	perplexity: "gd_m7dhdot1vw9a7gc1n",
-	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
 };
@@ -20,8 +18,6 @@ const BD_BASE_URL: Record<string, string> = {
 	chatgpt: "https://chatgpt.com/",
 	"google-ai-mode": "https://google.com/aimode",
 	gemini: "https://gemini.google.com/",
-	copilot: "https://copilot.microsoft.com/chats",
-	perplexity: "https://www.perplexity.ai/",
 };
 
 function createClient(): bdclient {

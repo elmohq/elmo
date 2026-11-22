@@ -14,6 +14,7 @@ import {
 	SiDeepseek,
 	SiGithubcopilot,
 	SiGoogle,
+	SiMeta,
 	SiMistralai,
 	SiMoonshotai,
 	SiPerplexity,
@@ -38,6 +39,7 @@ const ICONS: Record<string, IconType> = {
 	deepseek: SiDeepseek,
 	moonshotai: SiMoonshotai,
 	qwen: SiQwen,
+	meta: SiMeta,
 };
 
 export function ModelIcon({ iconId, className = "size-3.5" }: { iconId: string; className?: string }) {

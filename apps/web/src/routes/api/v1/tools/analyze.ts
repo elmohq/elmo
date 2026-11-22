@@ -11,6 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { onboardingSuggestionSchema } from "@/lib/api/schemas/tools";
 
 const analyzeBody = z.object({
 	// Mirrors the checks inside analyzeBrand so an unparseable or unfetchable
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
 		handlers: withMethodGuard({
 			POST: createApiHandler({
+				response: onboardingSuggestionSchema,
 				adminOnly: true,
 				body: analyzeBody,
 				handle: async ({ body }) => {

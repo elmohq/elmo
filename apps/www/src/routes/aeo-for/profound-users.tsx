@@ -20,7 +20,7 @@ import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
 const PATH = "/aeo-for/profound-users";
 const TITLE = "The Simpler Profound Alternative";
 const META_TITLE = "Profound Alternative: Simpler, Self-Serve AI Visibility · Elmo";
-const META_DESCRIPTION = `Switching from Profound? Elmo tracks your brand in ChatGPT, Perplexity, Gemini and AI Overviews up to 4× daily, with no sales call, no credit packs, and API access on every plan. From $${CLOUD_ENTRY_PRICE_USD}/mo.`;
+const META_DESCRIPTION = `Switching from Profound? Elmo tracks your brand in ChatGPT, Gemini, AI Overviews and AI Mode up to 4× daily, with no sales call, no credit packs, and API access on every plan. From $${CLOUD_ENTRY_PRICE_USD}/mo.`;
 const FROM = "marketing-profound-users-hero";
 
 const BUTTON =

@@ -140,7 +140,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
 		description:
-			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,gemini:olostep:online",
 	},
 	{
 		name: "SEARCHAPI_API_KEY",
@@ -272,7 +272,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "ENVIRONMENT",
 		scope: "server",
 		requiredBy: "optional",
-		description: "Environment name reported to Sentry (e.g. production).",
+		description:
+			"Environment name reported to Sentry (e.g. production). Defaults to NODE_ENV. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "VITE_APP_NAME",
@@ -355,6 +356,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description: "Sentry DSN for server-side error reporting.",
+	},
+	{
+		name: "SENTRY_TRACES_SAMPLE_RATE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Scales how much is traced in Sentry, from 0 to 1 (default 1). The web app traces this share of requests; the worker multiplies its per-queue rates by it. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "SENTRY_ORG",

@@ -14,6 +14,7 @@ import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { offsetOf, paginationOf, paging } from "@/lib/api/query";
+import { brandSchema, brandsListSchema } from "@/lib/api/schemas/brands";
 import { brandScopeCondition } from "@/lib/api/scope";
 import {
 	apiCreateInputToInternal,
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: brandsListSchema,
 				query: z.object(paging),
 				scopes: ["read"],
 				handle: async ({ query, auth }) => {
@@ -56,6 +58,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 			}),
 
 			POST: createApiHandler({
+				response: brandSchema,
 				body: createBrandInputSchema,
 				status: 201,
 				scopes: ["write"],

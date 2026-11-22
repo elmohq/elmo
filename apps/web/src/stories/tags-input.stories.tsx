@@ -34,35 +34,52 @@ export const Freeform = () => {
 	);
 };
 
+const DOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
 /** Validation — errors shown inside the popover. Try typing "bad" to see it. */
-export const WithValidation = () => {
-	const [values, setValues] = useState<string[]>(["example.com"]);
+export const WithValidation: Story = {
+	render: () => {
+		const [values, setValues] = useState<string[]>(["example.com"]);
 
-	const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
-
-	return (
-		<div className="p-8 max-w-xl space-y-6">
-			<div className="space-y-2">
-				<Label>Domains (validated)</Label>
-				<TagsInput
-					value={values}
-					onValueChange={setValues}
-					placeholder="Add domain..."
-					searchPlaceholder="Add domain..."
-					maxItems={10}
-					onValidate={(val) => {
-						if (!domainRegex.test(val.toLowerCase())) {
-							return `"${val}" is not a valid domain`;
-						}
-						return true;
-					}}
-				/>
-				<p className="text-xs text-muted-foreground">
-					Try adding &ldquo;bad&rdquo; or &ldquo;not a domain!&rdquo; to see inline validation.
-				</p>
+		return (
+			<div className="p-8 max-w-xl space-y-6">
+				<div className="space-y-2">
+					<Label>Domains (validated)</Label>
+					<TagsInput
+						value={values}
+						onValueChange={setValues}
+						placeholder="Add domain..."
+						searchPlaceholder="Add domain..."
+						maxItems={10}
+						onValidate={(val) => (DOMAIN_REGEX.test(val.toLowerCase()) ? true : `"${val}" is not a valid domain`)}
+					/>
+					<p className="text-xs text-muted-foreground">
+						Try adding &ldquo;bad&rdquo; or &ldquo;not a domain!&rdquo; to see inline validation.
+					</p>
+					<p data-testid="values">{values.join(", ")}</p>
+				</div>
 			</div>
-		</div>
-	);
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(canvas.getByRole("combobox"));
+		const input = await documentBody.findByPlaceholderText("Add domain...");
+		await userEvent.type(input, "bad");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(documentBody.findByText('"bad" is not a valid domain')).resolves.toBeVisible();
+		expect(canvas.getByTestId("values")).toHaveTextContent(/^example\.com$/);
+
+		await userEvent.clear(input);
+		await userEvent.type(input, "acme.io");
+		await userEvent.keyboard("{Enter}");
+
+		await expect(canvas.getByTestId("values")).toHaveTextContent(/^example\.com, acme\.io$/);
+		expect(documentBody.queryByText(/not a valid domain/)).toBeNull();
+	},
 };
 
 /** A full URL is normalized to its domain when pasted into a domain field. */
@@ -91,11 +108,51 @@ export const UrlPaste: StoryObj = {
 		const documentBody = within(canvasElement.ownerDocument.body);
 
 		await userEvent.click(canvas.getByRole("combobox"));
-		const input = await documentBody.findByPlaceholderText("Search...");
-		await userEvent.type(input, "https://www.example.com/pricing?utm_source=ad");
-		await userEvent.keyboard("{Enter}");
+		await userEvent.click(await documentBody.findByPlaceholderText("Search..."));
+		await userEvent.paste("https://www.example.com/pricing?utm_source=ad");
 
 		await expect(canvas.findByText("example.com")).resolves.toBeVisible();
+	},
+};
+
+/**
+ * A pasted list is added in one go: invalid values, duplicates, and values past
+ * the limit are skipped, and each value is checked against those pasted before it.
+ */
+export const PasteList: Story = {
+	render: () => {
+		const [values, setValues] = useState<string[]>(["example.com"]);
+
+		return (
+			<div className="p-8 max-w-xl space-y-2">
+				<Label>Domains</Label>
+				<TagsInput
+					value={values}
+					onValueChange={setValues}
+					placeholder="Add domain..."
+					searchPlaceholder="Add domain..."
+					maxItems={4}
+					pasteSplitter={/[\n,\t]+/}
+					onValidate={(val, current) => {
+						if (!DOMAIN_REGEX.test(val)) return `"${val}" is not a valid domain`;
+						const parent = current.find((d) => val.endsWith(`.${d}`));
+						return parent ? `"${val}" is already covered by ${parent}` : true;
+					}}
+				/>
+				<p data-testid="values">{values.join(", ")}</p>
+			</div>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const documentBody = within(canvasElement.ownerDocument.body);
+
+		await userEvent.click(canvas.getByRole("combobox"));
+		await userEvent.click(await documentBody.findByPlaceholderText("Add domain..."));
+		await userEvent.paste("acme.io\nshop.acme.io, not a domain, acme.io\tb.com, c.com, d.com");
+
+		await expect(canvas.getByTestId("values")).toHaveTextContent(/^example\.com, acme\.io, b\.com, c\.com$/);
+		await expect(documentBody.findByText('"shop.acme.io" is already covered by acme.io')).resolves.toBeVisible();
 	},
 };
 
