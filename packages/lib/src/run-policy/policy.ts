@@ -8,7 +8,6 @@
 import type { Entitlements } from "@workspace/config/entitlements";
 import { KNOWN_MODELS } from "@workspace/config/models";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
-import type { DeploymentMode } from "@workspace/config/types";
 import { getRunsPerPrompt } from "../constants";
 import { isGroundedApiTarget } from "../providers";
 import { selectTargetsForBrand } from "../providers/runner";

@@ -34,7 +34,6 @@ import { PROMPT_DETAIL_TABS, type PromptDetailTab } from "@/lib/prompt-detail-ta
 import { pageHead } from "@/lib/route-head";
 import type { SentimentFilterCounts } from "@/lib/sentiment";
 import { skeletonRows } from "@/lib/skeleton-rows";
-import { getModelDisplayName } from "@/lib/utils";
 import { getPromptMetadataFn } from "@/server/prompts";
 
 type PromptMetadata = {

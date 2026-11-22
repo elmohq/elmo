@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { PLAN_KEYS, PLANS, planPlatformBreakdown } from "@workspace/config/plans";
 import { cloudAppUrl } from "@workspace/config/referrals";
 import { PlatformTier } from "@workspace/ui/brand/platform-tier";
