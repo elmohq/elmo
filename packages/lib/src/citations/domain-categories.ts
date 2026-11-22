@@ -466,7 +466,7 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 
 	// Underscore-separated slugs ("/gear_guides/best_running_shoes") are the same
 	// shape as hyphen-separated ones; normalize so one set of rules covers both.
-	const path = parsed.pathname.toLowerCase().replace(/_/g, "-");
+	const path = parsed.pathname.toLowerCase().replaceAll("_", "-");
 	if (path === "/" || path === "") return "homepage";
 
 	const lowerTitle = (title ?? "").toLowerCase();

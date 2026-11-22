@@ -54,7 +54,7 @@ interface ClientDocs {
 
 function clientDocs(id: string, endpoint: string): ClientDocs[] {
 	const bearer = { Authorization: `Bearer ${KEY_PLACEHOLDER}` };
-	const keyEnvVar = `${id.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+	const keyEnvVar = `${id.toUpperCase().replaceAll("-", "_")}_API_KEY`;
 
 	return [
 		{

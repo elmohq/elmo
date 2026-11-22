@@ -77,7 +77,7 @@ function csvCell(value: unknown): string {
 		str = `'${str}`;
 	}
 	if (/[",\n\r]/.test(str)) {
-		return `"${str.replace(/"/g, '""')}"`;
+		return `"${str.replaceAll('"', '""')}"`;
 	}
 	return str;
 }
