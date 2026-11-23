@@ -1,5 +1,5 @@
 import { toRoundedPercentages } from "@workspace/lib/citations/domain-categories";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
@@ -127,6 +127,29 @@ describe("filterAndCompleteChartData with a custom range", () => {
 			{ date: "2026-03-03", brand: 60 },
 			{ date: "2026-03-04" },
 		]);
+	});
+});
+
+describe("day windows across a daylight-saving change", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it.each([
+		["Europe/Amsterdam", "2026-10-25", "2026-11-23"],
+		["America/New_York", "2026-11-01", "2026-11-30"],
+		["America/New_York", "2026-03-08", "2026-04-06"],
+	])("keeps every day of the window in %s from %s", (timezone, from, to) => {
+		vi.stubEnv("TZ", timezone);
+
+		const days = generateDateRange(new Date(from), new Date(to));
+		expect(days).toHaveLength(30);
+		expect(days[0]).toBe(from);
+		expect(days.at(-1)).toBe(to);
+
+		const plotted = filterAndCompleteChartData([{ date: to, brand: 50 }], `${from}..${to}`);
+		expect(plotted.map((point) => point.date)).toEqual(days);
+		expect(plotted.at(-1)).toEqual({ date: to, brand: 50 });
 	});
 });
 
