@@ -97,21 +97,39 @@ Cloro publishes [per-engine uptime](https://status.cloro.dev/), where most scrap
 
 ### Treg
 
-[treg](https://treg.to) can collect Bing AI Mode through Cloro without configuring a direct Cloro key. This integration supports only `bing-ai-mode:treg:online`; other treg endpoints are not interchangeable with Elmo's native providers.
+[treg](https://treg.to) is an optional shared gateway for compatible Elmo integrations. Configure one treg connection and choose which native integrations use it; integrations you do not select keep their direct credentials and transport.
 
 ```bash
 TREG_API_KEY=your-treg-api-key
+TREG_PROVIDERS=cloro,dataforseo
+TREG_MAX_COST_USD=0.01
+# Optional for an org-scoped token:
 TREG_ORG=your-organization-slug
 ```
 
-Append `bing-ai-mode:treg:online` to `SCRAPE_TARGETS` alongside your existing targets. Your existing onboarding and mention-judging credentials are still required. The advanced CLI setup also offers Treg as an optional scraper.
+Keep native provider IDs in `SCRAPE_TARGETS`, for example:
 
-Treg uses a synchronous Cloro Bing endpoint, not Cloro's asynchronous task API. Bing submissions are serialized within each Elmo process; multiple workers still share treg's upstream capacity. Requests time out after three minutes once submitted. Failed or rate-limited submissions are not automatically retried by this provider, and there is no direct Cloro fallback. When a request is interrupted, use its idempotency key to reconcile it before submitting a replacement.
+```bash
+SCRAPE_TARGETS=chatgpt:dataforseo:online,google-ai-mode:dataforseo:online,google-ai-overview:dataforseo:online,bing-ai-mode:cloro:online
+```
 
-`TREG_MAX_COST_USD` sets treg's per-request pre-reservation guard, defaults to `0.01`, and must be positive and no greater than `0.01`. It is not a monthly budget or a final invoice. Missing charge metadata stays unknown; a zero aggregate from an empty ledger does not confirm a final zero charge. Check current rates and billing in treg.
+The same targets, provider identities, and response extraction apply through the gateway. You do not need direct Cloro or DataForSEO credentials for selected integrations. The advanced CLI setup offers shared gateway configuration before scraper selection.
+
+| Integration | Gateway Coverage |
+|---|---|
+| DataForSEO | ChatGPT and Gemini scrapers, Google AI Mode, Google AI Overview, and the ChatGPT, Gemini and Perplexity LLM Responses routes selected by native version slugs. |
+| Cloro | ChatGPT through asynchronous submission and polling; Bing AI Mode, Gemini, Google AI Mode and Google AI Overview through their synchronous endpoints. |
+
+These routes have matching public catalog contracts and mocked native-interface tests. Catalog coverage does not guarantee current model availability or replace a live provider check.
+
+SearchApi, Oxylabs, Olostep's batch/parser workflow, OpenAI Responses, Anthropic Messages, Mistral generation, OpenRouter generation, Jina Reader and TypeSafe judging are not supported through this gateway. Bright Data has only partial own-key catalog coverage and lacks the complete lifecycle Elmo needs. Selecting an unsupported integration fails configuration rather than silently reverting to direct billing. Your existing onboarding and mention-judging credentials are still required; unrelated treg catalog tools do not substitute for those contracts.
+
+`TREG_MAX_COST_USD` is required when using the gateway. Set a positive per-request reservation guard appropriate for the selected model and request; `0.01` is an example, not a maximum. It is not a job/monthly budget or a final invoice. Missing charge metadata stays unknown. Audit call IDs, idempotency keys and observed costs are retained with raw answers; a zero aggregate from an empty ledger does not confirm a final zero charge.
+
+The gateway does not fall back to direct transport or retry submissions itself. Repeated identical submissions within one native run reuse their idempotency key; status polls fetch fresh state. Transient polling network/deadline failures keep polling the accepted Cloro task within its existing deadlines; authentication, configuration, routing and audit failures stop the run. Reconcile interrupted submissions by their call/idempotency IDs before starting a replacement run. Cloro's synchronous calls are serialized per process; multiple workers still share upstream capacity.
 
 <Callout type="warn">
-Adding a target to an existing deployment can make it immediately due: brands without explicit model picks use all configured targets, and maintenance may expedite prompts that have never run on the added target. Review activation timing before restarting the worker if you do not want an immediate collection batch.
+Changing only the transport keeps existing target identities. Adding a new target can still make it immediately due: brands without explicit model picks use all configured targets, and maintenance may expedite prompts that have never run on an added target. Review activation timing before restarting the worker if you do not want an immediate collection batch.
 </Callout>
 
 ### BrightData

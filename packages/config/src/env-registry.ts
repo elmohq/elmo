@@ -187,22 +187,28 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "TREG_API_KEY",
 		scope: "server",
-		requiredBy: "dynamic-scrape-targets",
-		provider: "treg",
-		description: "treg API key for Bing AI Mode through Cloro.",
+		requiredBy: "optional",
+		description: "Shared treg gateway API key, required when TREG_PROVIDERS selects an integration.",
 	},
 	{
 		name: "TREG_ORG",
 		scope: "server",
-		requiredBy: "dynamic-scrape-targets",
-		provider: "treg",
-		description: "treg organization slug used for collection requests.",
+		requiredBy: "optional",
+		description: "Optional treg organization slug; org-scoped tokens already select their organization.",
 	},
 	{
 		name: "TREG_MAX_COST_USD",
 		scope: "server",
 		requiredBy: "optional",
-		description: "Per-request treg pre-reservation guard in USD, positive and at most 0.01 (default 0.01).",
+		description:
+			"Required positive per-request treg pre-reservation guard in USD when TREG_PROVIDERS is set; not a job or monthly budget.",
+	},
+	{
+		name: "TREG_PROVIDERS",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Comma-separated native integration IDs to route through treg: cloro and dataforseo. Empty keeps direct transport.",
 	},
 	{
 		name: "OPENROUTER_API_KEY",
@@ -486,6 +492,10 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
  */
 export const RESEARCH_PROVIDER_PREFERENCE = ["openai-api", "openrouter", "anthropic-api", "mistral-api"] as const;
 
-export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
-	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),
-);
+export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set([
+	...ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map(
+		(spec) => spec.name,
+	),
+	"TREG_API_KEY",
+	"TREG_ORG",
+]);

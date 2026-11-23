@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { formatScrapeTarget, parseScrapeTargets } from "@workspace/config/scrape-targets";
+import { TREG_SUPPORTED_PROVIDERS, tregProviderSelected } from "@workspace/config/treg";
 import pc from "picocolors";
 import type { EnvMap } from "./config.js";
 import { assertNotCancelled, link } from "./util.js";
@@ -146,24 +147,7 @@ export const PROVIDER_PROMPTS: ProviderSpec[] = [
 		credentials: [{ envKey: "CLORO_API_KEY", message: "Cloro API key", secret: true, validate: required }],
 		picker: scraperPicker("Cloro", "cloro", CLORO_MODELS),
 	},
-	{
-		id: "treg",
-		kind: "scraper",
-		label: "Treg",
-		costHint: "Bing AI Mode through Cloro; billed by treg",
-		confirmDefault: false,
-		signup: { message: "Create an API key and find your organization slug", url: "https://treg.to" },
-		credentials: [
-			{ envKey: "TREG_API_KEY", message: "Treg API Key", secret: true, validate: required },
-			{ envKey: "TREG_ORG", message: "Treg Organization Slug", secret: false, validate: required },
-		],
-		picker: {
-			message: "Track Bing AI Mode via Treg",
-			options: [{ value: "bing-ai-mode:treg:online", label: "Bing AI Mode" }],
-			initialValues: ["bing-ai-mode:treg:online"],
-			required: true,
-		},
-	},
+
 	{
 		id: "brightdata",
 		kind: "scraper",
@@ -238,6 +222,38 @@ export function providerSpec(id: string): ProviderSpec {
 	return spec;
 }
 
+export async function collectTregGateway(env: EnvMap): Promise<void> {
+	const enable = await p.confirm({ message: "Use a Shared Treg Gateway?", initialValue: false });
+	assertNotCancelled(enable);
+	if (!enable) return;
+	const providers = await p.multiselect({
+		message: "Integrations to Route Through Treg",
+		options: TREG_SUPPORTED_PROVIDERS.map((id) => ({ value: id, label: providerSpec(id).label })),
+		required: true,
+	});
+	assertNotCancelled(providers);
+	const apiKey = await p.password({
+		message: "Treg API Key",
+		validate: (value) => (!value?.trim() ? "Required" : undefined),
+	});
+	assertNotCancelled(apiKey);
+	const org = await p.text({ message: "Treg Organization Slug (Optional for Org-Scoped Tokens)" });
+	assertNotCancelled(org);
+	const maxCost = await p.text({
+		message: "Per-Request Treg Cost Guard (USD)",
+		defaultValue: "0.01",
+		validate: (value) =>
+			value?.trim() && Number.isFinite(Number(value)) && Number(value) > 0 ? undefined : "Enter a positive USD amount",
+	});
+	assertNotCancelled(maxCost);
+	Object.assign(env, {
+		TREG_PROVIDERS: providers.join(","),
+		TREG_API_KEY: apiKey,
+		TREG_ORG: org,
+		TREG_MAX_COST_USD: maxCost,
+	});
+}
+
 export async function collectCredentials(spec: ProviderSpec, env: EnvMap): Promise<void> {
 	for (const credential of spec.credentials) {
 		const options = { message: credential.message, validate: credential.validate };
@@ -252,18 +268,19 @@ export async function collectCredentials(spec: ProviderSpec, env: EnvMap): Promi
  * scrape targets. Declining leaves `env` and `targets` untouched.
  */
 export async function collectProvider(spec: ProviderSpec, env: EnvMap, targets: string[]): Promise<void> {
+	const viaTreg = tregProviderSelected(spec.id, env);
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold(spec.label)}? (${spec.costHint})`,
-		initialValue: spec.confirmDefault,
+		message: `Configure ${pc.bold(spec.label)}${viaTreg ? " via Treg" : ""}? (${viaTreg ? "billed by treg" : spec.costHint})`,
+		initialValue: viaTreg || spec.confirmDefault,
 	});
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	if (spec.signup) {
+	if (spec.signup && !viaTreg) {
 		p.log.info(`${spec.signup.message}: ${link(pc.cyan(spec.signup.url), spec.signup.url)}`);
 	}
 
-	await collectCredentials(spec, env);
+	if (!viaTreg) await collectCredentials(spec, env);
 
 	let version: string | undefined;
 	if (spec.model) {

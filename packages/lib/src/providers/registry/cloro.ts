@@ -1,3 +1,4 @@
+import { isTregEnabled, isTregTransientError, tregFetch } from "../../http/treg";
 import { getCredential } from "../../secrets";
 import { type Citation, cloroAnswer, extractCitationsFromCloro } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -34,6 +35,33 @@ const CLORO_TASKS: Record<string, CloroTaskConfig> = {
 // past the plan's concurrency rather than 429ing, and everything queued is billed.
 const CLORO_TASK_URL = "https://api.cloro.dev/v1/async/task";
 
+const CLORO_SYNC_TREG_PATHS: Record<string, string> = {
+	"bing-ai-mode": "/v1/monitor/bing/aimode",
+	gemini: "/v1/monitor/gemini",
+	"google-ai-mode": "/v1/monitor/aimode",
+	"google-ai-overview": "/v1/monitor/google",
+};
+
+// Sync calls lack Cloro's async concurrency queue; keep only a bounded FIFO locally.
+const CLORO_SYNC_TREG_QUEUE_LIMIT = 128;
+let syncTregPending = 0;
+let syncTregTail: Promise<void> = Promise.resolve();
+
+async function queueSyncTreg<T>(run: () => Promise<T>): Promise<T> {
+	if (syncTregPending >= CLORO_SYNC_TREG_QUEUE_LIMIT) throw new Error("Cloro Treg sync queue is full");
+	syncTregPending++;
+	const result = syncTregTail.then(run);
+	syncTregTail = result.then(
+		() => {
+			syncTregPending--;
+		},
+		() => {
+			syncTregPending--;
+		},
+	);
+	return result;
+}
+
 /**
  * Excludes time spent queued: a task is billed whether or not anyone waits for
  * it, and abandoning one only queues a replacement behind it.
@@ -68,11 +96,14 @@ function requestHeaders(): Record<string, string> {
 }
 
 async function submitTask(taskType: string, payload: Record<string, any>): Promise<CloroTask> {
-	const res = await fetch(CLORO_TASK_URL, {
+	const init = {
 		method: "POST",
-		headers: requestHeaders(),
+		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ taskType, payload }),
-	});
+	};
+	const res = isTregEnabled("cloro")
+		? await tregFetch("cloro", CLORO_TASK_URL, init)
+		: await fetch(CLORO_TASK_URL, { ...init, headers: requestHeaders() });
 
 	if (!res.ok) {
 		throw new Error(`Cloro task submission failed (${await responseError(res)})`);
@@ -84,14 +115,18 @@ async function submitTask(taskType: string, payload: Record<string, any>): Promi
 }
 
 async function getTask(taskId: string): Promise<CloroTaskResponse | null> {
+	const gateway = isTregEnabled("cloro");
 	try {
-		const res = await fetch(`${CLORO_TASK_URL}/${taskId}`, { headers: requestHeaders() });
+		const res = gateway
+			? await tregFetch("cloro", `${CLORO_TASK_URL}/${encodeURIComponent(taskId)}`)
+			: await fetch(`${CLORO_TASK_URL}/${taskId}`, { headers: requestHeaders() });
 		if (res.status === 204 || isTransientStatus(res.status)) return null;
 		if (!res.ok) {
 			throw new Error(`Cloro task status request failed (${await responseError(res)})`);
 		}
 		return (await res.json()) as CloroTaskResponse;
 	} catch (error) {
+		if (gateway && !isTregTransientError(error)) throw error;
 		if (error instanceof Error && error.message.startsWith("Cloro task status request failed")) throw error;
 		return null;
 	}
@@ -122,6 +157,49 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 	});
 
 	return settled?.response ?? {};
+}
+
+async function runSyncTreg(model: string, prompt: string): Promise<Record<string, any>> {
+	const path = CLORO_SYNC_TREG_PATHS[model];
+	if (!path) throw new Error("Cloro Treg does not support this sync model");
+	if (!prompt.trim()) throw new Error("Cloro Treg requires a nonempty prompt");
+	if (model === "bing-ai-mode" && encodeURIComponent(prompt).length > 3500) {
+		throw new Error("Cloro Bing AI Mode prompts must be 3500 URL-encoded characters or fewer");
+	}
+	if ((model === "gemini" || model === "google-ai-mode") && Array.from(prompt).length > 10000) {
+		throw new Error("Cloro Treg prompts must be 10000 characters or fewer");
+	}
+	const google = model === "google-ai-mode" || model === "google-ai-overview";
+	const task = CLORO_TASKS[model];
+	const payload = {
+		[task.field]: prompt,
+		...(google ? { gl: CLORO_COUNTRY } : { country: CLORO_COUNTRY }),
+		include: task.include,
+	};
+	return queueSyncTreg(async () => {
+		const res = await tregFetch("cloro", `https://api.cloro.dev${path}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+			signal: AbortSignal.timeout(CLORO_GENERATION_TIMEOUT_MS),
+		});
+		if (!res.ok) throw new Error(`Cloro Treg sync request failed (${res.status})`);
+		let body: { success?: boolean; result?: Record<string, any> } | null;
+		try {
+			body = await res.json();
+		} catch {
+			throw new Error("Cloro Treg sync response was not valid JSON");
+		}
+		const response = body?.result;
+		if (body?.success !== true || !response || typeof response !== "object" || Array.isArray(response)) {
+			throw new Error("Cloro Treg sync response contained no result");
+		}
+		const answer = model === "google-ai-overview" ? response.aioverview : cloroAnswer(response);
+		if (!answer || ![answer.markdown, answer.text].some((value) => typeof value === "string" && value.trim())) {
+			throw new Error("Cloro Treg sync response contained no usable answer");
+		}
+		return response;
+	});
 }
 
 const CLORO_QUERY_KEYS = ["searchQueries", "mapSearchQueries"] as const;
@@ -158,7 +236,10 @@ export const cloro: Provider = {
 			...task.params,
 		};
 
-		const response = await runAsyncTask(task.taskType, payload);
+		const response =
+			isTregEnabled("cloro") && model !== "chatgpt"
+				? await runSyncTreg(model, prompt)
+				: await runAsyncTask(task.taskType, payload);
 		const answer = cloroAnswer(response) ?? {};
 
 		const citations: Citation[] = extractCitationsFromCloro(response);

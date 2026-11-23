@@ -1,4 +1,7 @@
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
+import { tregConfigurationError } from "@workspace/config/treg";
+import { isTregEnabled, withTregAudit } from "../http/treg";
+import { getCredential } from "../secrets";
 import { anthropicApi } from "./registry/anthropic-api";
 import { brightdata } from "./registry/brightdata";
 import { cloro } from "./registry/cloro";
@@ -10,7 +13,7 @@ import { openrouter } from "./registry/openrouter";
 import { oxylabs } from "./registry/oxylabs";
 import { searchapi } from "./registry/searchapi";
 import { stub } from "./registry/stub";
-import { treg } from "./registry/treg";
+
 import type { ModelConfig, Provider, ProviderAccess } from "./types";
 
 export { validateScrapeTargets } from "./config";
@@ -32,7 +35,6 @@ const providerMap: Record<string, Provider> = {
 	brightdata,
 	oxylabs,
 	cloro,
-	treg,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
 	"mistral-api": mistralApi,
@@ -44,7 +46,24 @@ const providerMap: Record<string, Provider> = {
 export function getProvider(id: string): Provider {
 	const p = providerMap[id];
 	if (!p) throw new Error(`Unknown provider: "${id}"`);
-	return p;
+	if (!isTregEnabled(id)) return p;
+	const configurationError = () =>
+		tregConfigurationError(id, {
+			...process.env,
+			TREG_API_KEY: getCredential("TREG_API_KEY"),
+			TREG_ORG: getCredential("TREG_ORG"),
+		});
+	return {
+		...p,
+		docsAnchor: "treg",
+		isConfigured: () => configurationError() === null,
+		validateTarget: (config) => configurationError() ?? p.validateTarget?.(config) ?? null,
+		async run(...args) {
+			const error = configurationError();
+			if (error) throw new Error(error);
+			return withTregAudit(id, () => p.run(...args));
+		},
+	};
 }
 
 /**
@@ -87,9 +106,9 @@ export function describeProvider(id: string): { id: string; name: string; access
 }
 
 export function getAvailableProviders(): Provider[] {
-	return Object.values(providerMap).filter((p) => p.isConfigured());
+	return getAllProviders().filter((p) => p.isConfigured());
 }
 
 export function getAllProviders(): Provider[] {
-	return Object.values(providerMap);
+	return Object.keys(providerMap).map(getProvider);
 }

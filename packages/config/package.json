@@ -22,6 +22,7 @@
 		"./referrals": "./src/referrals.ts",
 		"./roles": "./src/roles.ts",
 		"./scrape-targets": "./src/scrape-targets.ts",
+		"./treg": "./src/treg.ts",
 		"./types": "./src/types.ts"
 	},
 	"dependencies": {

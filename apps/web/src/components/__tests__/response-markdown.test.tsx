@@ -32,7 +32,7 @@ const SURFACES: [name: string, provider: string, rawOutput: unknown][] = [
 	["oxylabs ChatGPT", "oxylabs", { results: [{ content: { markdown_text: ANSWER } }] }],
 	["oxylabs Perplexity", "oxylabs", { results: [{ content: { answer_results_md: ANSWER } }] }],
 	["cloro chatbot", "cloro", { markdown: ANSWER, text: "flattened" }],
-	["treg Bing", "treg", { response: { markdown: ANSWER, text: "flattened" } }],
+	["Cloro through treg", "cloro", { markdown: ANSWER, text: "flattened", _treg: { requests: [] } }],
 	["cloro AI Overview", "cloro", { aioverview: { markdown: ANSWER, text: "flattened" } }],
 	["dataforseo scraper", "dataforseo", { tasks: [{ result: [{ markdown: ANSWER, sources: [] }] }] }],
 	[
