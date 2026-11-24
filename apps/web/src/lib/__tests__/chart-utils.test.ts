@@ -1,11 +1,12 @@
 import { toRoundedPercentages } from "@workspace/lib/citations/domain-categories";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
 	filterAndCompleteChartData,
 	generateDateRange,
 	getDaysFromLookback,
+	lookbackChartWindow,
 	toBatchChartData,
 } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
@@ -38,6 +39,39 @@ describe("generateDateRange", () => {
 		["empty range when end precedes start", "2026-06-14T00:00:00Z", "2026-06-10T00:00:00Z", []],
 	])("produces %s", (_label, start, end, expected) => {
 		expect(generateDateRange(new Date(start), new Date(end))).toEqual(expected);
+	});
+});
+
+// Dates are midnight UTC and keyed by toISOString, so day steps must be UTC.
+// Local steps drift an hour across a DST change and drop the last day (#1255).
+describe.each(["Europe/Amsterdam", "America/New_York", "Australia/Sydney"])("date windows across DST in %s", (tz) => {
+	let previous: string | undefined;
+	beforeAll(() => {
+		previous = process.env.TZ;
+		process.env.TZ = tz;
+	});
+	afterAll(() => {
+		if (previous === undefined) delete process.env.TZ;
+		else process.env.TZ = previous;
+	});
+
+	it.each<[string, string, number]>([
+		["2026-10-25", "2026-11-23", 30], // Europe clocks go back on 2026-10-25
+		["2026-11-01", "2026-11-23", 23], // US clocks go back on 2026-11-01
+		["2026-03-29", "2026-04-27", 30], // Europe clocks go forward on 2026-03-29
+		["2026-04-05", "2026-05-04", 30], // Sydney clocks go back on 2026-04-05
+	])("keeps every day from %s to %s", (from, to, days) => {
+		const range = generateDateRange(new Date(from), new Date(to));
+		expect(range).toHaveLength(days);
+		expect(range[0]).toBe(from);
+		expect(range.at(-1)).toBe(to);
+		expect(new Set(range).size).toBe(days);
+	});
+
+	it("starts a lookback window on its first calendar day", () => {
+		const { startDate, endDate } = lookbackChartWindow("2026-10-25..2026-11-23", tz);
+		expect(startDate.toISOString()).toBe("2026-10-25T00:00:00.000Z");
+		expect(endDate.toISOString()).toBe("2026-11-23T00:00:00.000Z");
 	});
 });
 
