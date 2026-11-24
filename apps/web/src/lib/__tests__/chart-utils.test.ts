@@ -43,7 +43,7 @@ describe("generateDateRange", () => {
 });
 
 // Dates are midnight UTC and keyed by toISOString, so day steps must be UTC.
-// Local steps drift an hour across a DST change and drop the last day (#1255).
+// Local steps drift an hour across a DST change and drop the last day.
 describe.each(["Europe/Amsterdam", "America/New_York", "Australia/Sydney"])("date windows across DST in %s", (tz) => {
 	let previous: string | undefined;
 	beforeAll(() => {
