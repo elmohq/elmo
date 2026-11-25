@@ -9,13 +9,19 @@
 
 import { IconClock } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { OPPORTUNITIES_GENERATIONS_PER_DAY } from "@workspace/lib/constants";
+import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Spinner } from "@workspace/ui/components/spinner";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrandId } from "@/hooks/use-brand-id";
 import { useOpportunities } from "@/hooks/use-opportunities";
+import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
+import { useWriteErrorMessage } from "@/lib/write-errors";
 
 export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportunities")({
 	staticData: { crumb: "Opportunities" },
@@ -25,12 +31,13 @@ export const Route = createFileRoute("/_authed/app/org/$org/brand/$brand/opportu
 
 function OpportunitiesPage() {
 	const brandId = useBrandId();
-	const { data, isLoading, error } = useOpportunities(brandId);
+	const { data, isLoading, error, refresh, isRefreshing, refreshError } = useOpportunities(brandId);
+	const writeErrorMessage = useWriteErrorMessage();
 
-	const infoContent = "Recommendations based on your visibility and citation metrics. Refreshed weekly.";
+	const infoContent = `Recommendations based on your visibility and citation metrics. Refreshed weekly, or up to ${OPPORTUNITIES_GENERATIONS_PER_DAY} times a day with Refresh.`;
 
 	let content: React.ReactNode;
-	if (isLoading) {
+	if (isLoading || isRefreshing) {
 		content = <LoadingState />;
 	} else if (error) {
 		content = <EmptyCard>Couldn't generate recommendations right now. Reload the page to try again.</EmptyCard>;
@@ -52,7 +59,33 @@ function OpportunitiesPage() {
 			infoContent={infoContent}
 		>
 			<div className="space-y-6">
-				{data?.report && data.lastEvaluatedAt && <LastEvaluatedAt date={data.lastEvaluatedAt} />}
+				{data?.report && data.lastEvaluatedAt && (
+					<div className="space-y-2">
+						<div className="flex flex-wrap items-center gap-3">
+							<LastEvaluatedAt date={data.lastEvaluatedAt} />
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									trackEvent("opportunities_refresh_requested");
+									refresh();
+								}}
+								disabled={isRefreshing}
+							>
+								{isRefreshing ? <Spinner /> : <RefreshCw />}
+								Refresh
+							</Button>
+						</div>
+						{refreshError && !isRefreshing && (
+							<p role="alert" className="flex items-start gap-2 text-sm text-red-700">
+								<AlertCircle className="mt-0.5 size-4 shrink-0" />
+								<span>
+									<WriteErrorMessage message={writeErrorMessage(refreshError, "Couldn't refresh opportunities.")} />
+								</span>
+							</p>
+						)}
+					</div>
+				)}
 				{content}
 			</div>
 		</PageHeader>
