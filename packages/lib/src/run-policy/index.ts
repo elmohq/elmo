@@ -13,6 +13,7 @@ export {
 	computeMaintenanceDecisions,
 	computePoolPositions,
 	EXPEDITE_MIN_INTERVAL_MS,
+	isPromptOverdueForAlert,
 	lastRunQueryWindowMs,
 	type MaintenanceDecisions,
 	type MaintenancePromptState,
