@@ -1,3 +1,4 @@
+import { pool } from "@workspace/lib/db/db";
 import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/prompt-jobs";
 import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { PgBoss } from "pg-boss";
@@ -18,18 +19,16 @@ export async function getBoss(): Promise<PgBoss> {
 		return bossPromise;
 	}
 
-	const connectionString = process.env.DATABASE_URL;
-	if (!connectionString) {
-		throw new Error("DATABASE_URL is required for pg-boss");
-	}
-
 	bossPromise = (async () => {
 		const boss = new PgBoss({
-			connectionString,
+			db: { executeSql: (text, values) => pool.query(text, values) },
 			schema: "pgboss",
 			// Web app only needs to send/schedule jobs, not process them
 			supervise: false, // Let worker handle supervision
 		});
+		// An EventEmitter with no "error" listener throws, which turns a transient
+		// database blip in pg-boss's background queue refresh into an unhandled rejection.
+		boss.on("error", (error) => console.error("[pg-boss]", error));
 
 		await boss.start();
 

@@ -39,6 +39,7 @@ declare global {
 		interface ProcessEnv {
 			readonly DEPLOYMENT_MODE: string;
 			readonly DATABASE_URL: string;
+			readonly DATABASE_POOL_MAX?: string;
 			readonly APP_URL?: string;
 			readonly SCRAPE_TARGETS?: string;
 			readonly OPENAI_API_KEY: string;
