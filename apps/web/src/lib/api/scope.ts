@@ -3,8 +3,9 @@
  * one that does not exist, so nobody can probe for another tenant's ids.
  */
 import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { eq, inArray, type SQL, sql } from "drizzle-orm";
+import { brands, member } from "@workspace/lib/db/schema";
+import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { type Principal, principalReach } from "@/lib/auth/api-auth";
 import { findPromptBrandId, type Prompt, PromptNotFoundError, requirePrompt } from "@/server/prompts-core";
 import { ApiError } from "./handler";
@@ -69,6 +70,32 @@ export async function requirePromptInScope(
 	const brand = await loadBrandInScope(auth, prompt.brandId);
 	if (!brand) throw notFound();
 	return { prompt, brand };
+}
+
+/** Writes additionally require an org-admin role for signed-in people.
+ * API keys keep their scope model (read vs write is granted at issue);
+ * the instance admin key is unlimited. A signed-in member can read
+ * everything in reach but cannot change anything. */
+export async function requireBrandWriteAccess(auth: Principal, brand: Brand): Promise<void> {
+	if (auth.kind !== "user") return;
+	const [row] = await db
+		.select({ role: member.role })
+		.from(member)
+		.where(and(eq(member.userId, auth.userId), eq(member.organizationId, brand.organizationId)))
+		.limit(1);
+	if (!row || !isOrgAdminRole(row.role)) {
+		throw new ApiError(403, "Forbidden", "Only organization admins can change tracked brands, prompts, and competitors.", "forbidden");
+	}
+}
+
+/** A prompt's brand, plus write access to it. */
+export async function requirePromptWriteAccess(
+	auth: Principal,
+	promptId: string,
+): Promise<{ brand: Brand; promptId: string }> {
+	const { brand } = await requirePromptInScope(auth, promptId);
+	await requireBrandWriteAccess(auth, brand);
+	return { brand, promptId };
 }
 
 export async function requirePromptBrandInScope(auth: Principal, promptId: string): Promise<string> {

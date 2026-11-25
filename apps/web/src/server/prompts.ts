@@ -17,7 +17,7 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireBrandAdminSession, requireBrandSession } from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
@@ -436,7 +436,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),

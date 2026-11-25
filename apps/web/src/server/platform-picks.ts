@@ -24,6 +24,7 @@ import { z } from "zod";
 import {
 	canEditPlatformPicks,
 	requireAuthSession,
+	requireBrandAdminSession,
 	requireBrandSession,
 	requireOrgAccess,
 	requirePlatformPicksEditable,
@@ -235,7 +236,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 
 		requirePlatformPicksEditable();
 

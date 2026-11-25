@@ -1,5 +1,6 @@
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -11,6 +12,30 @@ type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unk
 export async function getAuthSession() {
 	const headers = getRequestHeaders();
 	return auth.api.getSession({ headers });
+}
+
+/** Session plus org, requiring an org-admin role. Reads stay open to every member. */
+export async function requireOrganizationAdmin(
+	userId: string,
+	organizationId: string,
+): Promise<UserOrganization> {
+	const org = await requireOrganization(userId, organizationId);
+	if (!isOrgAdminRole(org.role)) throw new Error("Forbidden: Admin access required");
+	return org;
+}
+
+/** Brand access plus org-admin role. Use in POST handlers; GET handlers keep requireBrandSession. */
+export async function requireBrandAdminSession(brandId: string) {
+	const session = await requireAuthSession();
+	const org = await requireBrandAdminOrganization(session.user.id, brandId);
+	return { session, org };
+}
+
+/** Brand's org, requiring an org-admin role. */
+export async function requireBrandAdminOrganization(userId: string, brandId: string): Promise<UserOrganization> {
+	const org = await requireBrandOrganization(userId, brandId);
+	if (!isOrgAdminRole(org.role)) throw new Error("Forbidden: Admin access required");
+	return org;
 }
 
 export async function requireAuthSession() {

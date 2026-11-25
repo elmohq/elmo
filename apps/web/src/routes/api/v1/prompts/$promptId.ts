@@ -11,7 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { deletedPromptSchema, promptSchema } from "@/lib/api/schemas/prompts";
-import { requirePromptInScope } from "@/lib/api/scope";
+import { requirePromptInScope, requirePromptWriteAccess } from "@/lib/api/scope";
 import {
 	deletePrompt,
 	PromptNotFoundError,
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				scopes: ["write"],
 				mapError: mapPromptNotFound,
 				handle: async ({ params, body, auth }) => {
-					const { brand } = await requirePromptInScope(auth, params.promptId);
+					const { brand } = await requirePromptWriteAccess(auth, params.promptId);
 					return toPromptSummary(await updatePrompt(brand, params.promptId, body));
 				},
 			}),
