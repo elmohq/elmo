@@ -12,6 +12,7 @@ import {
 	IconUser,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { authClient } from "@workspace/lib/auth/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -260,21 +261,24 @@ function OrganizationSection({
 	onNavigate: () => void;
 }) {
 	const { heading, children } = organizationTree(organization);
+	const isAdmin = isOrgAdminRole(organization.role);
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
 			<DropdownMenuSeparator />
-			<DropdownMenuItem
-				render={<Link {...heading.link} onClick={onNavigate} />}
-				aria-label={heading.ariaLabel}
-				className="cursor-pointer font-medium"
-			>
-				<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
-				<span className="truncate">{heading.label}</span>
-				<span className="ml-auto flex w-7 shrink-0 justify-center">
-					<IconSettings className="size-4 text-muted-foreground" />
-				</span>
-			</DropdownMenuItem>
+			{isAdmin && (
+				<DropdownMenuItem
+					render={<Link {...heading.link} onClick={onNavigate} />}
+					aria-label={heading.ariaLabel}
+					className="cursor-pointer font-medium"
+				>
+					<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+					<span className="truncate">{heading.label}</span>
+					<span className="ml-auto flex w-7 shrink-0 justify-center">
+						<IconSettings className="size-4 text-muted-foreground" />
+					</span>
+				</DropdownMenuItem>
+			)}
 
 			{children.length > 0 && (
 				<div className="ml-4 border-l pl-1">

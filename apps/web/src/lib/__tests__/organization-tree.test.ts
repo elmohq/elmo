@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { needsSetup, organizationTree } from "@/lib/organizations/tree";
 import type { BrandCreation, OrganizationSummary } from "@/lib/organizations/types";
 
-function organization(brandCreation: BrandCreation, brandNames: string[] = []): OrganizationSummary {
+function organization(brandCreation: BrandCreation, brandNames: string[] = [], role = "admin"): OrganizationSummary {
 	return {
 		id: "org-1",
 		slug: "acme",
 		name: "Acme",
-		role: "admin",
+		role,
 		brandCreation,
 		brands: brandNames.map((name) => ({
 			id: name,
@@ -22,6 +22,11 @@ function organization(brandCreation: BrandCreation, brandNames: string[] = []): 
 describe("organizationTree", () => {
 	it("names the heading for what it leads to, so every surface says it the same way", () => {
 		expect(organizationTree(organization({ kind: "allowed" })).heading.ariaLabel).toBe("Acme organization settings");
+	});
+
+	it("offers no new-brand row to a member", () => {
+		const { children } = organizationTree(organization({ kind: "allowed" }, ["nike"], "member"));
+		expect(children.map((row) => row.label)).toEqual(["nike"]);
 	});
 
 	it("lists the brands, then the way to add one", () => {

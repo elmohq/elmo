@@ -1,4 +1,5 @@
 import type { LinkProps } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { OrganizationSummary } from "@/lib/organizations/types";
 
@@ -30,7 +31,7 @@ export function organizationTree(organization: OrganizationSummary): Organizatio
 
 	const params = orgLinkParams(organization);
 
-	if (organization.brandCreation.kind === "allowed") {
+	if (organization.brandCreation.kind === "allowed" && isOrgAdminRole(organization.role)) {
 		children.push({
 			kind: "new-brand",
 			key: "new-brand",

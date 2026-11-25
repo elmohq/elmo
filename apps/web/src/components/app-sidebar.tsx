@@ -134,6 +134,7 @@ function brandGroups(organization: OrganizationSummary, brand: Brand): NavGroup[
 
 export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
+	const isOrgAdmin = !organization || isOrgAdminRole(organization.role);
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
 	const mode = useLooseRouteContext().clientConfig?.mode;
@@ -165,7 +166,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 					<SidebarMenuItem>
 						{/* On a gate page the mark still says whose product this is, but it
 						    leads nowhere — /app would redirect right back here. */}
-						{section === "account" ? (
+						{section === "account" || !isOrgAdmin ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
 							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
