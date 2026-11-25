@@ -43,7 +43,7 @@ describe("what the web app queues a prompt cycle with", () => {
 	it("runs a manual retry now, even mid-cadence", async () => {
 		await sendImmediatePromptJob("prompt-1");
 
-		expect(sentOptions().singletonKey).toBeUndefined();
+		expect(sentOptions().singletonSeconds).toBeUndefined();
 		expect(sentOptions().startAfter).toBeUndefined();
 	});
 });

@@ -7,8 +7,8 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
  * added to a brand, a premium model added to a prompt — so the change takes
  * effect now rather than whenever the current cadence happens to come around.
  *
- * Dragging the queued row forward is required because the `prompt-${id}`
- * singleton rejects a new send while a future job exists. This is the same update the worker's
+ * The queued row is dragged forward rather than joined by a second job, so the
+ * prompt keeps a single chain. This is the same update the worker's
  * schedule-maintenance uses to revive stalled chains.
  *
  * Safe to call on any save, and cheap: the cycle it triggers runs only the
@@ -16,8 +16,9 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
  * rather than paid for a second time.
  *
  * Best-effort by design. A prompt whose cycle is mid-flight has no queued row
- * to move and holds the singleton against a new one, so its added target waits
- * for maintenance to expedite the job that cycle queues on its way out.
+ * to move, so it is sent a new job, which pg-boss drops if the running job
+ * holds the same singleton slot. Its added target then waits for maintenance to
+ * expedite the job that cycle queues on its way out.
  */
 export async function expeditePromptRuns(promptIds: string[]): Promise<void> {
 	if (promptIds.length === 0) return;
