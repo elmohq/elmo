@@ -6,9 +6,8 @@
 import { RingChart, type RingSlice } from "@/components/ring-chart";
 import { SiteIcon } from "@/components/site-icon";
 import { OTHERS_COLOR } from "@/lib/company-colors";
+import { formatPercent } from "@/lib/utils";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
-
-const percent = (value: number, total: number) => `${Math.round((value / total) * 100)}%`;
 
 export function ShareOfVoiceDonut({
 	entries,
@@ -44,5 +43,5 @@ export function ShareOfVoiceDonut({
 
 	const total = slices.reduce((s, x) => s + x.value, 0);
 	const brand = slices.find((s) => s.emphasis);
-	return <RingChart slices={slices} center={brand ? percent(brand.value, total) : "—"} />;
+	return <RingChart slices={slices} center={brand ? formatPercent(brand.value, total) : "—"} />;
 }

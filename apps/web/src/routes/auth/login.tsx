@@ -19,7 +19,6 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";

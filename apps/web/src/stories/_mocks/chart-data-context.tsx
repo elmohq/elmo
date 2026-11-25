@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext } from "react";
+import type { ReactNode } from "react";
 
 export interface ProcessedChartData {
 	chartData: Array<{ date: string; [key: string]: number | string | null }>;

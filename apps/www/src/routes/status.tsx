@@ -2,7 +2,7 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
+import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
 import { ArrowRight, ArrowUpRight, Tombstone } from "lucide-react";
 import { type CSSProperties, Fragment, type ReactNode, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
@@ -659,7 +659,7 @@ function ProviderTitle({ provider, rest }: { provider: string; rest: string }) {
 					(
 					{["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider)
 						? rest
-						: rest.replace(/online/g, "web search")}
+						: rest.replaceAll("online", "web search")}
 					)
 				</span>
 			)}
