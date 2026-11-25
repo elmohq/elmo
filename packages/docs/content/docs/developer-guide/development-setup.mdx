@@ -21,7 +21,7 @@ pnpm install
 
 ## Configure Environment
 
-Create a `.env` file at the repo root. This config runs local mode with no API keys: the `stub` provider returns placeholder answers and judgements, which is enough for UI work.
+Create a `.env` file at the repo root. This config runs local mode with no API keys: the `stub` provider returns placeholder answers and judgements, which is enough for UI work. Local mode won't start until `ELMO_ENCRYPTION_KEY` is set, so fill it in first.
 
 ```bash
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/elmo
@@ -43,7 +43,7 @@ Then copy it into the web app, since Vite reads `.env` from `apps/web` and the w
 cp .env apps/web/.env
 ```
 
-To track real answer engines, replace the stub values: point `SCRAPE_TARGETS` at the engines you want and add each provider's keys, add one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) for onboarding and the Opportunities report, and set `TYPESAFE_API_KEY` for the [mention judge](#mention-judge). [Configuration](/docs/developer-guide/configuration#environment-variables) lists every variable.
+To track real answer engines, replace the stub values: point `SCRAPE_TARGETS` at the engines you want and add each provider's keys, add one direct LLM key (`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, or `MISTRAL_API_KEY`) and remove `ONBOARDING_LLM_TARGET` so onboarding and the Opportunities report use it, and set `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` for the [mention judge](#mention-judge). [Configuration](/docs/developer-guide/configuration#environment-variables) lists every variable.
 
 ## Database Setup
 

@@ -19,6 +19,7 @@
 #   - blank lines are ignored
 #
 # ─────────────────────────────────────────────────────────────────────
+
 jrhizor
 uchiha-suraj
 prashantindurkar
