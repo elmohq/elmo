@@ -65,7 +65,7 @@ function AlternativesPage() {
 				<DirectoryHero title={`${competitor.name} alternatives`} lead={getAlternativesVerdict(competitor)} />
 
 				<DirectoryElmoBanner
-					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
+					pitch="Elmo tracks how ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
 					comparison={{
 						slug: getComparisonSlug(competitor),
 						name: competitor.name,
