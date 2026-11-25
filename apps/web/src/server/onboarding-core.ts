@@ -130,8 +130,12 @@ function validateAndFormatWebsite(url: string): string {
 	return formatted;
 }
 
+function hostnameWithoutWww(url: string): string {
+	return new URL(url).hostname.replace(/^www\./, "");
+}
+
 export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
-	const websiteHost = new URL(row.website).hostname.replace(/^www\./, "");
+	const websiteHost = hostnameWithoutWww(row.website);
 	return {
 		id: row.id,
 		name: row.name,
@@ -280,7 +284,7 @@ async function insertPrompts(args: {
 
 export async function createBrand(input: CreateBrandInput): Promise<BrandResult> {
 	const formattedWebsite = validateAndFormatWebsite(input.website);
-	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
+	const websiteHost = hostnameWithoutWww(formattedWebsite);
 
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
@@ -353,11 +357,8 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 	if (!existing) throw new BrandNotFoundError(input.brandId);
 
 	const formattedWebsite = input.website ? validateAndFormatWebsite(input.website) : null;
-	const websiteHost = formattedWebsite
-		? new URL(formattedWebsite).hostname.replace(/^www\./, "")
-		: existing.website
-			? new URL(existing.website).hostname.replace(/^www\./, "")
-			: null;
+	const website = formattedWebsite || existing.website;
+	const websiteHost = website ? hostnameWithoutWww(website) : null;
 
 	const patch: Partial<typeof brands.$inferInsert> = { updatedAt: new Date() };
 	if (input.brandName !== undefined) patch.name = input.brandName;
@@ -386,7 +387,7 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 
 	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	if (!existing) throw new BrandNotFoundError(input.brandId);
-	const websiteHost = new URL(existing.website).hostname.replace(/^www\./, "");
+	const websiteHost = hostnameWithoutWww(existing.website);
 
 	// Both inserts check a usage count first, so they run under one lock: two
 	// saves racing each other must not both spend the same last slot.
