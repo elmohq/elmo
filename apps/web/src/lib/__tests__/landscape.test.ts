@@ -73,6 +73,18 @@ describe("buildLandscape", () => {
 		expect(initech.totals).toMatchObject({ visibility: 0, share: 0, position: null });
 	});
 
+	it("keeps each model's latest answer when a prompt's models answer on different days", () => {
+		const landscape = buildLandscape({
+			...input,
+			dates: ["2026-03-01", "2026-03-02"],
+			runs: [run("p1", "chatgpt", "2026-03-01", 10, 10, 0), run("p1", "gemini", "2026-03-02", 10, 0, 0)],
+			competitorRuns: [],
+		});
+		const [acme] = landscape.companies;
+		expect(acme.totals.visibility).toBe(0.5);
+		expect(acme.byModel).toMatchObject({ chatgpt: { visibility: 1 }, gemini: { visibility: 0 } });
+	});
+
 	it("measures each company per model against that model's own runs", () => {
 		const landscape = buildLandscape(input);
 		expect(landscape.models).toEqual(["chatgpt", "claude"]);
