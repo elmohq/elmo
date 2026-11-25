@@ -1,10 +1,4 @@
-/**
- * Transactional email templates for cloud auth flows.
- *
- * Pure template functions — no I/O — so they're unit-testable without
- * mocking Resend. All interpolated user-controlled strings (inviter name,
- * organization name) are HTML-escaped before landing in markup.
- */
+/** Every user-controlled string (inviter name, organization name) is HTML-escaped before it lands in markup. */
 
 export interface EmailContent {
 	subject: string;
@@ -14,11 +8,11 @@ export interface EmailContent {
 
 function escapeHtml(value: string): string {
 	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
 }
 
 function wrapHtml(heading: string, sentence: string, url: string, cta = "Continue"): string {

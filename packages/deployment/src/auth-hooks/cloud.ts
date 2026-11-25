@@ -1,35 +1,17 @@
-/**
- * Cloud auth options for better-auth.
- *
- * Public self-serve signup: email/password with required verification,
- * Google OAuth, Resend transactional email, disposable-domain blocking,
- * invite-only signup allowlist, Cloudflare Turnstile bot protection on the
- * email endpoints, and umbrella org provisioning on signup.
- */
-
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import { provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
-import { captcha } from "better-auth/plugins";
+import { captcha, lastLoginMethod } from "better-auth/plugins";
 import { createStripeBillingPlugin } from "../billing/plugin";
 import { isDisposableEmail } from "../disposable-domains";
 import { sendEmail } from "../email";
 import { invitationEmail, passwordResetEmail, verificationEmail } from "../email-templates";
 
-// ── Signup allowlist ──────────────────────────────────────────────────
-
 /**
- * Evaluate whether an email may register, given a signup allowlist.
- *
- * Gates cloud self-serve signup while the mode is still being hardened. Entry
- * forms:
- *   - exact address — "alice@partner.com"
- *   - domain suffix — "@elmohq.com" admits any address at that domain
- *   - "*" — opens signup to everyone (the public-launch escape hatch)
- * An empty allowlist denies everyone, so cloud fails closed until configured.
- * Matching is case-insensitive; a domain entry matches the whole domain only,
- * never a lookalike suffix ("@elmohq.com" rejects "x@evil-elmohq.com").
+ * Entries are an exact address ("alice@partner.com"), a whole domain
+ * ("@elmohq.com", never a lookalike like "evil-elmohq.com"), or "*" for everyone.
+ * Case-insensitive. An empty allowlist denies everyone, so cloud fails closed.
  */
 function evaluateSignupAllowed(email: string, allowlist: readonly string[]): "allow" | "deny" {
 	const entries = allowlist.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
@@ -50,8 +32,6 @@ function getSignupAllowlist(): string[] {
 		.map((entry) => entry.trim().toLowerCase())
 		.filter(Boolean);
 }
-
-// ── Bot protection ────────────────────────────────────────────────────
 
 // Sign-in is included because an unverified sign-in resends the verification email.
 const TURNSTILE_PROTECTED_ENDPOINTS = [
@@ -80,8 +60,6 @@ function createTurnstilePlugin(): BetterAuthPlugin | undefined {
 	});
 }
 
-// ── Auth options ──────────────────────────────────────────────────────
-
 export function getCloudAuthOptions(): CreateAuthOptions {
 	const appUrl = process.env.APP_URL!;
 	const turnstile = createTurnstilePlugin();
@@ -108,14 +86,12 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 			user: {
 				create: {
 					before: async (user) => {
-						// Cloud runs cost real provider money per prompt run, so
-						// throwaway signups are rejected outright.
+						// Every prompt run costs provider money, so throwaway signups are refused.
 						if (isDisposableEmail(user.email)) {
 							throw new APIError("BAD_REQUEST", {
 								message: "Disposable email addresses are not supported. Please use your work or personal email.",
 							});
 						}
-						// Invite-only allowlist (fails-closed when unconfigured).
 						if (evaluateSignupAllowed(user.email, getSignupAllowlist()) === "deny") {
 							throw new APIError("FORBIDDEN", {
 								message: "Sign-ups are invite-only right now.",
@@ -131,7 +107,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 				},
 			},
 		},
-		extraPlugins: [createStripeBillingPlugin(), ...(turnstile ? [turnstile] : [])],
+		extraPlugins: [createStripeBillingPlugin(), lastLoginMethod(), ...(turnstile ? [turnstile] : [])],
 		organizationOptions: {
 			sendInvitationEmail: async (data) => {
 				await sendEmail(

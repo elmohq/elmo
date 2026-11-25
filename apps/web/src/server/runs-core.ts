@@ -8,43 +8,19 @@ import { citations, promptRuns } from "@workspace/lib/db/schema";
 import type { RunMentionAssessments, MentionAssessment as StoredAssessment } from "@workspace/lib/mentions";
 import { extractorFor, extractTextContent } from "@workspace/lib/text-extraction";
 import { and, asc, eq } from "drizzle-orm";
+import type * as z from "zod";
+import type {
+	mentionAssessmentSchema,
+	runAssessmentsSchema,
+	runSchema,
+	runSummarySchema,
+} from "@/lib/api/schemas/runs";
 import { countPromptRuns, getPromptRuns } from "@/lib/postgres-read";
 import type { AnalyticsWindow } from "@/server/analytics-core";
 
-export interface RunSummary {
-	id: string;
-	promptId: string;
-	brandId: string;
-	model: string;
-	provider: string | null;
-	webSearchEnabled: boolean | null;
-	brandMentioned: boolean | null;
-	competitorsMentioned: unknown;
-	/** The mention judge's assessments; null for mentions matched by name, before the judge. */
-	assessments: RunAssessments | null;
-	webQueries: unknown;
-	citationCount: number;
-	createdAt: Date | string;
-}
-
-export interface MentionAssessment {
-	mentioned: boolean;
-	probability: number;
-	reason: string | null;
-	sentiment: NonNullable<StoredAssessment["sentiment"]> | null;
-	sentimentProbabilities: Record<string, number> | null;
-	/** 1 for the tracked company the answer names first, and so on; null when it isn't counted as a mention. */
-	position: number | null;
-	/** Null when it isn't counted as a mention. */
-	mentionCount: number | null;
-}
-
-export interface RunAssessments {
-	/** Null when the answer never names the brand. */
-	brand: MentionAssessment | null;
-	/** Keyed by competitor name; only competitors the answer names. */
-	competitors: Record<string, MentionAssessment>;
-}
+export type RunSummary = Omit<z.infer<typeof runSummarySchema>, "createdAt"> & { createdAt: Date };
+export type MentionAssessment = z.infer<typeof mentionAssessmentSchema>;
+export type RunAssessments = NonNullable<z.infer<typeof runAssessmentsSchema>>;
 
 const publicAssessment = (record: StoredAssessment): MentionAssessment => ({
 	mentioned: record.mentioned,
@@ -65,18 +41,7 @@ function publicAssessments(stored: RunMentionAssessments | null): RunAssessments
 	};
 }
 
-interface RunCitation {
-	url: string;
-	domain: string;
-	title: string | null;
-	citationIndex: number | null;
-}
-
-export interface RunDetail extends Omit<RunSummary, "citationCount"> {
-	citationCount: number;
-	answer: { text: string | null };
-	citations: RunCitation[];
-}
+export type RunDetail = Omit<z.infer<typeof runSchema>, "createdAt"> & { createdAt: Date };
 
 export interface ListRunsOptions {
 	promptId: string;
@@ -108,7 +73,7 @@ export async function listPromptRuns(options: ListRunsOptions): Promise<{ data: 
 			assessments: publicAssessments(row.assessments),
 			webQueries: row.web_queries,
 			citationCount: row.citation_count,
-			createdAt: row.created_at,
+			createdAt: new Date(row.created_at),
 		})),
 		total,
 	};

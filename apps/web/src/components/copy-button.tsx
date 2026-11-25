@@ -1,8 +1,8 @@
 import { IconCheck, IconCopy } from "@tabler/icons-react";
-import { Button } from "@workspace/ui/components/button";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workspace/ui/components/input-group";
+import { cn } from "@workspace/ui/lib/utils";
 import { useEffect, useState } from "react";
 
-/** Omit `label` for an icon-only button. */
 export function CopyButton({ value, label, className }: { value: string; label?: string; className?: string }) {
 	const [copied, setCopied] = useState(false);
 
@@ -13,18 +13,33 @@ export function CopyButton({ value, label, className }: { value: string; label?:
 	}, [copied]);
 
 	return (
-		<Button
-			type="button"
-			variant="outline"
-			size={label ? "default" : "icon"}
+		<InputGroupButton
+			size="icon-xs"
 			className={className}
+			aria-label={copied ? "Copied" : label ? `Copy ${label}` : "Copy"}
 			onClick={() => {
 				navigator.clipboard.writeText(value);
 				setCopied(true);
 			}}
 		>
-			{copied ? <IconCheck className="size-4" /> : <IconCopy className="size-4" />}
-			{label ? copied ? "Copied" : label : <span className="sr-only">{copied ? "Copied" : "Copy"}</span>}
-		</Button>
+			{copied ? <IconCheck /> : <IconCopy />}
+		</InputGroupButton>
+	);
+}
+
+export function CopyField({ value, label, className }: { value: string; label: string; className?: string }) {
+	return (
+		<InputGroup className={cn("bg-background", className)}>
+			<InputGroupInput
+				readOnly
+				value={value}
+				aria-label={label}
+				className="font-mono text-sm"
+				onFocus={(event) => event.currentTarget.select()}
+			/>
+			<InputGroupAddon align="inline-end">
+				<CopyButton value={value} label={label} />
+			</InputGroupAddon>
+		</InputGroup>
 	);
 }

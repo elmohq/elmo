@@ -1,6 +1,6 @@
 {
   "name": "e2e",
-  "version": "0.7.7",
+  "version": "0.7.12",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,9 +20,9 @@
     "@workspace/lib": "workspace:*"
   },
   "devDependencies": {
-    "@better-auth/utils": "0.5.0",
+    "@better-auth/utils": "0.5.1",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "@usebruno/cli": "4.3.0",

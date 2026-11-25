@@ -23,7 +23,7 @@ import { computeSystemTags } from "@workspace/lib/tag-utils";
 import { and, eq, gte, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import type { Job, PgBoss } from "pg-boss";
 import { getBoss } from "../boss";
-import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge/analyze";
+import { type MentionAnalyzer, mentionAnalyzer } from "../mention-judge";
 import { DERIVE_PRIORITY, reprocessDays, sendDeriveRuns } from "./derive-runs";
 
 export const REPROCESS_QUEUE = "reprocess";

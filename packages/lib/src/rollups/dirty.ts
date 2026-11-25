@@ -124,14 +124,9 @@ export async function pendingMarks(conn: DbConnection, limit: number, skip: Dirt
 }
 
 /**
- * Deletes a range's marks and rebuilds what they span in one transaction, so
- * the marks go exactly when the rebuild commits and survive if it fails. Marks
- * a writer still holds are skipped rather than waited on. Returns null when
- * there was nothing left to take or the brand is busy.
- *
- * Every rebuild statement runs after the delete under READ COMMITTED, so it
- * sees every write that committed before the delete; a write that commits later
- * re-marks its bucket (see `markDirty`).
+ * One transaction, so marks go exactly when the rebuild commits. Under READ
+ * COMMITTED the rebuild sees every write committed before the delete; a later
+ * write re-marks its bucket (see `markDirty`). Null when nothing was taken.
  */
 export function refreshRange(
 	conn: DbConnection,
@@ -189,9 +184,8 @@ function rangesForBrand(brandId: string, sorted: DirtyMark[], maxBuckets: number
 	let current: RebuildRange | null = null;
 	for (const mark of sorted) {
 		const end = new Date(mark.bucket.getTime() + BUCKET_MS);
-		// A rebuild costs the same handful of statements however many buckets it
-		// spans, and an unmarked bucket in between rebuilds to the rows it already
-		// has, so gaps are swallowed up to the cap rather than split on.
+		// A rebuild costs the same however many buckets it spans, and an unmarked
+		// bucket rebuilds to the rows it has, so gaps are swallowed up to the cap.
 		const joinable = current !== null && (end.getTime() - current.from.getTime()) / BUCKET_MS <= maxBuckets;
 		if (current && joinable) {
 			current.toExclusive = end;

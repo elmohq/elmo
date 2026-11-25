@@ -1,17 +1,9 @@
 /**
- * Database-level helpers for establishing an authenticated E2E session.
- *
- * Most modes sign in over HTTP, but whitelabel is SSO-only — better-auth has
- * email/password disabled there, so the only way into the app is an identity
- * provider. Rather than stand up an OIDC server, the whitelabel setup writes a
- * session row and hands the browser the cookie better-auth would have set.
- *
- * The cookie format is better-auth's: `<token>.<signature>`, where the
- * signature is a base64 HMAC-SHA256 of the token under BETTER_AUTH_SECRET (see
- * `makeSignature` in better-auth's crypto module). Callers must verify the
- * cookie is actually accepted — `assertSessionAccepted` below — so a change in
- * that format fails setup with a clear message instead of surfacing as a wall
- * of "redirected to /auth/login" test failures.
+ * Whitelabel is SSO-only, so rather than stand up an OIDC server its setup
+ * writes a session row and hands the browser the cookie better-auth would have
+ * set. Callers check it with `assertSessionAccepted`, so a change in
+ * better-auth's cookie format fails setup clearly instead of as a wall of
+ * login redirects.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -32,12 +24,7 @@ const SESSION_COOKIE_NAME = "better-auth.session_token";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * The database behind the stack the running project addresses. Modes no longer
- * all share one, so a spec asking whether a write landed has to ask the
- * database its own container writes to. Projects that name no mode — `worker` —
- * get the default, which is the database the local stack and the worker share.
- */
+/** The running project's own database; projects that name no mode, like `worker`, share local's. */
 function currentDatabaseUrl(): string {
   const project = test.info().project.name.replace(/:setup$/, "");
   return isDeploymentMode(project) ? modeDatabaseUrl(project) : DATABASE_URL;
@@ -53,10 +40,6 @@ export async function withDb<T>(fn: (client: pg.Client) => Promise<T>): Promise<
   }
 }
 
-/**
- * BETTER_AUTH_SECRET as the running containers see it: the CLI generates it
- * into e2e/.elmo/.env, and the env var wins if a run overrides it.
- */
 function getBetterAuthSecret(): string {
   const fromEnv = process.env.BETTER_AUTH_SECRET;
   if (fromEnv) return fromEnv;
@@ -82,7 +65,6 @@ function signSessionToken(token: string, secret: string): string {
   return `${token}.${signature}`;
 }
 
-/** Mint a session for an existing user. Returns the signed cookie value. */
 export async function issueSessionCookie(userId: string): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex");
 
@@ -111,10 +93,7 @@ export function sessionCookie(value: string, baseURL: string) {
   };
 }
 
-/**
- * Insert the user if absent and make them an admin with report-generator
- * access, so the sidebar's admin section is populated in every mode.
- */
+/** Admin with report-generator access, so the sidebar's admin section is populated in every mode. */
 export async function ensureUser(client: pg.Client, user: { email: string; name: string }): Promise<string> {
   const { rows } = await client.query<{ id: string }>(
     `INSERT INTO "user" (id, name, email, email_verified, role, has_report_generator_access, created_at, updated_at)
@@ -142,12 +121,7 @@ export async function ensureDemoAccount(
   return userId;
 }
 
-/**
- * The local-mode signup hook creates the "default" org + admin membership on
- * first register (matching TEST_BRAND_ID). The idempotent writes below cover
- * the other modes, DBs populated before the hook existed, and let us tweak
- * TEST_BRAND_NAME without a full reset.
- */
+/** Local's signup hook already does this; the other modes need it, and it picks up a renamed TEST_BRAND_NAME. */
 export async function ensureOrgMembership(client: pg.Client, userId: string): Promise<void> {
   await client.query(
     `INSERT INTO organization (id, name, slug, created_at)
@@ -185,18 +159,14 @@ export async function ensureActiveCloudPlan(client: pg.Client): Promise<void> {
   );
 }
 
-/** Remove accounts a spec created, so the spec can be run again. */
+/** So a spec that signs accounts up can be run again; their sessions and memberships cascade. */
 export async function deleteUsers(emails: string[]): Promise<void> {
   await withDb(async (client) => {
-    // account/session/member rows cascade from the user row.
     await client.query(`DELETE FROM "user" WHERE email = ANY($1::text[])`, [emails]);
   });
 }
 
-/**
- * Whether an account exists. Rejected signups surface a generic message, so
- * specs assert on the account not being created rather than on wording.
- */
+/** Rejected signups show a generic message, so specs assert no account was created rather than on wording. */
 export async function userExists(email: string): Promise<boolean> {
   return withDb(async (client) => {
     const { rowCount } = await client.query(`SELECT 1 FROM "user" WHERE email = $1`, [email]);
@@ -212,13 +182,9 @@ export async function verifyEmail(email: string): Promise<void> {
 }
 
 /**
- * Fail loudly if the session the setup just established isn't usable.
- *
- * The role check is not incidental: better-auth caches the session's user
- * fields in a cookie for five minutes, so a session opened before the admin
- * role was granted keeps reporting the old one until that cache expires. It
- * surfaces as the sidebar's admin section and /reports quietly going missing,
- * which is far easier to read here than spread across the specs.
+ * The role check matters: better-auth caches user fields in the cookie for five
+ * minutes, so a session opened before the admin grant would quietly hide the
+ * admin section and /reports from every spec.
  */
 export async function assertSessionAccepted(request: APIRequestContext, expectedEmail: string): Promise<void> {
   const response = await request.get("/api/auth/get-session");

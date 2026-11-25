@@ -1,7 +1,4 @@
-// Domain classification against the large hardcoded lists (including the
-// ~25k-entry editorial set). Only servers and workers may import it: pulling it
-// into a browser bundle would cost hundreds of kilobytes. Client code imports
-// the types and pure helpers from `./domain-categories`.
+// Server-only: in a browser bundle these lists would cost hundreds of kilobytes.
 
 import {
 	type CitationCategory,
@@ -92,7 +89,7 @@ const DEVELOPER_DOMAINS = new Set([
 	"css-tricks.com",
 	"baeldung.com",
 	"digitalocean.com",
-	// ML / model hubs + ex-Google dev/ML domains (no longer their own category)
+	// ML / model hubs + Google dev/ML domains
 	"huggingface.co",
 	"paperswithcode.com",
 	"kaggle.com",
@@ -803,7 +800,7 @@ export function categorizeDomain(
 /**
  * The curated domain lists categorizeDomain consults, in precedence order. Exported
  * so a test can assert they're mutually exclusive: a domain in two lists would be
- * silently resolved by whichever is checked first (the slickdeals class of bug). The
+ * silently resolved by whichever is checked first. The
  * ~25k editorial set is intentionally excluded — it's the catch-all checked last, so
  * overlaps with the specific lists above are expected (and harmless), not bugs.
  */

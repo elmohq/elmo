@@ -3,30 +3,11 @@
  * returning it whole would make whatever the generator wrote part of this
  * contract.
  */
-import type { CitedPage, ReportOpportunity } from "./opportunities";
+import type * as z from "zod";
+import type { brandOpportunitiesSchema } from "@/lib/api/schemas/opportunities";
 import { resolveOpportunities } from "./opportunities";
 
-/** So a caller never has to tell "none" from "not enough data yet". */
-type OpportunitiesStatus = "ready" | "insufficient-data";
-
-interface PublishedOpportunity {
-	category: ReportOpportunity["category"];
-	title: string;
-	why: string;
-	relatedPrompts: Array<{ text: string; promptId: string | null }>;
-	yourCitations: CitedPage[];
-	competitorCitations: CitedPage[];
-}
-
-export interface PublishedOpportunities {
-	brandId: string;
-	status: OpportunitiesStatus;
-	generatedAt: string | null;
-	model: string | null;
-	summary: string[];
-	opportunities: PublishedOpportunity[];
-	risks: string[];
-}
+export type PublishedOpportunities = z.infer<typeof brandOpportunitiesSchema>;
 
 export async function publishedOpportunities(brandId: string): Promise<PublishedOpportunities> {
 	const result = await resolveOpportunities(brandId, "UTC");
@@ -34,6 +15,7 @@ export async function publishedOpportunities(brandId: string): Promise<Published
 
 	return {
 		brandId,
+		// So a caller never has to tell "none" from "not enough data yet".
 		status: opportunities.length > 0 ? "ready" : "insufficient-data",
 		generatedAt: result.lastEvaluatedAt,
 		model: result.model,

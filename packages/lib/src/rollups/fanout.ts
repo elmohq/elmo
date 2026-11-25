@@ -9,14 +9,9 @@ export const normalizedWebQuery = (query: SQL): SQL =>
 	sql`lower(regexp_replace(${query}, '^[[:space:]]+|[[:space:]]+$', '', 'g'))`;
 
 /**
- * Genuine fan-out: non-empty, not the `unavailable` sentinel, and not the prompt
- * searched verbatim. The verbatim rule is a display rule, not data cleaning:
- * engines do search the prompt as written, but a repeat says nothing about how
- * the prompt was rewritten. It compares against the prompt's current text, so
- * editing a prompt's text re-marks its buckets and searches of the old wording
- * start counting: real searches for honest providers, though DataForSEO rows from
- * before 2026-06 (which echoed the prompt as their query) would surface searches
- * that never ran until they age out of the lookback windows.
+ * Excludes the prompt searched verbatim as a display rule: a repeat says nothing
+ * about how it was rewritten. Compared against the prompt's current text, so
+ * DataForSEO rows from before 2026-06, which echoed the prompt, surface after an edit.
  */
 export function isFanoutQuery(query: SQL, promptText: SQL): SQL {
 	const normalized = normalizedWebQuery(query);

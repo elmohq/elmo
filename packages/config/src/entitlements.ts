@@ -1,13 +1,6 @@
 /**
- * Pure entitlement resolution: (deployment mode, subscription state, add-on
- * quantity, per-org overrides) → what the organization may do.
- *
- * No I/O here. The DB-aware wrapper lives in @workspace/lib
- * (src/entitlements/), which loads the subscription + organization_settings
- * rows and calls resolveEntitlements. Keeping this pure makes the whole plan
- * matrix unit-testable and keeps non-cloud modes provably unaffected: every
- * mode except cloud resolves to UNLIMITED_ENTITLEMENTS and nothing else is
- * ever consulted.
+ * Pure, so the plan matrix is unit-testable; @workspace/lib/entitlements loads
+ * the rows. Every mode except cloud resolves to UNLIMITED_ENTITLEMENTS.
  */
 
 import { z } from "zod";
@@ -22,28 +15,16 @@ import {
 import type { DeploymentMode } from "./types";
 
 /**
- * Where the org stands with billing, as consumed by enforcement and the
- * run policy:
- * - active: subscription in good standing (or a custom plan) — full service
  * - grace:  past_due within the dunning window — tracking continues
- * - paused: past_due beyond the grace window — tracking stops, data readable
- * - none:   no subscription (or canceled/expired) — paywall
+ * - paused: past_due beyond it — tracking stops, data stays readable
+ * - none:   no live subscription — paywall
  */
 export type SubscriptionStanding = "active" | "grace" | "paused" | "none";
 
-/**
- * Per-org overrides for custom plans, stored in
- * organization_settings.entitlement_overrides (jsonb) and applied on top of
- * the plan definition. Sparse: set only what differs. Provisioning a custom
- * plan is config-only — no code changes.
- */
+/** Sparse per-org overrides on top of the plan, so a custom plan is config-only. */
 export const entitlementOverridesSchema = z
 	.object({
-		/**
-		 * Marks the org as a custom plan billed outside Stripe self-serve.
-		 * Forces standing to "active" regardless of any subscription row, and
-		 * bases unspecified limits on the Business plan.
-		 */
+		/** Billed outside Stripe: always "active", with unspecified limits taken from Business. */
 		planOverride: z.literal("custom").optional(),
 		maxBrands: z.number().int().min(0).optional(),
 		maxPrompts: z.number().int().min(0).optional(),
@@ -51,8 +32,7 @@ export const entitlementOverridesSchema = z
 		extraPlatforms: z.array(z.string().min(1)).optional(),
 		platformPicks: z.number().int().min(0).optional(),
 		standardRunsPerDay: z.number().int().min(1).max(MAX_STANDARD_RUNS_PER_DAY).optional(),
-		/** Replaces the plan's included premium slots (add-on quantity still adds
-		 *  on top). */
+		/** Add-on quantity still adds on top. */
 		premiumPoolIncluded: z.number().int().min(0).optional(),
 		/** Replaces the fixed once-daily cadence for grounded premium calls. */
 		premiumRunsPerDay: z.number().int().min(1).max(MAX_STANDARD_RUNS_PER_DAY).optional(),
@@ -63,11 +43,7 @@ export const entitlementOverridesSchema = z
 
 export type EntitlementOverrides = z.infer<typeof entitlementOverridesSchema>;
 
-/**
- * Validate overrides read from the database. Returns null (treated as "no
- * overrides", i.e. plain plan limits) when the payload is malformed — failing
- * safe toward the paid plan, never toward unlimited.
- */
+/** Malformed overrides read as none, failing toward the paid plan rather than unlimited. */
 export function parseEntitlementOverrides(value: unknown): EntitlementOverrides | null {
 	if (value == null) return null;
 	const parsed = entitlementOverridesSchema.safeParse(value);
@@ -75,14 +51,11 @@ export function parseEntitlementOverrides(value: unknown): EntitlementOverrides 
 }
 
 export interface Entitlements {
-	/**
-	 * True outside cloud mode. Guards and the run policy short-circuit on this
-	 * before consulting anything else; all limit fields are null.
-	 */
+	/** True outside cloud; every limit field is then null. */
 	unlimited: boolean;
 	planKey: PlanKey | "custom" | null;
 	standing: SubscriptionStanding;
-	/** Whether prompt tracking runs at all (standing active or grace). */
+	/** Standing active or grace. */
 	trackingActive: boolean;
 	maxBrands: number | null;
 	maxPrompts: number | null;
@@ -92,11 +65,7 @@ export interface Entitlements {
 	standardRunsPerDay: number | null;
 	/** Runs per firing for standard targets. Null = the deployment default. */
 	replication: number | null;
-	/**
-	 * Premium slots: plan included (or override) + purchased add-on. One slot
-	 * tracks one prompt on one premium model, so the pool is spent across
-	 * prompt/model pairs. Picking a premium model ungrounded costs nothing here.
-	 */
+	/** Included plus purchased add-on; one slot tracks one prompt on one premium model. */
 	premiumPool: number;
 	premiumRunsPerDay: number;
 }
@@ -133,20 +102,16 @@ export const NO_PLAN_ENTITLEMENTS: Entitlements = {
 };
 
 export interface SubscriptionSnapshot {
-	/** Stripe subscription status as stored by @better-auth/stripe (webhook-driven). */
+	/** As stored by @better-auth/stripe from webhooks. */
 	status: string;
-	/** Plan name stored on the subscription row (plugin lowercases it). */
+	/** Lowercased by the plugin. */
 	plan: string;
-	/** End of the current billing period, when known. */
 	periodEnd: Date | null;
 }
 
 /**
- * Derive the billing standing from the stored subscription row. Stripe keeps
- * status "active" through cancel_at_period_end, so a scheduled cancellation
- * stays active until the period actually ends (then the webhook flips the
- * status). past_due ages out of grace PAST_DUE_GRACE_DAYS after the period
- * that failed to renew.
+ * A scheduled cancellation stays "active" until the period ends, as Stripe keeps
+ * it. past_due leaves grace PAST_DUE_GRACE_DAYS after the period that failed to renew.
  */
 export function deriveSubscriptionStanding(subscription: SubscriptionSnapshot | null, now: Date): SubscriptionStanding {
 	if (!subscription) return "none";
@@ -174,10 +139,8 @@ export interface ResolveEntitlementsInput {
 }
 
 /**
- * The plan an org's entitlements are derived from, and the standing that plan
- * is held under. Fully-custom orgs (no live self-serve subscription) start from
- * Business and override from there; custom-on-top-of-a-plan keeps the purchased
- * plan. Null when nothing is owed to the org at all.
+ * Fully-custom orgs start from Business; custom on top of a purchased plan keeps
+ * that plan. Null when nothing is owed to the org.
  */
 function resolveBasePlan(
 	subscription: SubscriptionSnapshot | null,

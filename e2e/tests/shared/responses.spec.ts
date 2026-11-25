@@ -44,7 +44,7 @@ test.describe("Responses Page", () => {
     await page.getByPlaceholder("Search prompts...").fill("optimize");
     await page.getByRole("button", { name: "How do I optimize content for LLM citations?" }).click();
 
-    await expect(page).toHaveURL(/prompts=00000000-0000-0000-0000-000000000003/);
+    await expect(page).toHaveURL(/prompts=00000000-0000-4000-8000-000000000003/);
     await expect(answer(page, /Several platforms offer AI visibility tracking/)).toHaveCount(0);
     await expect(answer(page, /To optimize content for LLM citations/)).toBeVisible();
     await expect(answer(page, /Optimizing for LLM citations involves/)).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("Responses Page", () => {
     await page.goto(`${RESPONSES_URL}?q=backlinks`);
     await page.getByRole("link", { name: "How do I optimize content for LLM citations?" }).click({ timeout: 30_000 });
 
-    await page.waitForURL(/\/prompts\/00000000-0000-0000-0000-000000000003\?tab=responses/);
+    await page.waitForURL(/\/prompts\/00000000-0000-4000-8000-000000000003\?tab=responses/);
   });
 
   test("says so when nothing matches", async ({ page }) => {

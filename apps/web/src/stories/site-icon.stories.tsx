@@ -5,7 +5,7 @@
  * network access to look right; the fallback story does not.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, waitFor } from "storybook/test";
 import { SiteIcon, type SiteIconSize } from "@/components/site-icon";
 
 const meta = {

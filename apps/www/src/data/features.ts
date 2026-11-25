@@ -25,6 +25,8 @@ export interface FeatureLink {
 
 export interface ProductFeature {
 	slug: string;
+	/** YYYY-MM-DD of the last substantive edit; the page\'s sitemap lastmod and dateModified. */
+	updated: string;
 	/** Short name for cards, breadcrumbs, and related-feature links. */
 	name: string;
 	/** H1. Written in the phrasing people search with. */
@@ -56,6 +58,7 @@ export interface ProductFeature {
 export const productFeatures: ProductFeature[] = [
 	{
 		slug: "ai-visibility-tracking",
+		updated: "2026-10-27",
 		name: "AI visibility tracking",
 		title: "AI visibility tracking",
 		metaTitle: "AI Visibility Tracking: Monitor Your Brand in ChatGPT & AI Search · Elmo",
@@ -115,7 +118,7 @@ export const productFeatures: ProductFeature[] = [
 		why: [
 			{
 				name: "The real apps, not just APIs",
-				text: "ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, and Copilot are scraped from the interfaces your customers use, with direct APIs for everything else.",
+				text: "ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing AI Mode are scraped from the interfaces your customers use, with direct APIs for everything else.",
 			},
 			{
 				name: "Open methodology",
@@ -164,6 +167,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "share-of-voice",
+		updated: "2026-10-27",
 		name: "Share of voice",
 		title: "AI share of voice and competitor tracking",
 		metaTitle: "AI Share of Voice & Competitor Analysis for AI Search · Elmo",
@@ -264,6 +268,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "sentiment-analysis",
+		updated: "2026-10-27",
 		name: "Sentiment analysis",
 		title: "AI sentiment analysis and brand mention tracking",
 		metaTitle: "AI Sentiment Analysis & Brand Mention Tracking · Elmo",
@@ -372,6 +377,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "citation-tracking",
+		updated: "2026-10-27",
 		name: "Citation tracking",
 		title: "AI citation tracking",
 		metaTitle: "AI Citation Tracking: See Which Sources AI Engines Cite · Elmo",
@@ -483,6 +489,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "query-fan-out",
+		updated: "2026-10-27",
 		name: "Query fan-out",
 		title: "Query fan-out tracking",
 		metaTitle: "Query Fan-Out Tracking: See the Searches Behind AI Answers · Elmo",
@@ -580,6 +587,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "prompt-tracking",
+		updated: "2026-10-27",
 		name: "Prompt tracking",
 		title: "AI prompt tracking",
 		metaTitle: "AI Prompt Tracking: Monitor the Questions Buyers Ask AI · Elmo",
@@ -680,6 +688,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "aeo-recommendations",
+		updated: "2026-10-27",
 		name: "Opportunities",
 		title: "AEO recommendations",
 		metaTitle: "AEO Recommendations: What to Do Next to Get Cited by AI · Elmo",
@@ -781,6 +790,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "ai-visibility-reporting",
+		updated: "2026-10-27",
 		name: "Reporting",
 		title: "AI visibility reporting and dashboards",
 		metaTitle: "AI Visibility Reporting & Dashboards for AI Search · Elmo",
@@ -875,6 +885,7 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "api-and-mcp",
+		updated: "2026-10-27",
 		name: "API and MCP",
 		title: "AI visibility API, SDKs, and MCP server",
 		metaTitle: "AI Visibility API, SDKs & MCP Server · Elmo",
@@ -969,14 +980,15 @@ export const productFeatures: ProductFeature[] = [
 	},
 	{
 		slug: "multi-engine-tracking",
+		updated: "2026-10-27",
 		name: "AI engines",
 		title: "Track your brand across every AI engine",
 		metaTitle: "Multi-Engine AI Visibility Tracking: ChatGPT, AI Overviews, Gemini & More · Elmo",
 		metaDescription:
-			"Track your brand in ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, and Copilot from the real apps, plus Claude, Grok, Mistral, and any OpenRouter model.",
-		lede: "Most AI search happens in ChatGPT and Google, and neither offers a public API for its consumer answers. Elmo scrapes ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, and Copilot from the interfaces your customers use, and calls Claude, Mistral, Grok, and any OpenRouter model directly.",
+			"Track your brand in ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing AI Mode from the real apps, plus Claude, Grok, Perplexity, Mistral, and any OpenRouter model.",
+		lede: "Most AI search happens in ChatGPT and Google, and neither offers a public API for its consumer answers. Elmo scrapes ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing AI Mode from the interfaces your customers use, and calls Claude, Mistral, Grok, Perplexity, and any OpenRouter model directly.",
 		summary:
-			"ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, and Copilot from the real apps, plus any model by API.",
+			"ChatGPT, Google AI Overviews, AI Mode, Gemini, and Bing AI Mode from the real apps, plus any model by API.",
 		graphic: "engines",
 		steps: [
 			{
@@ -995,7 +1007,7 @@ export const productFeatures: ProductFeature[] = [
 		metrics: [
 			{
 				term: "Scraped from the real interface",
-				definition: "ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, and Copilot.",
+				definition: "ChatGPT, Google AI Overviews, Google AI Mode, Gemini, and Bing AI Mode.",
 			},
 			{
 				term: "Direct model APIs",
@@ -1014,7 +1026,7 @@ export const productFeatures: ProductFeature[] = [
 		],
 		useCases: [
 			"Compare how ChatGPT and Google AI Overviews treat your brand, since they often disagree.",
-			"Add an engine your audience uses, like Copilot for enterprise buyers, without switching tools.",
+			"Add an engine your audience uses, like Bing AI Mode for enterprise buyers, without switching tools.",
 			"Track a specific model version alongside the consumer app to see how much they differ.",
 		],
 		why: [
@@ -1048,7 +1060,7 @@ export const productFeatures: ProductFeature[] = [
 			{
 				question: "Which AI engines does Elmo track?",
 				answer:
-					"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, Perplexity, and Copilot are scraped from their real interfaces. Claude, Mistral, and OpenAI models are called through their APIs, and any OpenRouter model, including Grok, DeepSeek, and Kimi, can be added.",
+					"ChatGPT, Google AI Overviews, Google AI Mode, Gemini, and Bing AI Mode are scraped from their real interfaces. Claude, Mistral, and OpenAI models are called through their APIs, and any OpenRouter model, including Grok, Perplexity Sonar, DeepSeek, and Kimi, can be added.",
 			},
 			{
 				question: "Why scrape instead of using the API?",

@@ -2,7 +2,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { brandSegment, brandSlugPrefix, normalizeSlug } from "@workspace/lib/app-urls";
-import { cleanAndValidateDomain } from "@workspace/lib/citations/domain-categories";
+import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -10,6 +10,7 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useCallback, useState } from "react";
 import { SlugField } from "@/components/slug-field";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -50,11 +51,10 @@ function BrandSettingsPage() {
 		setSlug(brandSegment(brand));
 	}
 
-	const validateDomain = useCallback((val: string): true | string => {
-		const cleaned = cleanAndValidateDomain(val);
-		if (!cleaned) return `"${val}" is not a valid domain`;
-		return true;
-	}, []);
+	const validateDomain = useCallback(
+		(val: string, current: string[]) => validateAdditionalDomain(val, [brand?.website, ...current]),
+		[brand?.website],
+	);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
 	if (isLoading) {
@@ -178,9 +178,8 @@ function BrandSettingsPage() {
 							<Tooltip>
 								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
-									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains
-									will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash;
-									existing citations will be reclassified immediately.
+									Other domains your brand owns, like example.co.uk. Subdomains are covered automatically. Changes apply
+									to existing citations too.
 								</TooltipContent>
 							</Tooltip>
 						</Label>
@@ -188,6 +187,7 @@ function BrandSettingsPage() {
 							value={additionalDomains}
 							onValueChange={setAdditionalDomains}
 							placeholder="Add domain..."
+							pasteSplitter={/[\n,\t]+/}
 							searchPlaceholder="Add domain..."
 							maxItems={10}
 							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
@@ -217,7 +217,11 @@ function BrandSettingsPage() {
 					</div>
 				</div>
 
-				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+				{error && (
+					<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+						<WriteErrorMessage message={error} />
+					</div>
+				)}
 				{success && <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{success}</div>}
 
 				<div className="flex gap-2">

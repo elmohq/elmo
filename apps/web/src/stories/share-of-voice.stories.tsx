@@ -19,7 +19,6 @@ const onboardedBrand = {
 	enabled: true,
 	prompts: [{ id: "p1", value: "best crm", enabled: true }],
 	effectiveModels: ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"],
-	earliestDataDate: "2026-05-05",
 	delayOverrideHours: 24,
 };
 

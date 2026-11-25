@@ -2,14 +2,14 @@ import { Plus } from "lucide-react";
 import { EngineIcon } from "./engines";
 import { SectionHeading } from "./ui";
 
-const ENGINES = [
+export const TRACKED_ENGINES = [
 	{ name: "ChatGPT", iconId: "openai" },
 	{ name: "Claude", iconId: "anthropic" },
 	{ name: "Gemini", iconId: "gemini" },
 	{ name: "Perplexity", iconId: "perplexity" },
 	{ name: "AI Overviews", iconId: "google" },
 	{ name: "AI Mode", iconId: "google" },
-	{ name: "Copilot", iconId: "microsoft" },
+	{ name: "Bing AI Mode", iconId: "microsoft" },
 	{ name: "Grok", iconId: "x" },
 	{ name: "DeepSeek", iconId: "deepseek" },
 	{ name: "Mistral", iconId: "mistral" },
@@ -40,7 +40,7 @@ export function ModelCoverage() {
 				</div>
 				<div className="lg:col-span-7">
 					<ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-label="AI engines Elmo tracks">
-						{ENGINES.map((m) => (
+						{TRACKED_ENGINES.map((m) => (
 							<Tile key={m.name} {...m} />
 						))}
 						<li className="col-span-full flex h-14 items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 px-4 text-[15px] font-medium text-zinc-700">

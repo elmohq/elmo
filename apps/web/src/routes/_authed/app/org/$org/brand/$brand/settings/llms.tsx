@@ -10,18 +10,18 @@
  * renders them.
  */
 
-import { IconArrowUpRight, IconExternalLink } from "@tabler/icons-react";
+import { IconAlertTriangle, IconArrowUpRight, IconExternalLink } from "@tabler/icons-react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { PROVIDERS_DOCS_URL } from "@workspace/config/constants";
 import { getModelMeta } from "@workspace/config/models";
 import { PREMIUM_MODELS, PREMIUM_RUNS_PER_DAY, premiumModelLabel } from "@workspace/config/plans";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
-import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { cn } from "@workspace/ui/lib/utils";
-import { type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { formatUsd, PlatformList, PlatformPicker, projectSelectionCostUsd } from "@/components/platform-picker";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useBrandId } from "@/hooks/use-brand-id";
@@ -58,11 +58,45 @@ function LlmsSettingsPage() {
 				</p>
 			</div>
 
+			{picker.retiredTargets.length > 0 && <RetiredTargetsAlert targets={picker.retiredTargets} />}
+
 			{picker.editable ? <PlatformGroups picker={picker} /> : <TrackedPlatforms picker={picker} />}
 
 			{premium.available && <PremiumApiPool premium={premium} />}
 			{picker.unconfiguredPlatforms.length > 0 && <AddPlatformsCard platforms={picker.unconfiguredPlatforms} />}
 		</div>
+	);
+}
+
+function RetiredTargetsAlert({ targets }: { targets: ModelPickerState["retiredTargets"] }) {
+	return (
+		<Alert>
+			<IconAlertTriangle />
+			<AlertTitle>Some Scrape Targets No Longer Run</AlertTitle>
+			<AlertDescription>
+				<p>
+					Elmo skips these <code className="font-mono text-xs">SCRAPE_TARGETS</code> entries, so they collect no new
+					data. Update the variable and restart to track them again.
+				</p>
+				<ul className="list-disc space-y-1 pl-5">
+					{targets.map(({ target, reason, replacements }) => (
+						<li key={target}>
+							<code className="font-mono text-xs">{target}</code>: {reason} Replace it with{" "}
+							{replacements.map((replacement, index) => (
+								<Fragment key={replacement}>
+									{index > 0 && " or "}
+									<code className="font-mono text-xs">{replacement}</code>
+								</Fragment>
+							))}
+							.
+						</li>
+					))}
+				</ul>
+				<a href={PROVIDERS_DOCS_URL} target="_blank" rel="noopener noreferrer" className="underline">
+					Provider setup guide
+				</a>
+			</AlertDescription>
+		</Alert>
 	);
 }
 

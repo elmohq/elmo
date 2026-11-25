@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import {
 	beginBackgroundMigration,
 	finishBackgroundMigration,
@@ -52,7 +53,7 @@ async function runUntilDone(backfill: Backfill): Promise<void> {
 			const message = briefly(error);
 			console.error(`[background-migration] ${backfill.name} failed, retrying in ${retryMs / 60_000} min: ${message}`);
 			await recordBackgroundError(db, backfill.name, message).catch(() => {});
-			await new Promise((resolve) => setTimeout(resolve, retryMs));
+			await sleep(retryMs);
 		}
 	}
 }

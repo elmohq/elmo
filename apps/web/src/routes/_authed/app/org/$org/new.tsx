@@ -5,6 +5,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
 import { PlatformSelectionStep } from "@/components/platform-selection-step";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { useOrganizationParams } from "@/hooks/use-route-params";
 import { validateWebsiteUrl } from "@/lib/brand-website";
@@ -164,7 +165,11 @@ function NewBrandPage() {
 					/>
 				</div>
 
-				{error && <p className="text-sm text-destructive">{error}</p>}
+				{error && (
+					<p className="text-sm text-destructive">
+						<WriteErrorMessage message={error} />
+					</p>
+				)}
 
 				<Button type="submit" className="w-full" disabled={isLoading}>
 					{isLoading ? "Creating..." : "Continue"}

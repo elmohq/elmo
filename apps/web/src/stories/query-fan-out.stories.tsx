@@ -32,7 +32,6 @@ function brand(scrapeTargets: string) {
 		onboarded: true,
 		enabled: true,
 		prompts: [{ id: "p1", value: "best email finder", enabled: true }],
-		earliestDataDate: "2026-08-10",
 		delayOverrideHours: 24,
 		trackedTargets: trackedTargets(scrapeTargets),
 	};
@@ -60,13 +59,13 @@ function response(runs: { model: string; runs: number }[], breakdown: FanoutBrea
 			["p2", "best b2b email finder tools for sales teams"],
 		]),
 		{
-			promptRuns: new Map([
+			promptFanoutRuns: new Map([
 				["p1", 40],
 				["p2", 36],
 			]),
 		},
 	);
-	return { ...analysis, brandName: "Acme", model: null, coverageRate: Math.round(analysis.coverageRate * 100) };
+	return { ...analysis, brandName: "Acme", model: null };
 }
 
 function Shell({ children }: { children: ReactNode }) {

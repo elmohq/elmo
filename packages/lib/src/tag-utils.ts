@@ -100,3 +100,18 @@ export function sanitizeUserTags(tags: string[]): string[] {
 		.filter((tag) => tag.length > 0)
 		.filter((tag, index, self) => self.indexOf(tag) === index);
 }
+
+/**
+ * A prompt's user tags plus exactly one system tag for its effective branded
+ * status, so the branded and unbranded filters use the same status the UI shows.
+ */
+export function effectiveTags(prompt: { systemTags: string[] | null; tags: string[] | null }): string[] {
+	const userTags = prompt.tags || [];
+	const { isBranded } = getEffectiveBrandedStatus(prompt.systemTags || [], userTags);
+	const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+	return userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
+}
+
+export function matchesTagFilter(tags: string[], tagFilter: string[]): boolean {
+	return tagFilter.length === 0 || tagFilter.some((t) => tags.includes(t));
+}

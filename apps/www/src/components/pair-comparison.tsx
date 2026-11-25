@@ -34,7 +34,7 @@ function ToolSummary({
 }) {
 	return (
 		<div>
-			<h3 className="mb-1 text-lg font-semibold text-zinc-950">{name}</h3>
+			<h2 className="mb-1 text-lg font-semibold text-zinc-950">{name}</h2>
 			<div className="mt-2 flex flex-wrap gap-2">
 				<Badge variant="secondary">{category}</Badge>
 				{pricing?.hasFree && <Badge variant="secondary">Free tier</Badge>}
@@ -79,7 +79,7 @@ export function PairComparison({ a, b }: { a: Competitor; b: Competitor }) {
 						domain={b.domain}
 					/>
 					<div>
-						<h3 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h3>
+						<h2 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h2>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>

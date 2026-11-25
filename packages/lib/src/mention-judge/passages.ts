@@ -2,12 +2,12 @@
  * Which tracked companies a cleaned answer names, and for each, the few passages the judge may quote
  * as the evidence for how the answer portrays it.
  */
-import { judgedSubject, type MentionConfig, wholeWordPattern } from "@workspace/lib/mentions";
+import { judgedSubject, type MentionConfig, wholeWordPattern } from "../mentions";
 import { INLINE_DATA } from "./clean";
 
 type Subject = MentionConfig["brand"];
 
-export type SentenceKind = "heading" | "table" | "text";
+type SentenceKind = "heading" | "table" | "text";
 
 export interface Sentence {
 	text: string;

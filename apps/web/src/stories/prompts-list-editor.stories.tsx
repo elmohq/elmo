@@ -39,8 +39,7 @@ const entries = (values: string[], partial?: Partial<EditablePrompt>) =>
 
 const filler = (count: number) => entries(Array.from({ length: count }, (_, i) => `best running shoes option ${i}`));
 
-/** Opens the bulk panel and pastes `text` into it. */
-const addMultiple =
+const pasteIntoBulkPanel =
 	(text: string) =>
 	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
@@ -68,7 +67,7 @@ export const Populated = () => (
 export const AddMultiple: StoryObj = {
 	render: () => <Harness initial={entries(["best running shoes for flat feet", "most durable trail runners"])} />,
 	play: async (ctx) => {
-		await addMultiple(
+		await pasteIntoBulkPanel(
 			"trail shoes for wide feet\n\nBest  Running   Shoes For Flat Feet\n   \nbest marathon racing flats\ntrail shoes for wide feet",
 		)(ctx);
 		const canvas = within(ctx.canvasElement);
@@ -88,7 +87,7 @@ export const AddMultipleOverCapacity: StoryObj = {
 		<Harness showSystemTags={false} initial={[...filler(MAX_PROMPTS - 5), ...entries(["", "", "", "", ""])]} />
 	),
 	play: async (ctx) => {
-		await addMultiple(
+		await pasteIntoBulkPanel(
 			"trail shoes for wide feet\nbest marathon racing flats\nlightweight gym trainers\nbest shoes for plantar fasciitis\ncushioned recovery runners\nzero drop road shoes",
 		)(ctx);
 		const canvas = within(ctx.canvasElement);
@@ -121,20 +120,6 @@ export const RemoveUnsavedRow: StoryObj = {
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
 
-// ---------------------------------------------------------------------------
-// Web-grounded Claude assignment (cloud plans)
-// ---------------------------------------------------------------------------
-
-/**
- * The stacked mobile block and the desktop grid both render, so every row has
- * two of these. Queries go through the state rather than an index so they don't
- * depend on which layout the canvas width happens to show.
- */
-/**
- * Each row opens a popover naming the premium models, so the assertions below
- * work through it the way a customer would rather than reaching for a checkbox
- * the table no longer shows.
- */
 // The mobile block and the desktop grid both render (one is just hidden), so a
 // row has two triggers. Selecting by what the trigger says avoids depending on
 // which layout comes first in the DOM.

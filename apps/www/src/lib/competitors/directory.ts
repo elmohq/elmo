@@ -1,12 +1,12 @@
 import type { FaqItem } from "@/lib/faqs";
+import { newest } from "@/lib/page-dates";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
-import { competitors, getComparisonSlug, getPopularityRank, graveyardRanking } from "./data";
+import { competitors, getPopularityRank, graveyardRanking } from "./data";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
 	type CompetitorCategory,
 	ELMO_FEATURES,
-	FEATURE_CATEGORIES,
 	type FeatureKey,
 	getFeatureDescription,
 	getFeatureLabel,
@@ -56,23 +56,29 @@ export function hasOwnPages(c: Competitor): boolean {
 
 export const competitorsWithOwnPages: Competitor[] = competitors.filter(hasOwnPages);
 
+export function lastChecked(tools: Competitor[]): string | undefined {
+	return newest(tools.map((tool) => tool.checkedAt));
+}
+
 const byPopularity = (a: Competitor, b: Competitor) => getPopularityRank(a) - getPopularityRank(b);
 
+const PINNED_ALTERNATIVES: Record<string, string[]> = {
+	"sight-ai": ["rankspot"],
+};
+
 /**
- * Up to `limit` alternatives to `competitor`: same category first (sorted by
+ * Up to `limit` alternatives to `competitor`: the same category (sorted by
  * popularity), then the most prominent trackers from other categories to fill
- * the list out. Excludes the tool itself and anything we don't index.
+ * the list out, with any pinned tools taking the final spots. Excludes the tool
+ * itself and anything we don't index.
  */
 export function getAlternatives(competitor: Competitor, limit = 6): Competitor[] {
-	const sameCategory = indexedCompetitors
-		.filter((c) => c.slug !== competitor.slug && c.category === competitor.category)
-		.sort(byPopularity);
-	if (sameCategory.length >= limit) return sameCategory.slice(0, limit);
-
-	const backfill = indexedCompetitors
-		.filter((c) => c.slug !== competitor.slug && c.category !== competitor.category)
-		.sort(byPopularity);
-	return [...sameCategory, ...backfill].slice(0, limit);
+	const pinnedSlugs = new Set(PINNED_ALTERNATIVES[competitor.slug]);
+	const pinned = indexedCompetitors.filter((c) => pinnedSlugs.has(c.slug)).slice(0, limit);
+	const candidates = indexedCompetitors.filter((c) => c.slug !== competitor.slug && !pinnedSlugs.has(c.slug));
+	const sameCategory = candidates.filter((c) => c.category === competitor.category).sort(byPopularity);
+	const backfill = candidates.filter((c) => c.category !== competitor.category).sort(byPopularity);
+	return [...[...sameCategory, ...backfill].slice(0, limit - pinned.length), ...pinned];
 }
 
 // --- Competitor-vs-competitor pairs ------------------------------------------
@@ -320,6 +326,15 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 
 // --- Alternatives ------------------------------------------------------------
 
+const MOST_REPLACED = new Set(["profound", "peec-ai", "otterly-ai"]);
+
+const MOST_REPLACED_LINE =
+	"Elmo is an open-source alternative to Profound, Peec AI, and OtterlyAI, so the same setup replaces whichever of the three you use today.";
+
+export function isMostReplaced(c: Competitor): boolean {
+	return MOST_REPLACED.has(c.slug);
+}
+
 export function getAlternativesVerdict(c: Competitor): string {
 	const noun = CATEGORY_NOUN[c.category];
 	const fate = graveyardFate(c);
@@ -330,9 +345,10 @@ export function getAlternativesVerdict(c: Competitor): string {
 	}
 	const open = isOpenSource(c);
 	if (open) {
-		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with white-label support for agencies.`;
+		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude mention and cite your brand, with white-label support for agencies.`;
 	}
-	return `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
+	const verdict = `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
+	return MOST_REPLACED.has(c.slug) ? `${verdict} ${MOST_REPLACED_LINE}` : verdict;
 }
 
 export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[] {
@@ -351,7 +367,7 @@ export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[
 			question: `Is there an open-source alternative to ${c.name}?`,
 			answer: open
 				? `${c.name} is itself open source, and so is Elmo. Elmo is built specifically for self-hosted, independently verifiable AI visibility tracking, so you can audit how each metric is calculated and run it on your own infrastructure.`
-				: `Yes. Elmo is an open-source, self-hostable AI visibility platform. You can read every line of code, run it on your own infrastructure, and verify each metric, which a closed product like ${c.name} cannot offer.`,
+				: `Yes. Elmo is an open-source, self-hostable AI visibility platform. You can read every line of code, run it on your own infrastructure, and verify each metric, which a closed product like ${c.name} cannot offer.${MOST_REPLACED.has(c.slug) ? ` ${MOST_REPLACED_LINE}` : ""}`,
 		},
 		{
 			question: `Why switch from ${c.name} to Elmo?`,
@@ -395,7 +411,7 @@ function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 		},
 		{
 			question: `Is there an open-source alternative to ${a.name} and ${b.name}?`,
-			answer: `Yes. Elmo is an open-source AI visibility platform you can self-host for free. It tracks mentions, citations, and competitor share across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, and every metric is auditable in the code.`,
+			answer: `Yes. Elmo is an open-source AI visibility platform you can self-host for free. It tracks mentions, citations, and competitor share across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude, and every metric is auditable in the code.`,
 		},
 	];
 }
@@ -540,7 +556,7 @@ export function getCategoryFaqs(category: CompetitorCategory, tools: Competitor[
 		},
 		{
 			question: `Is there an open-source ${label} tool?`,
-			answer: `Elmo is an open-source AI visibility platform you can self-host for free. It tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with every metric open to inspection.`,
+			answer: `Elmo is an open-source AI visibility platform you can self-host for free. It tracks how ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude mention and cite your brand, with every metric open to inspection.`,
 		},
 	];
 }
@@ -558,11 +574,11 @@ const CATEGORY_ELMO_PITCH: Record<CompetitorCategory, string> = {
 	"api-developer":
 		"The tools here are API-first. Elmo gives you the data and the code: self-host the whole platform, read how every metric is produced, and pull mentions and citations into your own dashboards without paying per call or depending on a pipeline you cannot see.",
 	ecommerce:
-		"Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews describe your brand across the major engines. It is the open-source choice in this space, so you run it yourself for free and verify every number rather than trusting a hosted score.",
+		"Elmo tracks how ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude describe your brand across the major engines. It is the open-source choice in this space, so you run it yourself for free and verify every number rather than trusting a hosted score.",
 	"seo-traditional":
 		"The platforms in this category bolted AI search tracking onto an existing SEO suite. Elmo was built for the AI layer from the start, and it is open source, so you can self-host it for free and confirm how each visibility metric is calculated instead of taking a bundled feature on faith.",
 	"open-source":
-		"Like the other projects here, Elmo is open source, so you can read the code and run it yourself. It is built specifically for verifiable AI visibility tracking across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, and it adds white-label support for agencies with no per-seat pricing.",
+		"Like the other projects here, Elmo is open source, so you can read the code and run it yourself. It is built specifically for verifiable AI visibility tracking across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Bing AI Mode, and Claude, and it adds white-label support for agencies with no per-seat pricing.",
 	other:
 		"Elmo is the open-source AI visibility platform in this directory. Self-host it for free, keep your data in-house, and verify how it tracks the way AI engines mention and cite your brand.",
 };

@@ -14,6 +14,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 93,
 		ahrefsTraffic: 3636335,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -46,6 +47,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 92,
 		ahrefsTraffic: 8834233,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Semrush's AI tracking is one toolkit inside a large SEO suite. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
@@ -94,6 +96,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 91,
 		ahrefsTraffic: 4382530,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"Brand Radar is one tool inside Ahrefs' SEO suite, starting at $129/mo. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
@@ -137,11 +140,12 @@ export const competitors: Competitor[] = [
 		url: "https://amplitude.com",
 		tagline: "Product analytics platform with built-in AI visibility tracking for ChatGPT and AI Overviews",
 		description:
-			"Amplitude, the product analytics platform, includes AI visibility tracking that monitors how ChatGPT and Google AI Overviews mention a brand, with a visibility score, citations, competitor comparison, and content-gap recommendations. It pairs that with AI crawler and referral data from Amplitude's analytics.",
+			"Amplitude, the product analytics platform, includes AI visibility tracking that monitors how ChatGPT and Google AI Overviews mention a brand, with a visibility score, citations, sentiment, competitor comparison, and page-level recommendations. It pairs that with AI referral traffic from Amplitude's analytics. Lower plans track ChatGPT only.",
 		category: "tracking",
 		ahrefsDR: 86,
 		ahrefsTraffic: 197332,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -152,12 +156,15 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
 			crawlerAnalytics: true,
+			geographicTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
+			contentGeneration: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
@@ -171,20 +178,20 @@ export const competitors: Competitor[] = [
 		name: "SE Visible",
 		domain: "visible.seranking.com",
 		url: "https://visible.seranking.com/",
-		tagline: "All-in-one SEO platform with AI Overviews and ChatGPT tracking",
+		tagline: "SE Ranking's standalone AI visibility tracker for ChatGPT, Gemini, and Google's AI results",
 		description:
-			"SE Visible is SE Ranking's AI visibility product, built alongside their comprehensive SEO toolkit, offering both an AI Overviews Tracker and a ChatGPT Visibility Tracker. Monitors how your brand appears in Google's AI-generated results and ChatGPT responses, with integration into their keyword tracking and competitive analysis tools.",
+			"SE Visible is SE Ranking's standalone AI visibility product. It tracks how brands appear in ChatGPT, Gemini, Google AI Overviews and AI Mode by collecting answers through a browser interface. It reports visibility, average position, net sentiment, and citations by domain and URL against tracked competitors, labels prompts by market and language, and exposes its data through an API, a Data Studio connector, and the SE Ranking MCP server. Its own FAQ says the agency white-label pack does not cover SE Visible.",
 		category: "seo-traditional",
 		ahrefsDR: 85,
 		ahrefsTraffic: 809093,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
 			googleAiMode: true,
 			gemini: true,
-			perplexity: true,
 			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -197,13 +204,13 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
-			whiteLabelAgency: true,
+			biConnectors: true,
 		},
-		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$89/mo", hasEnterprise: true },
 		highlights: [
-			"AI Overviews + ChatGPT tracking in one platform",
-			"Integrated with comprehensive SEO toolkit",
-			"White-label available for agencies",
+			"Answers collected through a browser interface rather than model APIs",
+			"API, MCP, and Data Studio connector included on every plan",
+			"Unlimited user seats and competitors on all plans",
 		],
 	},
 	{
@@ -211,14 +218,14 @@ export const competitors: Competitor[] = [
 		name: "Writesonic",
 		domain: "writesonic.com",
 		url: "https://writesonic.com/",
-		tagline:
-			"AI search growth engine combining visibility tracking, a 2B+ conversation dataset, and content generation",
+		tagline: "Content generation platform with AI visibility tracking, prompt volumes, and crawler analytics",
 		description:
-			"Writesonic combines AI content generation with AI search visibility tracking, built on a dataset it says covers more than 2 billion AI conversations. The platform tracks how AI platforms mention a brand, estimates prompt volumes, audits sites, reports AI crawler traffic, and generates content aimed at closing visibility gaps.",
+			"Writesonic combines AI content generation with AI search visibility tracking, built on a dataset it says covers more than 2 billion AI conversations. The platform tracks how AI platforms mention a brand, estimates prompt volumes, audits sites, reports AI crawler traffic, and generates content aimed at closing visibility gaps. Self-serve plans track ChatGPT, Gemini, and Google AI Overviews; AI Mode, Perplexity, Claude, Grok, and Meta's Muse Spark are Enterprise-only.",
 		category: "content",
 		ahrefsDR: 84,
 		ahrefsTraffic: 129581,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -226,7 +233,6 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			claude: true,
 			grok: true,
 			metaAi: true,
@@ -250,9 +256,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$79/mo", hasEnterprise: true },
 		highlights: [
-			"Prompt volumes from a 2B+ AI conversation dataset",
+			"Prompt volume estimates from its own AI conversation dataset",
 			"Tracking, site audits, crawler analytics, and content generation in one platform",
-			"Looker Studio connector and MCP server",
+			"Five of its eight engines are Enterprise-only",
 		],
 	},
 	{
@@ -260,20 +266,24 @@ export const competitors: Competitor[] = [
 		name: "Frase",
 		domain: "frase.io",
 		url: "https://www.frase.io/",
-		tagline: "Agentic SEO and GEO platform with 80+ AI tools",
+		tagline: "SEO and GEO content platform with AI visibility tracking",
 		description:
-			"Frase has evolved from a content optimization platform into an Agentic SEO and GEO platform with over 80 AI-powered tools. Their approach includes content atomization, programmatic SEO from data, and AI crawler analytics. Covers both content creation and AI visibility tracking.",
+			"Frase is a content platform for SEO and GEO that covers research, AI drafting in a brand voice, optimization, site audits, and CMS publishing. Its AI Visibility module tracks mentions, citations, share of voice, and sentiment across up to eight AI engines depending on plan, with country targeting and AI crawler logs. It offers a REST API and MCP server on all plans, with white-label client portals on Enterprise.",
 		category: "content",
 		ahrefsDR: 80,
 		ahrefsTraffic: 15355,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
 			gemini: true,
 			perplexity: true,
+			copilot: true,
 			claude: true,
+			grok: true,
+			deepseek: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
@@ -294,9 +304,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$39/mo", hasEnterprise: true },
 		highlights: [
-			"80+ AI-powered SEO and GEO tools",
+			"AI visibility tracking across up to eight engines, gated by plan",
 			"Content atomization and programmatic SEO",
-			"Agentic AI workflows for content creation",
+			"REST API, MCP server, and CLI on every plan",
 		],
 	},
 	{
@@ -311,6 +321,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 80,
 		ahrefsTraffic: 1457,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -335,13 +346,14 @@ export const competitors: Competitor[] = [
 		name: "Profound",
 		domain: "tryprofound.com",
 		url: "https://www.tryprofound.com/",
-		tagline: "G2 AEO Leader with prompt volumes and Agent Analytics",
+		tagline: "AI marketing suite with answer engine tracking, prompt volumes, and agents",
 		description:
-			"Profound was named the G2 AEO Leader in the inaugural G2 Grid report. They offer prompt volume estimates, Agent Analytics for tracking AI crawler behavior, and count enterprise customers including MongoDB, Figma, Zapier, and Ramp among their users. Featured in Fortune, WSJ, NYT, TechCrunch, and Financial Times.",
+			"Profound is an AI marketing platform that raised a $180M Series D at a $1.8B valuation in September 2026. It tracks brand visibility across up to nine answer engines by querying their consumer interfaces, and adds Prompt Volumes, Agent Analytics for AI crawler traffic, ChatGPT Shopping tracking, and an agent builder for content workflows. Brands get a free 7-day trial, and everything after that is a custom Enterprise contract.",
 		category: "tracking",
 		ahrefsDR: 79,
 		ahrefsTraffic: 23237,
 		status: "active",
+		checkedAt: "2026-11-09",
 		soundbite:
 			"Profound has grown into a sprawling enterprise suite — agents, content, shopping, ads — with enterprise pricing to match. If what you need is AI visibility tracking you can trust, Elmo does that one job well and is free to self-host.",
 		features: {
@@ -351,10 +363,10 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			claude: true,
-			grok: true,
 			deepseek: true,
+			metaAi: true,
+			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
@@ -363,22 +375,25 @@ export const competitors: Competitor[] = [
 			sentimentAnalysis: true,
 			queryFanOut: true,
 			crawlerAnalytics: true,
+			geographicTracking: true,
 			shoppingTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			typescriptSdk: true,
 			pythonSdk: true,
 			mcpServer: true,
-			whiteLabelAgency: true,
+			biConnectors: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
-			"G2 AEO Leader",
+			"$180M Series D at a $1.8B valuation (Sept 2026)",
 			"Agent Analytics for AI crawler tracking",
-			"Enterprise: MongoDB, Figma, Zapier, Ramp, US Bank",
-			"Featured in Fortune, WSJ, NYT, TechCrunch",
+			"Captures answers from engines' consumer interfaces, not APIs",
+			"Python and TypeScript SDKs, MCP server, and Tableau connector",
 		],
 		switching: {
 			reasons: [
@@ -397,13 +412,13 @@ export const competitors: Competitor[] = [
 				{
 					headline: "Enterprise pricing for a weekly number",
 					detail:
-						"Profound sells to enterprises and prices accordingly, with no public entry tier. That is a real mismatch for teams who want to watch a few dozen prompts and are not running a procurement cycle to do it.",
+						"Profound sells to enterprises and prices accordingly: brands get a free 7-day trial, then a custom Enterprise contract, with no public paid tier. That is a real mismatch for teams who want to watch a few dozen prompts and are not running a procurement cycle to do it.",
 					elmo: "Self-host Elmo for free with unlimited prompts and pay only for your own infrastructure and model API keys. Managed cloud starts at $29/mo if you would rather not run it. Same data either way.",
 				},
 				{
 					headline: "You cannot check the numbers",
 					detail:
-						"Profound is closed and hosted, so the scoring is a black box. When a visibility number moves, you cannot see what moved it, and when it lands in a board deck, you are vouching for a figure you cannot audit.",
+						"Profound is closed and hosted. It documents the formulas behind its metrics, but answer collection and brand parsing run on its servers, so when a visibility number lands in a board deck you are vouching for a pipeline you cannot inspect or rerun.",
 					elmo: "Every Elmo metric is computed by code you can read, under the MIT license. Your prompts and history stay on your infrastructure, and you can export all of it at any time.",
 				},
 			],
@@ -421,6 +436,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 75,
 		ahrefsTraffic: 39908,
 		status: "active",
+		checkedAt: "2026-10-20",
 		soundbite:
 			"DataForSEO is a raw data API you build on, not a tracker. Elmo can use DataForSEO as its data source and turns it into tracking, reporting, and recommendations.",
 		features: {
@@ -463,6 +479,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 74,
 		ahrefsTraffic: 39532,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -498,23 +515,27 @@ export const competitors: Competitor[] = [
 		name: "AirOps",
 		domain: "airops.com",
 		url: "https://www.airops.com/",
-		tagline: "Content Engineering platform with AI workflows and Page360",
+		tagline: "AI search content platform with tracking, content agents, and strategy services",
 		description:
-			"AirOps is a Content Engineering platform that helps enterprises create AI-optimized content at scale. Their Page360 feature analyzes content performance in AI search, while their workflow automation handles content refresh, creation, and optimization. Focused on enterprise content operations with brand kits and team collaboration.",
+			"AirOps is a content platform for AI search that raised a $40M Series B led by Greylock. It tracks brand visibility across nine answer engines, plus coding agents such as Codex and Claude Code, and pairs that with Playbooks and Workflows for creating and refreshing content, sold alongside hands-on strategy services. Plan prices are not published, and the entry Solo plan's tracking covers ChatGPT only.",
 		category: "content",
 		ahrefsDR: 76,
 		ahrefsTraffic: 10127,
 		status: "active",
+		checkedAt: "2026-11-09",
 		soundbite:
 			"AirOps is a content-operations platform first, and visibility tracking is one piece of it. Elmo is built only for AI visibility, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
+			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
 			copilot: true,
 			claude: true,
 			grok: true,
+			metaAi: true,
 			byoKeys: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -524,16 +545,20 @@ export const competitors: Competitor[] = [
 			sentimentAnalysis: true,
 			queryFanOut: true,
 			crawlerAnalytics: true,
+			geographicTracking: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
 			contentGapAnalysis: true,
+			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
-			"Page360 content performance analysis",
-			"Enterprise content engineering workflows",
-			"Brand kits and collaboration tools",
+			"Tracks nine answer engines plus Codex and Claude Code",
+			"Playbooks and Workflows for content creation and refresh",
+			"Insights API, MCP server, and Agent Analytics",
 		],
 	},
 	{
@@ -541,15 +566,16 @@ export const competitors: Competitor[] = [
 		name: "Peec AI",
 		domain: "peec.ai",
 		url: "https://peec.ai/",
-		tagline: "$21M-funded Berlin AI visibility platform with Looker Studio integration",
+		tagline: "$21M-funded Berlin AI visibility tracker with actions, an agent, and a Data Studio connector",
 		description:
-			"Peec AI is a Berlin-based AI visibility tracker that raised a $21M Series A led by Singular and reports more than 3,500 brands and agencies on the platform. It collects answers from the engines' consumer interfaces across ten engines, with prompt volume estimates, sentiment, shopping and regional tracking, and a Looker Studio connector.",
+			"Peec AI is a Berlin-based AI visibility tracker that raised a $21M Series A led by Singular and reports more than 4,000 brands and agencies on the platform. Self-serve plans pick three of six engines collected from consumer interfaces; Perplexity and API-collected models such as Claude, Grok, and DeepSeek are Enterprise-only. It adds prompt volume scores, sentiment, shopping and regional tracking, AI crawler analytics, and a Data Studio connector.",
 		category: "tracking",
 		ahrefsDR: 74,
 		ahrefsTraffic: 1055,
 		status: "active",
+		checkedAt: "2026-11-09",
 		soundbite:
-			"Peec AI is a capable hosted tracker, but it's closed: your prompts and history live in its cloud, and you can't check how a number was produced. Elmo gives you the code, the data, and the method, free to self-host.",
+			"Peec AI is a closed, hosted tracker. Elmo is the open-source option: your prompts and history can live in your own database, you can read how every number is produced, and it's free to self-host.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -561,6 +587,7 @@ export const competitors: Competitor[] = [
 			claude: true,
 			grok: true,
 			deepseek: true,
+			metaAi: true,
 			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -575,16 +602,19 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
+			contentGeneration: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$95/mo", hasEnterprise: true },
 		highlights: [
-			"$21M Series A led by Singular, 3,500+ brands",
-			"Ten engines, collected from the real consumer interfaces",
-			"Looker Studio connector, API, and MCP server",
+			"$21M Series A led by Singular, 4,000+ brands",
+			"Up to 13 models; Perplexity, Claude, and Grok on Enterprise only",
+			"Data Studio connector, API, and MCP server",
 		],
 	},
 	{
@@ -592,13 +622,14 @@ export const competitors: Competitor[] = [
 		name: "Nightwatch",
 		domain: "nightwatch.io",
 		url: "https://nightwatch.io/ai-tracking/",
-		tagline: "Traditional SEO rank tracker with 190K locations + AI tracking",
+		tagline: "Traditional SEO rank tracker with 107K+ locations + AI tracking",
 		description:
-			"Nightwatch is an established SEO rank tracking platform that has added AI visibility tracking to their toolkit. With 190,000 tracking locations worldwide, they offer unified traditional SEO + AI search monitoring. Their Prompt Research feature helps discover relevant AI search queries.",
+			"Nightwatch is an established SEO rank tracking platform that has added AI visibility tracking to their toolkit. With 107,000+ tracking locations worldwide, they offer unified traditional SEO + AI search monitoring. Their Prompt Research feature helps discover relevant AI search queries.",
 		category: "seo-traditional",
 		ahrefsDR: 72,
 		ahrefsTraffic: 75823,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -624,7 +655,7 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "€79/mo", hasEnterprise: true },
 		highlights: [
-			"190,000 tracking locations worldwide",
+			"107,000+ tracking locations worldwide",
 			"Unified traditional SEO + AI tracking",
 			"Prompt Research feature for AI query discovery",
 		],
@@ -634,13 +665,14 @@ export const competitors: Competitor[] = [
 		name: "Local Falcon",
 		domain: "localfalcon.com",
 		url: "https://www.localfalcon.com/",
-		tagline: "First local SEO platform with AI visibility (SAIV metric)",
+		tagline: "Local SEO geo-grid rank tracker with AI visibility scans",
 		description:
-			"Local Falcon was an early entrant in local SEO + AI visibility tracking, introducing the SAIV (Share of AI Visibility) metric. They combine geo-grid rank tracking for local search with AI visibility monitoring, targeting local businesses and multi-location brands. Available for purchase on Microns.",
+			"Local Falcon is a local SEO rank tracker that runs geo-grid scans of Google Maps and AI answers from points around a business location. Its AI scans report Share of AI Voice (SAIV), the share of grid points where the brand is mentioned, alongside cited sources, competitor mentions, and a sentiment-style Buyer Persuasion Score. Plans are credit-based, and data is available through an API, an MCP server, and Looker Studio.",
 		category: "tracking",
 		ahrefsDR: 72,
 		ahrefsTraffic: 10792,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -654,6 +686,8 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
 			geographicTracking: true,
+			actionRecommendations: true,
+			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
@@ -661,24 +695,24 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$24.99/mo", hasEnterprise: true },
 		highlights: [
-			"Early entrant in local SEO + AI visibility",
-			"SAIV (Share of AI Visibility) metric",
-			"Looker Studio integration for agencies",
+			"Geo-grid AI visibility scans per location",
+			"Share of AI Voice (SAIV) metric",
+			"API, MCP server, and Looker Studio integration",
 		],
-		notes: "Possibly for sale on Microns marketplace",
 	},
 	{
 		slug: "otterly-ai",
 		name: "OtterlyAI",
 		domain: "otterly.ai",
 		url: "https://otterly.ai/",
-		tagline: "Gartner Cool Vendor 2025 with GEO Audit (25+ factors)",
+		tagline: "Self-serve AI search monitoring from $29/mo, with Gemini, AI Mode, and Claude as add-ons",
 		description:
-			"OtterlyAI was named a Gartner Cool Vendor 2025, won a 2026 European Search Award, and reports more than 30,000 users. It tracks ChatGPT, Perplexity, Google AI Overviews, and Copilot, with Gemini, AI Mode, and Claude as paid add-ons. Its GEO Audit checks 25+ on-page factors for AI readability, and it offers AI keyword research and a Looker Studio connector.",
+			"OtterlyAI tracks ChatGPT, Perplexity, Google AI Overviews, and Copilot on every plan, with Gemini, AI Mode, and Claude sold as per-engine add-ons. It collects answers through each engine's public web interface, except Claude, which it queries by API. Prompts are tracked daily, and the $29/mo Lite plan covers 15 of them. API, MCP, Looker Studio, and AI crawler log analytics start on the $189/mo Standard plan.",
 		category: "tracking",
 		ahrefsDR: 75,
 		ahrefsTraffic: 1726,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -688,28 +722,30 @@ export const competitors: Competitor[] = [
 			perplexity: true,
 			copilot: true,
 			claude: true,
+			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			promptVolumeEstimates: true,
 			sentimentAnalysis: true,
 			crawlerAnalytics: true,
 			geographicTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
+			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
-			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$29/mo", hasEnterprise: true },
 		highlights: [
-			"Gartner Cool Vendor 2025, 30,000+ users",
+			"Captures answers from engines' public web interfaces, Claude via API",
 			"Gemini, AI Mode, and Claude are paid add-ons",
-			"GEO Audit evaluating 25+ on-page factors",
+			"Content Audit scores pages on 15 structural and 13 AI readiness checks",
 		],
 	},
 	{
@@ -724,6 +760,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 72,
 		ahrefsTraffic: 1513,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -765,13 +802,14 @@ export const competitors: Competitor[] = [
 		name: "AthenaHQ",
 		domain: "athenahq.ai",
 		url: "https://www.athenahq.ai/",
-		tagline: "Action-focused AI blindspot detection with content workflows",
+		tagline: "Credit-based AI search tracking with content, site health, and shopping tools",
 		description:
-			"AthenaHQ focuses on detecting AI blindspots and turning visibility data into content workflows. Their conversation explorer lets you browse AI responses, while their persona-based auto-tagging and action recommendations help teams prioritize content creation.",
+			"AthenaHQ bills by credits, one per AI response, and tracks five engines on its free plan and eleven on the $295/mo Starter plan. Alongside tracking it offers content generation, Site Health audits, shopping and ChatGPT ad tracking, and a knowledge base it checks AI answers against for inaccurate claims. It has a REST API and MCP server, but API access is a paid add-on below Enterprise.",
 		category: "tracking",
 		ahrefsDR: 67,
 		ahrefsTraffic: 464,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -790,12 +828,15 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			promptVolumeEstimates: true,
 			sentimentAnalysis: true,
+			queryFanOut: true,
 			geographicTracking: true,
 			shoppingTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
@@ -803,9 +844,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, startingPrice: "$295/mo", hasEnterprise: true },
 		highlights: [
-			"AI blindspot detection methodology",
-			"Persona-based auto-tagging",
-			"Action-focused content workflows",
+			"Free plan covers five engines; Starter adds six more for $295/mo",
+			"API access is a paid add-on on Starter and included on Enterprise",
+			"Oracle checks AI answers against a brand knowledge base",
 		],
 	},
 	{
@@ -813,13 +854,14 @@ export const competitors: Competitor[] = [
 		name: "Promptwatch",
 		domain: "promptwatch.com",
 		url: "https://promptwatch.com/",
-		tagline: "Real UI scraping with 630M+ citations tracked",
+		tagline: "AI visibility tracker that collects answers from the live consumer apps",
 		description:
-			"Promptwatch collects answers by scraping the AI user interfaces rather than calling model APIs, which it says reflects what real users see. It raised a €6M seed round in July 2026 and reports more than 1,780 brands. Alongside tracking it offers shopping and geographic tracking, content gap analysis, content generation, and a Looker Studio connector.",
+			"Promptwatch collects ChatGPT, Gemini, Perplexity, Copilot, Meta AI, and Google AI Overviews and AI Mode answers from the live consumer products, and queries Claude, DeepSeek, Grok, and Mistral through their APIs. It raised a €6M seed round in July 2026 and reports more than 1,780 brands. Beyond tracking it covers shopping, ads, crawler logs, site audits, content generation, and a Looker Studio connector. Its free Explore tier tracks ChatGPT only.",
 		category: "tracking",
 		ahrefsDR: 59,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -827,9 +869,11 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
+			copilot: true,
 			claude: true,
 			grok: true,
 			deepseek: true,
+			metaAi: true,
 			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
@@ -842,17 +886,20 @@ export const competitors: Competitor[] = [
 			geographicTracking: true,
 			socialMediaTracking: true,
 			shoppingTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
 			contentGeneration: true,
 		},
-		pricing: { hasFree: false, startingPrice: "$95/mo", hasEnterprise: true },
+		pricing: { hasFree: true, startingPrice: "$95/mo", hasEnterprise: true },
 		highlights: [
-			"Scrapes the real AI interfaces rather than using APIs",
+			"Collects live-search engines from the consumer apps; Claude, DeepSeek, and Grok via API",
 			"€6M seed round in July 2026, 1,780+ brands",
 			"Featured in WSJ and Axios",
 		],
@@ -864,11 +911,12 @@ export const competitors: Competitor[] = [
 		url: "https://llmrefs.com/",
 		tagline: "Keyword-based tracking with auto fan-out prompts",
 		description:
-			"LLMrefs takes a keyword-first approach to AI visibility tracking, automatically generating relevant prompts from your keywords (fan-out). This makes it more familiar for SEO professionals transitioning to AEO. Lists eBay, HubSpot, and NVIDIA among its users.",
+			"LLMrefs takes a keyword-first approach to AI visibility tracking, automatically generating relevant prompts from your keywords (fan-out). This makes it more familiar for SEO professionals transitioning to AEO. A single $79/mo plan, marked as limited-time pricing, covers all supported engines, 500 prompts, and geo-targeting in 50+ countries.",
 		category: "tracking",
 		ahrefsDR: 63,
 		ahrefsTraffic: 9988,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -892,6 +940,7 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			emailAlerts: true,
 			dataExportApi: true,
 			typescriptSdk: true,
 			biConnectors: true,
@@ -900,7 +949,7 @@ export const competitors: Competitor[] = [
 		highlights: [
 			"Keyword-based tracking — familiar for SEO pros",
 			"Auto fan-out prompt generation from keywords",
-			"Trusted by eBay, HubSpot, NVIDIA",
+			"Single plan with all engines, CSV export, and API",
 		],
 	},
 	{
@@ -915,6 +964,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 56,
 		ahrefsTraffic: 155,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -946,6 +996,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 67,
 		ahrefsTraffic: 4149,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -962,13 +1013,14 @@ export const competitors: Competitor[] = [
 		name: "Goodie",
 		domain: "higoodie.com",
 		url: "https://higoodie.com/",
-		tagline: "AI visibility tracking with Amazon Rufus tracking and training course",
+		tagline: "AI visibility tracking with AI shopping assistant coverage",
 		description:
-			"Goodie (HiGoodie) offers AI visibility tracking with a focus on Amazon Rufus tracking for e-commerce brands. They also offer educational courses on AEO methodology.",
+			"Goodie (HiGoodie) tracks brand visibility across up to 14 AI models, including shopping assistants such as ChatGPT Shopping and Amazon's Alexa for Shopping (formerly Rufus). The self-serve Core plan covers 5 models; Gemini, Claude, Meta AI, Grok, and DeepSeek require higher tiers. It also offers AI crawler analytics, prompt research, and an AEO content writer.",
 		category: "tracking",
 		ahrefsDR: 61,
 		ahrefsTraffic: 1030,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -992,6 +1044,9 @@ export const competitors: Competitor[] = [
 			shoppingTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
 			whiteLabelAgency: true,
@@ -999,9 +1054,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$295/mo", hasEnterprise: true },
 		highlights: [
-			"Educational courses on AEO methodology",
-			"Amazon Rufus shopping tracking",
-			"Thought leadership content",
+			"Tracks Amazon Alexa for Shopping (formerly Rufus) and ChatGPT Shopping",
+			"Up to 14 models on Enterprise; 5 on the $295/mo Core plan",
+			"AI crawler analytics and technical site audit",
 		],
 	},
 	{
@@ -1016,6 +1071,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 64,
 		ahrefsTraffic: 4766,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1047,6 +1103,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 55,
 		ahrefsTraffic: 254,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1074,13 +1131,14 @@ export const competitors: Competitor[] = [
 		name: "Knowatoa",
 		domain: "knowatoa.com",
 		url: "https://knowatoa.com/",
-		tagline: "BISCUIT Framework methodology with multi-language tracking",
+		tagline: "Seven-engine AI visibility tracking with writer agents and MCP",
 		description:
-			"Knowatoa offers AI visibility tracking built around their proprietary BISCUIT Framework methodology for understanding AI rankings. They provide multi-language and multi-location tracking, sentiment analysis, and Looker Studio / NinjaCat integrations.",
+			"Knowatoa tracks brand visibility across ChatGPT, Claude, Perplexity, Gemini, Meta AI, Google AI Overviews, and AI Mode, with citation, competitor, and sentiment reporting by language and location. It also includes agents that research content gaps and draft articles, plus an API, MCP server, and Looker Studio and NinjaCat connectors. The $59/mo Starter plan covers only ChatGPT, AI Overviews, and AI Mode.",
 		category: "tracking",
 		ahrefsDR: 58,
 		ahrefsTraffic: 37,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1097,7 +1155,9 @@ export const competitors: Competitor[] = [
 			sentimentAnalysis: true,
 			geographicTracking: true,
 			multiLanguage: true,
+			actionRecommendations: true,
 			contentGapAnalysis: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
@@ -1106,7 +1166,7 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$59/mo", hasEnterprise: true },
 		highlights: [
-			"Proprietary BISCUIT Framework methodology",
+			"Tracks seven AI engines, three on Starter",
 			"Multi-language and multi-location tracking",
 			"Looker Studio and NinjaCat integrations",
 		],
@@ -1116,32 +1176,36 @@ export const competitors: Competitor[] = [
 		name: "AISEOTracker",
 		domain: "aiseotracker.com",
 		url: "https://aiseotracker.com/",
-		tagline: "249K+ brands tracked with Page Inspector feature",
+		tagline: "One-off AI visibility audits with optional weekly tracking",
 		description:
-			"AISEOTracker monitors how AI engines mention brands and includes a Page Inspector that shows how AI crawlers see your content (stripped HTML view), helping identify invisible content like dynamic pricing or JS-heavy elements. It offers a free visibility report.",
+			"AISEOTracker sells a $49 one-time report that scans up to 50 prompts daily for seven days across ChatGPT, Perplexity, Gemini, Bing AI Mode (which it calls Copilot), Google AI Overviews, and Bing AI Overviews, then adds competitor gaps, cited sources, and an action plan. Ongoing tracking is a separate subscription with weekly rescans, and an MCP server lets agents read project data. It does not scan Claude or Grok, and there is no free plan beyond a one-question ChatGPT check and free tools like the Page Inspector.",
 		category: "tracking",
 		ahrefsDR: 52,
 		ahrefsTraffic: 213,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
 			mcpServer: true,
 		},
-		pricing: { hasFree: true, startingPrice: "$49 one-off report; $79/mo", hasEnterprise: false },
+		pricing: { hasFree: false, startingPrice: "$49 one-off report; $79/mo", hasEnterprise: false },
 		highlights: [
-			"Page Inspector — see how AI crawlers view your content",
-			"Free visibility report available",
-			"Dedicated AI visibility tracker",
+			"Pay-once $49 audit with seven days of daily scans, no subscription required",
+			"Page Inspector shows what AI crawlers can read on a page",
+			"Weekly rescans only on paid tracking plans",
 		],
 	},
 	{
@@ -1156,6 +1220,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 19,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1197,6 +1262,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1225,6 +1291,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 52,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1260,6 +1327,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1288,17 +1356,19 @@ export const competitors: Competitor[] = [
 		name: "Limy",
 		domain: "limy.ai",
 		url: "https://www.limy.ai/",
-		tagline: "B2A (Business to Agents) with AI revenue tracking",
+		tagline: "AI visibility tracking with AI traffic and revenue attribution",
 		description:
-			"Limy introduces the B2A (Business to Agents) concept, focusing on tracking revenue from AI referrals rather than just visibility. Their platform measures AI traffic attribution, conversion tracking, and provides optimization steps to improve AI-driven revenue. Unique in tying visibility directly to business outcomes.",
+			"Limy tracks how AI engines mention, cite, and rank a brand against competitors, with sentiment scoring and prompt-level source analysis. A site pixel and CDN log integrations report AI bot crawls and AI-referred human visits, and an attribution layer assigns monetary value to conversions from those visits. It also generates recommendations with content drafts, and offers a REST API and a read-only MCP server.",
 		category: "tracking",
 		ahrefsDR: 51,
 		ahrefsTraffic: 14,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
 			copilot: true,
@@ -1311,14 +1381,18 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
 			crawlerAnalytics: true,
+			geographicTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
+			dataExportApi: true,
 			mcpServer: true,
+			contentGeneration: true,
 		},
-		pricing: { hasFree: false, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$449/mo", hasEnterprise: true },
 		highlights: [
-			"B2A (Business to Agents) concept",
-			"AI revenue and conversion tracking",
-			"Ties visibility to business outcomes",
+			"AI revenue and conversion attribution from AI-referred visits",
+			"AI bot and AI user traffic via pixel or CDN log integrations",
+			"REST API and read-only MCP server",
 		],
 	},
 	{
@@ -1333,6 +1407,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 792,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Pivoted away from AI visibility to building workflow datasets for AI labs and agent builders.",
@@ -1360,6 +1435,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 51,
 		ahrefsTraffic: 165,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1406,6 +1482,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 38,
 		ahrefsTraffic: 96,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1443,6 +1520,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 5718,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1478,6 +1556,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 46,
 		ahrefsTraffic: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1509,11 +1588,12 @@ export const competitors: Competitor[] = [
 		url: "https://www.searchable.com/",
 		tagline: "AI search visibility platform",
 		description:
-			"Searchable offers an AI search visibility platform that monitors how brands appear across AI-powered search engines. Their platform tracks mentions, citations, and competitive positioning in AI search results.",
+			"Searchable tracks brand mentions, citations, sentiment, and share of voice across nine AI engines. ChatGPT, Google AI Overviews, and Perplexity are included on every plan; Google AI Mode, Gemini, Claude, Copilot, Grok, and DeepSeek are paid add-ons. It also reports AI crawler visits, shows the searches engines ran behind each answer, runs site audits, and includes a content studio, an API, and an MCP server.",
 		category: "tracking",
 		ahrefsDR: 53,
 		ahrefsTraffic: 420,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1529,11 +1609,17 @@ export const competitors: Competitor[] = [
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			queryFanOut: true,
 			crawlerAnalytics: true,
 			geographicTracking: true,
 			shoppingTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
+			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
@@ -1541,7 +1627,11 @@ export const competitors: Competitor[] = [
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$125/mo", hasEnterprise: true },
-		highlights: ["AI search visibility monitoring"],
+		highlights: [
+			"Six of its nine engines are paid add-ons",
+			"AI crawler analytics alongside answer tracking",
+			"White-label reports on your own domain on higher plans",
+		],
 	},
 	{
 		slug: "llm-pulse",
@@ -1555,6 +1645,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 48,
 		ahrefsTraffic: 3587,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1601,6 +1692,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 45,
 		ahrefsTraffic: 567,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1636,6 +1728,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 60,
 		ahrefsTraffic: 5139,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1664,22 +1757,35 @@ export const competitors: Competitor[] = [
 		url: "https://www.bluefishai.com/",
 		tagline: "Agentic marketing platform for how AI describes Fortune 500 brands",
 		description:
-			"BluefishAI focuses on enterprise AI commerce, helping Fortune 500 brands optimize their presence in AI-powered shopping experiences. Their platform monitors product visibility in AI shopping features and helps optimize product data for AI consumption.",
+			"Bluefish is an enterprise AI visibility platform for large brands, sold through demos with no public pricing. It tracks ChatGPT, Gemini, Google AI Overviews, Claude, Perplexity, and Amazon's Rufus and Alexa for Shopping, and scores visibility, favorability, safety, and factual accuracy against brand-supplied facts. It uses a fixed set of synthetic prompts and added paid-media briefs for Google and ChatGPT ads in October 2026.",
 		category: "ecommerce",
 		ahrefsDR: 46,
 		ahrefsTraffic: 445,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
+			googleAiOverviews: true,
+			gemini: true,
+			perplexity: true,
+			claude: true,
 			visibilityScore: true,
+			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			sentimentAnalysis: true,
 			shoppingTracking: true,
+			actionRecommendations: true,
 			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
-		highlights: ["Enterprise Fortune 500 focus", "AI Commerce optimization"],
+		highlights: [
+			"Sold to enterprise brands; claims about 10% of the Fortune 500",
+			"$43M Series B in April 2026, $68M raised in total",
+			"Checks AI claims against brand-verified facts (AI Accuracy)",
+		],
 	},
 	{
 		slug: "parse",
@@ -1693,6 +1799,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 213,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1723,6 +1830,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1758,6 +1866,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 33,
 		ahrefsTraffic: 814,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-10-31",
 			summary:
@@ -1784,6 +1893,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 40,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			siteAudits: true,
 		},
@@ -1806,6 +1916,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 45,
 		ahrefsTraffic: 1162,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1844,15 +1955,17 @@ export const competitors: Competitor[] = [
 		name: "GetCito",
 		domain: "getcito.com",
 		url: "https://getcito.com/",
-		tagline: "A fork of Elmo — if you are considering GetCito, use Elmo instead",
+		tagline: "Two vibe-coded codebases with an Elmo fork in between — use Elmo instead",
 		description:
-			"If you are considering GetCito, use Elmo instead: GetCito is a fork of Elmo. It launched in November 2025 as its own Next.js and Firebase application, then on July 10, 2026 replaced that codebase with Elmo's — 847 files, +131,716/-50,931 lines — in a single pull request. Its feature set was Elmo's as of the fork date, and it has shipped less since — 17 commits to Elmo's 98 in the following month — so it is falling further behind rather than diverging into something competitive.",
+			"If you are considering GetCito, use Elmo instead. GetCito has never had a mature codebase. It launched in November 2025 as a minimal vibe-coded tracker, dumped into the repository in one commit with leftover backup files and test endpoints. On July 10, 2026 it replaced that with a fork of Elmo, and on November 4, 2026 it threw the fork away for another vibe-coded project built from scratch: a single commit of 4,354 files and 923,787 added lines, with no description and no review. What GetCito ships today is a new Next.js, Express, and Supabase codebase with no track record.",
 		category: "open-source",
 		ahrefsDR: 34,
 		ahrefsTraffic: 34,
 		status: "active",
+		checkedAt: "2026-11-04",
 		license: "MIT",
-		soundbite: "GetCito is a fork of Elmo. Elmo is the original, and it's shipping faster.",
+		soundbite:
+			"GetCito went from a vibe-coded tracker to an Elmo fork to a vibe-coded rewrite. Elmo is the mature one.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1878,11 +1991,12 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, startingPrice: "$599/mo", hasEnterprise: true },
 		highlights: [
-			"If you are considering GetCito, use Elmo instead — GetCito is a fork of it",
-			"Codebase replaced with Elmo's on July 10, 2026",
-			"Ships less than the project it forked — 17 commits to Elmo's 98 in the first month after",
+			"If you are considering GetCito, use Elmo instead",
+			"Third codebase in a year: a minimal vibe-coded tracker, then a fork of Elmo, now a vibe-coded rewrite",
+			"Current code landed on November 4, 2026 as one unreviewed 923,787-line commit",
 		],
-		notes: "Fork of Elmo's codebase since July 2026.",
+		notes:
+			"Started as a minimal vibe-coded tracker, forked Elmo, then replaced the fork with a from-scratch vibe-coded rewrite in November 2026.",
 	},
 	{
 		slug: "meridian",
@@ -1896,6 +2010,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 28,
 		ahrefsTraffic: 194,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-09",
 			summary: "Acquired by Searchable; customers are being moved to Searchable.",
@@ -1937,6 +2052,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 1,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain registration expired and the site shows a parking page.",
@@ -1965,6 +2081,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 17,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -1994,6 +2111,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 27,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2036,6 +2154,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 11,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLanguage: true,
 			siteAudits: true,
@@ -2061,6 +2180,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 39,
 		ahrefsTraffic: 13,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The website is gone and returns a 'Site not found' page.",
@@ -2085,24 +2205,32 @@ export const competitors: Competitor[] = [
 		url: "https://www.petralabs.com/",
 		tagline: "Enterprise AEO with an embedded team and revenue attribution",
 		description:
-			"Petra Labs pairs AEO software with an embedded team that runs strategy and execution for enterprise brands. It sources query demand from a proprietary panel, tracks brand presence, sentiment, and competitive threat broken out by customer persona and product line, and builds marketing mix and multi-touch attribution models linking AI search activity to pipeline and closed revenue. Founded in 2025 and raised a $5.2M seed round led by Work-Bench in July 2026.",
+			"Petra Labs pairs AEO software with an embedded team that runs strategy and execution for enterprise brands. It builds prompt sets from opt-in panel data and forum scraping, tracks visibility, sentiment, citations, and fan-out queries by persona and product line, and samples ChatGPT logged-in, logged-out, and via the API. It also builds custom attribution models linking AI search to pipeline and revenue. Engagements start at $15,000 per month. It raised a $5.2M seed round led by Work-Bench in July 2026.",
 		category: "tracking",
 		ahrefsDR: 16,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
+			chatgpt: true,
+			googleAiOverviews: true,
+			claude: true,
+			uiCapture: true,
 			visibilityScore: true,
+			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			promptVolumeEstimates: true,
 			sentimentAnalysis: true,
+			queryFanOut: true,
 			actionRecommendations: true,
+			keywordResearch: true,
 		},
-		pricing: { hasFree: false, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$15,000/mo", hasEnterprise: true },
 		highlights: [
 			"$5.2M seed led by Work-Bench, with Afore and Pathlight",
-			"Proprietary panel data for real user query demand",
+			"Samples ChatGPT logged-in, logged-out, and API answers separately",
 			"Custom MMM and multi-touch attribution to pipeline and revenue",
 		],
 	},
@@ -2118,6 +2246,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.1,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2148,6 +2277,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 6,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			chatgpt: true,
 			visibilityScore: true,
@@ -2170,6 +2300,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.3,
 		ahrefsTraffic: 21,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2193,6 +2324,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2229,6 +2361,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 0,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The website is gone and returns a 'Site not found' page.",
@@ -2263,6 +2396,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.6,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2298,6 +2432,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.2,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -2320,6 +2455,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.8,
 		ahrefsTraffic: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2354,6 +2490,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.7,
 		ahrefsTraffic: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain now shows a parked, for-sale page.",
@@ -2380,6 +2517,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.1,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2410,6 +2548,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 42,
 		ahrefsTraffic: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2439,6 +2578,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0,
 		ahrefsTraffic: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The app's deployment no longer exists and the site returns a 404.",
@@ -2466,6 +2606,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1,
 		ahrefsTraffic: 1,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The hosted app has been paused and the product has no remaining web presence.",
@@ -2493,6 +2634,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 4.5,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2522,6 +2664,7 @@ export const competitors: Competitor[] = [
 		ahrefsTraffic: 6,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The application is offline and the site returns a 404.",
@@ -2548,6 +2691,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.5,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2581,6 +2725,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "GPL-3.0",
 		features: {
 			multiLlmTracking: true,
@@ -2616,6 +2761,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -2650,6 +2796,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2693,6 +2840,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2731,6 +2879,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 24,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2770,6 +2919,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2803,13 +2953,14 @@ export const competitors: Competitor[] = [
 		url: "https://about.ads.microsoft.com/en/blog/post/october-2025/optimizing-your-content-for-inclusion-in-ai-search-answers",
 		tagline: "Microsoft's official guidance on optimizing for AI search answers",
 		description:
-			"Microsoft Ads has published official guidance on optimizing content for inclusion in AI search answers, covering Copilot and Bing AI. While not a standalone product, their recommendations carry weight as they directly control the AI search engine that powers multiple AI assistants.",
+			"A Microsoft Advertising blog post, written by a Bing product manager in October 2025, on structuring content so AI assistants such as Copilot can parse and cite it: aligned titles and headings, Q&A and list formats, JSON-LD schema, and avoiding information locked in PDFs or images. It is guidance rather than a product, from the company whose Bing index grounds Copilot's answers.",
 		category: "other",
 		ahrefsDR: 96,
 		ahrefsTraffic: 23238,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {},
-		highlights: ["Official Microsoft guidance for Copilot/Bing AI", "Not a standalone product"],
+		highlights: ["Microsoft guidance on content structure for Copilot answers", "Not a standalone product"],
 		notes: "Blog post with official optimization guidance, not a competitor product",
 	},
 	{
@@ -2824,6 +2975,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 97,
 		ahrefsTraffic: 37615600,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -2861,11 +3013,12 @@ export const competitors: Competitor[] = [
 		url: "https://evertune.ai/",
 		tagline: "AI visibility and GEO platform with consumer panel data",
 		description:
-			"Evertune tracks brand visibility across ChatGPT, Google AI Mode, Claude, Gemini, Perplexity, Meta, DeepSeek, and Copilot, and combines AI search monitoring with first-party consumer panel data from EverPanel. Offers content activation, AI advertising (Visibility Boost Ad Agent), and prompt volume monitoring across 150M+ prompts.",
+			"Evertune tracks brand visibility across ChatGPT, Google AI Overviews and AI Mode, Gemini, Claude, Perplexity, Copilot, Meta's Llama, and DeepSeek. It samples each prompt up to 100 times per model and measures through the model API and, where it can, the consumer app. Prompts come from EverPanel, its panel of 150M+ real user prompts. It has moved into AI advertising: an Ads Agent builds ChatGPT ad campaigns from visibility gaps, and AI Retargeting reaches users after they leave the chat.",
 		category: "tracking",
 		ahrefsDR: 59,
 		ahrefsTraffic: 784,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2877,18 +3030,21 @@ export const competitors: Competitor[] = [
 			claude: true,
 			deepseek: true,
 			metaAi: true,
+			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			promptVolumeEstimates: true,
 			sentimentAnalysis: true,
+			crawlerAnalytics: true,
 			geographicTracking: true,
 			shoppingTracking: true,
+			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
-			emailAlerts: true,
+			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
 			contentGeneration: true,
@@ -2896,8 +3052,8 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: false, startingPrice: "$60/mo", hasEnterprise: true },
 		highlights: [
 			"EverPanel first-party consumer panel data across 150M+ prompts",
-			"Customers include Athenahealth, Miro, Roku, Virgin Voyages, WPP, HexClad",
-			"$4M seed round and coverage in NYT, WSJ, Forbes, Adweek, Business Insider",
+			"Customers shown include athenahealth, Roku, WPP, Absolute Collagen, Halo Collar",
+			"$20M raised from adtech and martech investors",
 		],
 	},
 	{
@@ -2912,6 +3068,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 65,
 		ahrefsTraffic: 6412,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -2944,15 +3101,21 @@ export const competitors: Competitor[] = [
 		name: "Passionfruit",
 		domain: "getpassionfruit.com",
 		url: "https://getpassionfruit.com/",
-		tagline: "SEO + AEO platform with human-in-the-loop execution",
+		tagline: "Managed SEO and GEO service run on its own AI visibility tracker",
 		description:
-			"Passionfruit unifies SEO, GEO, and AEO into a single platform with managed-service execution. Features include the Algorithmic Marketing System, Page360 URL diagnostic, Reddit thread tracking, and analytics across 100+ signals per URL. Founded by Stanford and CMU alumni.",
+			"Passionfruit sells SEO and GEO as a managed service. Its in-house software tracks prompts across ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews by location, ties queries to revenue through Search Console and GA4, and runs a daily 49-check technical audit. Its staff then write and ship the content and fixes. Pricing is custom and quoted after a sales call. Founded in 2024 by Stanford and Carnegie Mellon alumni.",
 		category: "tracking",
 		ahrefsDR: 64,
 		ahrefsTraffic: 9919,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
+			chatgpt: true,
+			googleAiOverviews: true,
+			gemini: true,
+			perplexity: true,
+			claude: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
@@ -2963,13 +3126,12 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
-			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
-			"Unified SEO + GEO + AEO platform rather than AEO-only",
-			"Page360 diagnostic surfaces 100+ signals per URL",
-			"Hybrid software + human execution managed service model",
+			"Bundles AI visibility tracking with staff who ship the content and fixes",
+			"Daily 49-check technical audit plus a competitor page-change feed",
+			"Ties queries and AI referrals to revenue via Search Console and GA4",
 		],
 	},
 	{
@@ -2984,6 +3146,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 41,
 		ahrefsTraffic: 58,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3027,6 +3190,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 35,
 		ahrefsTraffic: 8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3065,11 +3229,12 @@ export const competitors: Competitor[] = [
 		url: "https://gracker.ai/",
 		tagline: "AEO and GEO platform focused on cybersecurity and B2B SaaS",
 		description:
-			"GrackerAI tracks AI search citations across ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, and Google, with a Content Engine that autopilots thought leadership articles, listicles, and comparison pages. Vertical focus on cybersecurity and B2B SaaS, with multi-brand workspaces and SSO for agencies.",
+			"GrackerAI tracks AI citations, mentions, and sentiment across up to ten engines — ChatGPT, Perplexity, Google AI Overviews and AI Mode, Gemini, Copilot, DeepSeek, Grok, Claude, and Brave Leo — but Individual covers three and Team four, so the full set needs Enterprise. A Content Engine drafts articles, listicles, and comparison pages and publishes to WordPress, HubSpot, and headless CMSs from the Team plan up. It targets cybersecurity and other technical B2B SaaS, with white-label reporting and the REST API reserved for Enterprise and its agency program.",
 		category: "tracking",
 		ahrefsDR: 58,
 		ahrefsTraffic: 3889,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3090,6 +3255,7 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
@@ -3098,9 +3264,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
 		highlights: [
-			"Vertical focus on cybersecurity and B2B SaaS",
-			"50% startup discount for cybersecurity and DevTools companies",
-			"Customer case studies: Gopher.security 73% visibility uplift, MojoAuth +52% pipeline",
+			"Vertical focus on cybersecurity and technical B2B SaaS",
+			"Engines gated by plan: 3 on Individual, 4 on Team, all 10 on Enterprise",
+			"50% off the Team plan for 12 months for qualifying cybersecurity, DevTools, and DevOps startups",
 		],
 	},
 	{
@@ -3115,6 +3281,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 4926,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3156,6 +3323,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3192,6 +3360,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 26,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3236,6 +3405,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 27,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3276,6 +3446,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 49,
 		ahrefsTraffic: 7221,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3313,6 +3484,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 43,
 		ahrefsTraffic: 3627,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3358,6 +3530,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 7,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3392,6 +3565,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 40,
 		ahrefsTraffic: 2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3436,6 +3610,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.5,
 		ahrefsTraffic: 607,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary: "The domain now shows a parked, for-sale page.",
@@ -3466,6 +3641,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 37,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3509,6 +3685,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 50,
 		ahrefsTraffic: 333,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3554,6 +3731,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 449,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3599,6 +3777,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 28,
 		ahrefsTraffic: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3647,6 +3826,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 30,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3690,6 +3870,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 7,
 		ahrefsTraffic: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3727,6 +3908,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3757,6 +3939,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 2.3,
 		ahrefsTraffic: 1659,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3797,6 +3980,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 35,
 		ahrefsTraffic: 45,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3840,6 +4024,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 26,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3876,6 +4061,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.2,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -3912,6 +4098,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.4,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3949,6 +4136,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 17,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3988,6 +4176,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 30,
 		ahrefsTraffic: 202,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4026,6 +4215,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.6,
 		ahrefsTraffic: 0,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Pivoted to analytics for how AI coding agents move through a company's docs, API, and checkout.",
@@ -4051,6 +4241,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 59,
 		ahrefsTraffic: 649,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4095,6 +4286,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 29,
 		ahrefsTraffic: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4141,6 +4333,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 3.3,
 		ahrefsTraffic: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4175,6 +4368,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 34,
 		ahrefsTraffic: 47619730,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -4218,6 +4412,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4264,6 +4459,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4304,6 +4500,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.9,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -4343,6 +4540,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 0,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -4378,6 +4576,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4420,6 +4619,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4460,6 +4660,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4497,6 +4698,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 35,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4536,6 +4738,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 3.2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4574,6 +4777,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4609,20 +4813,29 @@ export const competitors: Competitor[] = [
 		url: "https://generativepulse.ai/",
 		tagline: "GEO built around earned media, tracing AI citations to individual journalists",
 		description:
-			"Generative Pulse is Muck Rack's GEO product, aimed at PR and communications teams rather than SEO teams. It reports a visibility score across ChatGPT, Claude, and Gemini for up to ten companies at once, tracks sentiment and narrative risk, and — unlike domain-level citation tools — identifies the individual journalists and outlets whose coverage AI systems cite. Because it sits inside Muck Rack, pitching, earned coverage, and AI visibility are tracked in one workflow, so a pitch can be followed through to coverage to an AI citation. It ships with Muck Rack Premier and pricing is not published.",
+			"Generative Pulse is Muck Rack's GEO product, aimed at PR and communications teams rather than SEO teams. It tracks how ChatGPT, Claude, Gemini, Perplexity, Grok, Google AI Overviews, and Google AI Mode describe a brand against named competitors, scoring share of answers, evaluation, factual errors, and adoption of chosen messages. Unlike domain-level citation tools, it ties cited sources to the journalists and outlets behind them using Muck Rack's media data. It is included with Muck Rack Premier and also sold separately through a demo; pricing is not published.",
 		category: "tracking",
 		ahrefsDR: 46,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
+			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
+			perplexity: true,
 			claude: true,
+			grok: true,
+			uiCapture: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			dataExportApi: true,
@@ -4630,7 +4843,7 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Attributes AI citations to named journalists and outlets, not just source domains",
-			"Prompt set drawn from AI systems prompted over 25 million times since July 2025",
+			"Suggests prompts to monitor from an opt-in panel of real AI conversations",
 			"Pitch, earned coverage, and AI citation tracked in one workflow inside Muck Rack",
 		],
 	},
@@ -4645,6 +4858,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 40,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4686,6 +4900,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4726,6 +4941,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 41,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4766,6 +4982,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 38,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4804,6 +5021,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 36,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Acquired by Cognizo; its pay-as-you-go wallet was retired in favor of Cognizo's plans.",
@@ -4848,6 +5066,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 9,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4892,6 +5111,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 9,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4929,6 +5149,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4972,6 +5193,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -4996,19 +5218,24 @@ export const competitors: Competitor[] = [
 		name: "Brandlight",
 		domain: "brandlight.ai",
 		url: "https://www.brandlight.ai/",
-		tagline: "Enterprise AI visibility spanning content, commerce, partnerships, and AI ads",
+		tagline: "Managed enterprise AI visibility with content, shopping, and AI ads modules",
 		description:
-			"Brandlight sells to Fortune 500 marketing organizations and splits its platform into seeing (visibility and insights, technical health) and acting (content, agentic commerce, partnerships, and a newer module for measuring and optimizing AI ads). It is SOC 2 Type 2 compliant, runs a separate agency program, publishes an AI Visibility Index, and has attribution tying AI visibility to revenue listed as coming soon.",
+			"Brandlight sells to enterprise marketing teams as a platform plus a dedicated strategist, and builds the prompt set for customers rather than letting them write it. It tracks 12 engines across 10 markets, but runs every question weekly rather than daily. Modules cover page fixes, drafted content, AI shopping placement, and ChatGPT ads. Impact tracking measures each change's contribution to citations and visibility, not revenue. Pricing is not public.",
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
+			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
 			copilot: true,
+			claude: true,
 			grok: true,
+			deepseek: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
@@ -5022,14 +5249,13 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
-			whiteLabelAgency: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Enterprise-only positioning with Fortune 500 customers and SOC 2 Type 2",
 			"Measures and optimizes AI ads as a distinct module",
-			"Partnerships module treats earned placement as a channel to invest in",
+			"Weekly runs across 12 engines and 10 local-language markets",
 		],
 	},
 	{
@@ -5039,10 +5265,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.brandrank.ai/",
 		tagline: "Recommendation Share tracking with an explicit defensive monitoring side",
 		description:
-			"BrandRank measures Recommendation Share — how often engines recommend a brand when buyers ask, question by question across ChatGPT, Gemini, Perplexity, and Copilot, benchmarked against every competitor in the category. Its offense side finds buying questions a competitor wins and maps the sources to take them; its defense side watches for engines repeating outdated claims, resurfacing old controversies, or confusing a brand's products with a rival's. It also scores existing content for AI readiness and produces the missing pages and third-party signals.",
+			"BrandRank measures Recommendation Share — how often engines recommend a brand when buyers ask, question by question across ChatGPT, Gemini, Perplexity, Claude, Grok, Meta AI, and DeepSeek, benchmarked against competitors in the category. Its offense side finds buying questions a competitor wins and maps the sources to take them; its defense side, the Brand Risk Monitor, watches for engines repeating outdated claims, resurfacing old controversies, or attributing a rival's flaws to the brand. It also scores existing content for AI readiness, and its team builds the missing pages and third-party signals as part of a software-plus-service engagement.",
 		category: "tracking",
 		ahrefsDR: 44,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5068,7 +5295,7 @@ export const competitors: Competitor[] = [
 		highlights: [
 			"Flags outdated claims, revived controversies, and product mix-ups as a first-class defensive feature",
 			"Reports Recommendation Share per buying question rather than a blended visibility number",
-			"Publishes category whitepapers and runs recurring webinars",
+			"Sold as software plus service, with a named strategist reviewing findings each quarter",
 		],
 	},
 	{
@@ -5082,6 +5309,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 40,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5130,6 +5358,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 37,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5167,6 +5396,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 35,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5207,6 +5437,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5246,6 +5477,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5279,6 +5511,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5315,6 +5548,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 10,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5344,6 +5578,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 10,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5386,6 +5621,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 52,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5415,10 +5651,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.finseo.ai/",
 		tagline: "AI visibility stack with query fan-outs, bot traffic, and an agent",
 		description:
-			"Finseo covers visibility tracking, prompt research, AI bot traffic, query fan-outs, and a report builder across ChatGPT, Claude, Perplexity, Gemini, and Google AI Mode, with competitor views that name each rival's top cited source and citation share. It exposes an API and MCP server alongside integrations, ships an agent plus attribution, generates expert-backed content, and runs in English and German with per-region prompt checks. It claims 500+ teams across brands and agencies.",
+			"Finseo covers visibility tracking, prompt research, AI bot traffic, query fan-outs, and a report builder, with competitor views that name each rival's top cited source and citation share. Self-serve plans track any three of ten engines (ChatGPT, Gemini, Google AI Overviews, AI Mode, Claude, Perplexity, Copilot, Grok, DeepSeek, Mistral); regional engines such as Meta AI, Qwen, and Naver are add-ons set up through sales. It exposes an API (from the Growth plan) and an MCP server, ships a CMS-editing agent plus CRM attribution, and tracks prompts across 40+ countries and languages.",
 		category: "tracking",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5454,7 +5691,7 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: false, startingPrice: "€84/mo", hasEnterprise: true },
 		highlights: [
 			"Query fan-out reporting plus AI bot traffic in the same product",
-			"API and MCP server, with an agent and attribution layer",
+			"Three engines per self-serve plan, chosen from ten; regional engines are sales-led add-ons",
 			"Claims 500+ teams; separate tracks for AEO, content, PR, and agency users",
 		],
 	},
@@ -5465,10 +5702,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.erlin.ai/",
 		tagline: "Unified AI search, SEO, and analytics with Reddit and YouTube citation tracking",
 		description:
-			"Erlin pulls AI visibility, sentiment, share of voice, prompt and keyword performance, GA traffic, and Search Console data into one view instead of separate tools, and tracks citations from Reddit and YouTube specifically. An Opportunities layer surfaces content, entity, and coverage gaps plus citation openings on those communities, and an Action Center turns them into trackable team tasks with automated research, brief, and draft workflows kept human-in-the-loop.",
+			"Erlin pulls AI visibility, sentiment, share of voice, GA traffic, and Search Console data into one view and tracks citations from Reddit and YouTube specifically. An Opportunities layer surfaces content, source, and community gaps, and an Action Center turns them into team tasks, with research, brief, and draft workflows on Standard and above. Engines are gated by plan: Starter covers ChatGPT and Perplexity, Gemini starts on Standard, and Claude and API access on the $397 Pro plan; the company also sells a lead-qualification chatbot and CRM add-on, in beta.",
 		category: "tracking",
 		ahrefsDR: 38,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5511,6 +5749,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5549,6 +5788,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 28,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5582,6 +5822,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5618,6 +5859,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5658,6 +5900,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5690,6 +5933,7 @@ export const competitors: Competitor[] = [
 		category: "content",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5721,6 +5965,7 @@ export const competitors: Competitor[] = [
 		category: "other",
 		ahrefsDR: 15,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5751,6 +5996,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 47,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-07-21",
 			summary: "Acquired by Tracksuit; new signups go to Tracksuit's waitlist.",
@@ -5783,6 +6029,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5811,12 +6058,13 @@ export const competitors: Competitor[] = [
 		name: "GEO Metrics",
 		domain: "trygeometrics.com",
 		url: "https://www.trygeometrics.com/",
-		tagline: "Nine-engine Share of Model tracking with hallucination correction",
+		tagline: "Nine-engine Share of Model tracking with inaccurate-answer monitoring",
 		description:
-			"GEO Metrics, formerly LLMO Metrics, measures how ChatGPT, Gemini, Perplexity, Copilot, Grok, and four more engines answer a category, reporting Share of Model against competitors and flagging hallucinations to fix. It claims 3,000+ users, runs an MCP server and an affiliate program, and has a dedicated agency track alongside free resources.",
+			"GEO Metrics, formerly LLMO Metrics, checks daily how ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, Copilot, DeepSeek, and Grok answer a brand's prompts, with Claude added from the Pro plan, and reports position, sentiment, and Share of Model against competitors alongside flags for inaccurate answers. Plans cap tracked prompts (20 on Freelance, 100 on Pro), and Pro adds API access, ChatGPT and AI Mode ad tracking, and shopping cards. The Spain-based team focuses on Spanish-speaking markets and offers an MCP server, a Looker Studio template, and an agency program with white-label delivery.",
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5838,16 +6086,18 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			siteAudits: true,
 			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
+			biConnectors: true,
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, startingPrice: "EUR80/mo", hasEnterprise: true },
 		highlights: [
-			"Nine tracked engines, one of the broader coverage claims in the category",
-			"Treats hallucination detection and correction as a headline use case",
-			"Claims 3,000+ users; MCP server and agency program",
+			"Nine tracked engines, with Claude reserved for Pro and above",
+			"Treats inaccurate-answer detection as a headline use case",
+			"Spanish-language focus, with an MCP server, Looker Studio template, and agency program",
 		],
 	},
 	{
@@ -5861,6 +6111,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 39,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5903,6 +6154,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 34,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5937,6 +6189,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5966,6 +6219,7 @@ export const competitors: Competitor[] = [
 		category: "ecommerce",
 		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6002,6 +6256,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6041,6 +6296,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6069,6 +6325,7 @@ export const competitors: Competitor[] = [
 		category: "api-developer",
 		ahrefsDR: 25,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6105,6 +6362,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 5,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-05-04",
 			summary: "Acquired by AI Trust Signals, then shut down; the operating company went into liquidation.",
@@ -6130,12 +6388,13 @@ export const competitors: Competitor[] = [
 		name: "Minddex",
 		domain: "minddex.ai",
 		url: "https://minddex.ai/",
-		tagline: "French-market GEO platform with a query fan-out tool and GEO academy",
+		tagline: "French GEO platform with six-engine tracking and content generation",
 		description:
-			"Minddex measures and works on visibility in AI-generated answers for the French market, with the interface and academy in French and English. Rossel Advertising selected it as its reference GEO technology in Europe, and its published work includes named client engagements with Carglass and Ionos. It ships a fan-out query tool and an orchestrator alongside the tracking product.",
+			"Minddex is a Paris-based GEO platform, hosted in France, that tracks ChatGPT, Gemini, Perplexity, Claude, Google AI Overviews, and AI Mode in any country or language, grouping prompts into purchase-decision territories and reporting share of voice, sentiment, and the sources cited. Beyond tracking it generates FAQs, product pages, and briefs, sends weekly email alerts on mention changes, detects product carousels in answers, and exposes data to AI assistants through an MCP connector. Rossel Advertising selected it as its reference GEO technology in Europe, and publishers such as Prisma Media use it to sell sponsored GEO to advertisers.",
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6150,18 +6409,20 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
 			geographicTracking: true,
+			shoppingTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			emailAlerts: true,
+			mcpServer: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Selected by Rossel Advertising as its European reference GEO technology",
+			"Publisher-side use: media groups such as Prisma Media sell sponsored GEO with it",
 			"French-first product with a French-language GEO academy",
-			"Named client work including Carglass and Ionos",
 		],
 	},
 	{
@@ -6175,6 +6436,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 34,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6213,6 +6475,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 25,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6250,6 +6513,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 11,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6291,6 +6555,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 21,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6336,6 +6601,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 20,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6372,6 +6638,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 16,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6404,6 +6671,7 @@ export const competitors: Competitor[] = [
 		category: "seo-traditional",
 		ahrefsDR: 21,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6435,6 +6703,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 3.3,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6470,6 +6739,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 6,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6500,6 +6770,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 4.7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6532,6 +6803,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 2.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6567,6 +6839,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6598,6 +6871,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.4,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6624,10 +6898,11 @@ export const competitors: Competitor[] = [
 		url: "https://rankscale.ai/",
 		tagline: "Seventeen engines and 94 technical checkpoints with no per-engine upsell",
 		description:
-			"Rankscale tracks rankings across 17+ engines — Google AI Overviews and AI Mode, ChatGPT, Perplexity, Gemini, Claude, Copilot, DeepSeek and more — in one plan rather than charging per engine, covering 240+ countries and all languages. It monitors both chat interfaces and raw models, does intent-based prompt research, and runs 94 automatic technical checkpoints on the structural and authority signals engines use to verify and cite content. It publishes case studies, a partner program, and recurring live sessions.",
+			"Rankscale tracks rankings across 17+ engines and models — Google AI Overviews and AI Mode, ChatGPT, Gemini, Claude, DeepSeek, Meta's Muse Spark, Bing AI Mode and more — in one plan rather than charging per engine, with all regions available on every plan. It monitors both chat interfaces and raw models, does intent-based prompt research, and runs 94 automatic technical checkpoints on the structural and authority signals engines use to verify and cite content. It publishes case studies, a partner program, and recurring live sessions.",
 		category: "tracking",
 		ahrefsDR: 63,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6635,9 +6910,7 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			claude: true,
-			grok: true,
 			deepseek: true,
 			metaAi: true,
 			uiCapture: true,
@@ -6648,6 +6921,7 @@ export const competitors: Competitor[] = [
 			promptVolumeEstimates: true,
 			sentimentAnalysis: true,
 			queryFanOut: true,
+			crawlerAnalytics: true,
 			geographicTracking: true,
 			shoppingTracking: true,
 			multiLanguage: true,
@@ -6673,16 +6947,18 @@ export const competitors: Competitor[] = [
 		name: "Relixir",
 		domain: "relixir.ai",
 		url: "https://www.relixir.ai/",
-		tagline: "Autonomous GEO agent that monitors, writes, and deploys",
+		tagline: "Managed GEO agent that tracks prompts, then writes and deploys content",
 		description:
-			"Relixir sells Rex, framed as an autonomous GEO employee rather than a dashboard: it monitors visibility across ChatGPT, Perplexity, Claude, and Google AI Overviews, then generates and deploys GEO-optimized content to close the gaps, running citation optimization and content ops on a continuous loop. It connects into the rest of the marketing stack and reports 400+ fast-growing B2B teams as users.",
+			"Relixir sells Rex, an agent that Relixir's own team configures and runs for each customer: it tracks buyer prompts across ChatGPT, Perplexity, Gemini, Claude, and Google AI Overviews, then drafts, publishes, and refreshes content through a connected or Relixir-hosted CMS. Weekly reports cover mentions, citations, rankings, and sentiment, with optional per-country and per-state tracking and a Visitor ID snippet that attributes AI-referred visits. Pricing is credit-based and quote-only, and it claims 400+ B2B teams.",
 		category: "tracking",
 		ahrefsDR: 45,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
+			gemini: true,
 			perplexity: true,
 			claude: true,
 			visibilityScore: true,
@@ -6690,16 +6966,18 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			geographicTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Deploys the content it generates rather than handing back a task list",
-			"Sold as an autonomous employee, hireable alongside other agents",
+			"Set up and run by Relixir's team rather than self-serve",
 			"Claims 400+ B2B teams",
 		],
 	},
@@ -6710,10 +6988,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.qwairy.co/",
 		tagline: "French GEO platform that distinguishes API from UI results per engine",
 		description:
-			"Qwairy tracks ten engines and labels each by how it is queried — ChatGPT, Perplexity, Gemini, and Grok via both API and UI, AI Overview and AI Mode via UI, Claude, Mistral, and DeepSeek via API — which matters because API answers and what users actually see diverge. The platform runs cockpit, monitor, analyze, act, optimize, measure, and explore stages, with API reference, MCP documentation, playbooks, and an agency track. It is French, GDPR aligned, and hosts data in the EU.",
+			"Qwairy tracks 18 engines and model families and labels each by how it is queried: most, including ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Copilot, Grok, and Meta AI, are read in their consumer interface, while Mistral, Qwen, Kimi, and others are compared through the API, and several (Claude's interface, Meta AI, Muse Spark) are labeled beta. Paid plans are credit-based; the REST API starts on Growth, crawler analytics and Looker Studio on Business, and white-label on Enterprise, with MCP on every paid plan. It is French, ISO 27001 certified, and hosts data in the EU.",
 		category: "tracking",
 		ahrefsDR: 43,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6740,6 +7019,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
@@ -6749,8 +7029,8 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: true, startingPrice: "€79/mo", hasEnterprise: true },
 		highlights: [
 			"Labels every engine as API or UI sourced, since the two disagree",
-			"EU data hosting and GDPR alignment, built in France",
-			"Documented API and MCP server alongside the dashboard",
+			"Covers Chinese and Korean engines (Qwen, Wenxin, Kimi, GLM, MiniMax, Naver) alongside the US assistants",
+			"EU data hosting and ISO 27001 certification, built in France",
 		],
 	},
 	{
@@ -6758,12 +7038,13 @@ export const competitors: Competitor[] = [
 		name: "PromptRush",
 		domain: "promptrush.ai",
 		url: "https://www.promptrush.ai/",
-		tagline: "Five-surface visibility tracking with a 5.0 G2 rating",
+		tagline: "Daily AI visibility tracking across five engines, with Claude as an add-on",
 		description:
-			"PromptRush monitors brand mentions across ChatGPT, Gemini, Perplexity, Google AI Overviews, and AI Mode, with region selection on the free visibility report. It holds a 5.0 rating on G2, reports 100+ brands, and names customers including Renderforest, EasyDMARC, CloudTalk, Powtoon, Aikido, 10Web, and Fliki.",
+			"PromptRush runs daily scans of ChatGPT, Gemini, Perplexity, Google AI Overviews, and AI Mode, with Claude available as a paid add-on. Projects are set to a country, and reports cover a visibility score, cited sources, competitor rankings, and prompts where competitors appear but the brand does not. Paid plans include a read-only MCP server, and Enterprise adds reports with custom branding.",
 		category: "tracking",
 		ahrefsDR: 36,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6780,11 +7061,12 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			keywordResearch: true,
+			mcpServer: true,
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$19/mo", hasEnterprise: true },
 		highlights: [
-			"5.0 rating on G2 with named SaaS customers",
+			"Claude tracking as a paid add-on",
 			"Free visibility report with country selection, no card",
 			"Covers Google AI Overviews and AI Mode as separate surfaces",
 		],
@@ -6794,12 +7076,13 @@ export const competitors: Competitor[] = [
 		name: "Riff Analytics",
 		domain: "riffanalytics.ai",
 		url: "https://www.riffanalytics.ai/",
-		tagline: "Seven-engine tracking framed around answer share and citation gaps",
+		tagline: "Multi-engine tracking framed around answer share and citation gaps",
 		description:
-			"Riff Analytics tracks brand visibility across ChatGPT, Google AI Mode, Perplexity, Claude, Grok, DeepSeek, and Llama, reporting answer share and identifying top-cited sources so citation gaps can be closed. It scans a site for AI readiness — what engines see when they crawl the content — and returns a free report in about five minutes, with a seven-day trial.",
+			"Riff Analytics tracks brand visibility across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Claude, Grok, DeepSeek, and Llama, reporting answer share, position, sentiment, and top-cited sources so citation gaps can be closed. It scans a site for AI readiness — what engines see when they crawl the content — and returns a free report in about five minutes, with a seven-day trial on the Starter plan and CSV export.",
 		category: "tracking",
 		ahrefsDR: 37,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6818,10 +7101,11 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$49/mo", hasEnterprise: false },
 		highlights: [
-			"Tracks Llama and DeepSeek alongside the mainstream five",
+			"Tracks Llama and DeepSeek alongside the mainstream engines",
 			"Free report in about five minutes before any signup",
 			"AI readiness scan reports what crawlers actually see",
 		],
@@ -6837,6 +7121,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6869,6 +7154,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 23,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6904,6 +7190,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 22,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6935,6 +7222,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 27,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6963,6 +7251,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6996,6 +7285,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7028,6 +7318,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "beta",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7062,6 +7353,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 61,
 		darkScreenshot: true,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-10-30",
 			summary:
@@ -7102,19 +7394,22 @@ export const competitors: Competitor[] = [
 		url: "https://waikay.io/",
 		tagline: "Entity-led AI analytics from the InLinks team, with a fact tracker",
 		description:
-			"Waikay, built by the team behind InLinks, tracks brand visibility in prompts against competitors and adds a fact tracker for spotting hallucinations and knowledge gaps in what models believe about a brand. It reports topical presence, source tracking, an entity map, and GEO action plans, exposes APIs, and covers over 40 countries and 13 languages. It publishes white papers on topical presence alongside an academy.",
+			"Waikay, built by the team behind InLinks, tracks brand visibility in prompts against competitors and adds a fact tracker for spotting hallucinations and knowledge gaps in what models believe about a brand. It reports topical presence, source tracking, an entity map, and GEO action plans, exposes APIs and MCP access, and runs prompts in over 100 countries and 40+ languages. It publishes white papers on topical presence alongside an academy.",
 		category: "tracking",
 		ahrefsDR: 59,
 		status: "active",
+		checkedAt: "2026-11-16",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
+			gemini: true,
 			perplexity: true,
 			claude: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			sentimentAnalysis: true,
 			geographicTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
@@ -7127,7 +7422,7 @@ export const competitors: Competitor[] = [
 		highlights: [
 			"Fact tracker surfaces hallucinations and knowledge gaps, not just mentions",
 			"Entity map and topical presence rooted in InLinks' entity SEO work",
-			"40+ countries and 13 languages, with public APIs",
+			"100+ countries and 40+ languages, with public APIs",
 		],
 	},
 	{
@@ -7135,12 +7430,13 @@ export const competitors: Competitor[] = [
 		name: "Sight AI",
 		domain: "trysight.ai",
 		url: "https://www.trysight.ai/",
-		tagline: "Agent that tracks weekly, then writes and ships the content",
+		tagline: "SEO content agent with AI visibility tracking and CMS publishing",
 		description:
-			"Sight AI, previously IndexPilot, runs an agent that tracks where a brand appears in ChatGPT, Perplexity, and Google — reporting visibility, sentiment, position, and models per prompt on a weekly check — then writes and publishes the content meant to put it in those answers. It includes website indexing tools and operates from Slack.",
+			"Sight AI, previously IndexPilot, checks tracked prompts on ChatGPT, Claude, Gemini, and Perplexity on a schedule the customer sets, with Grok as an opt-in that answers without web search, and reports mentions, citations, position, and sentiment. Google AI Mode and AI Overviews tracking start on the Pro plan. Its agents write articles, publish them to the CMS, and submit them for indexing, alongside an SEO suite with rank tracking, site audits, and backlinks, all drawing on one pool of credits and reachable from Slack or an MCP server.",
 		category: "tracking",
 		ahrefsDR: 55,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7167,22 +7463,23 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
 		highlights: [
-			"Writes and ships content rather than stopping at recommendations",
-			"Runs from Slack with weekly prompt checks",
-			"Includes indexing tools; rebranded from IndexPilot",
+			"Writes and publishes content rather than stopping at recommendations",
+			"Google AI Mode, AI Overviews, and the REST API start at the $199 Pro plan",
+			"Every visibility check, article, and agent action draws from one credit pool",
 		],
 	},
 	{
-		slug: "share-of-model",
-		name: "Share of Model",
-		domain: "shareofmodel.ai",
-		url: "https://shareofmodel.ai/",
-		tagline: "Brand-marketing framing — perception, visibility, creative testing, activation",
+		slug: "rankspot",
+		name: "RankSpot",
+		domain: "rankspot.ai",
+		url: "https://www.rankspot.ai/",
+		tagline: "SEO and AI search actions run from your own AI agent, billed per action",
 		description:
-			"Share of Model is built for brand marketers rather than SEO teams, with four modules: how AI perceives a brand, AI search visibility, asset evaluation for testing and optimizing creative against AI, and activation that turns the insight into campaigns. It runs a partner program with other platforms powered by its data, plus a community with events and named experts.",
+			"RankSpot connects to Claude, ChatGPT, Cursor, n8n, and other agents through an MCP server, checks prompts across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews, and AI Mode, and reports visibility score, share of voice, sentiment, and cited sources next to Search Console data. The agent then carries out approved work: writing and publishing articles, finding editors and sending backlink pitches, and drafting forum replies for pages AI answers cite. There is no subscription; each check, article, and email is billed from prepaid credit.",
 		category: "tracking",
-		ahrefsDR: 46,
+		ahrefsDR: 31,
 		status: "active",
+		checkedAt: "2026-11-18",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7191,21 +7488,65 @@ export const competitors: Competitor[] = [
 			gemini: true,
 			perplexity: true,
 			claude: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			mcpServer: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$10 credit top-up", hasEnterprise: false },
+		highlights: [
+			"Runs inside the user's own AI agent through an MCP server",
+			"Pay-per-action pricing with prepaid credit and no subscription",
+			"Executes backlink outreach and forum replies after approval",
+		],
+	},
+	{
+		slug: "share-of-model",
+		name: "Share of Model",
+		domain: "shareofmodel.ai",
+		url: "https://shareofmodel.ai/",
+		tagline: "AI perception and search visibility platform aimed at brand marketers",
+		description:
+			"Share of Model, launched by the agency Jellyfish, is aimed at brand marketers rather than SEO teams, with modules for how AI describes a brand, AI search visibility, shopping visibility, creative asset testing against AI models, and activation through Pencil and Google Ads. The $799/mo self-serve plan collects 500 queries weekly or monthly across ChatGPT, Perplexity, Gemini, Claude, Google AI Mode, and Google and Bing AI Overviews. Copilot, DeepSeek, Llama, Mistral, the API, and the Looker Studio integration are reserved for the custom-priced Strategic Suite.",
+		category: "tracking",
+		ahrefsDR: 46,
+		status: "active",
+		checkedAt: "2026-11-23",
+		features: {
+			multiLlmTracking: true,
+			chatgpt: true,
+			googleAiOverviews: true,
+			googleAiMode: true,
+			gemini: true,
+			perplexity: true,
+			copilot: true,
+			claude: true,
 			deepseek: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			shoppingTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			dataExportApi: true,
+			biConnectors: true,
 			contentGeneration: true,
 		},
-		pricing: { hasFree: false, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$799/mo", hasEnterprise: true },
 		highlights: [
-			"Evaluates creative assets against AI, not just pages and prompts",
-			"Powers partner platforms under its own brand",
-			"Framed for brand and campaign teams rather than SEO",
+			"Evaluates text, image, and video assets against AI models, not just pages and prompts",
+			"Search visibility is collected weekly or monthly, not daily",
+			"API, integrations, and Copilot and DeepSeek tracking are limited to the custom-priced tier",
 		],
 	},
 	{
@@ -7215,10 +7556,11 @@ export const competitors: Competitor[] = [
 		url: "https://tesseract.adlift.com/",
 		tagline: "AI Mode versus AI Overview tracking, from the AdLift agency",
 		description:
-			"Tesseract, built by agency AdLift, tracks visibility across Google AI Overviews, AI Mode, ChatGPT, Gemini, Perplexity, Claude, and DeepSeek, with a recent focus on comparing AI Mode and AI Overview side by side for visibility, competitor gaps, and citations. It combines that with conventional SEO ranking data and sells AEO and LLM SEO services alongside, with playbooks by vertical including healthcare, hospitality, retail, FMCG, and D2C.",
+			"Tesseract, built by agency AdLift, tracks visibility across Google AI Overviews, AI Mode, ChatGPT, Gemini, Perplexity, Claude, and DeepSeek, including a side-by-side comparison of AI Mode and AI Overview for visibility, competitor gaps, and citations. Claude, AI Mode, and sentiment analysis start on the $399/mo Pro plan, and Grok is listed as coming soon. It combines that with conventional SEO ranking data and sells AEO and LLM SEO services alongside, with playbooks by vertical including healthcare, hospitality, retail, FMCG, and D2C.",
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7237,9 +7579,10 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			dataExportApi: true,
 			whiteLabelAgency: true,
 		},
-		pricing: { hasFree: true, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$249/mo", hasEnterprise: true },
 		highlights: [
 			"Side-by-side AI Mode versus AI Overview comparison",
 			"Agency-built, with AEO and LLM SEO services sold alongside the tool",
@@ -7253,10 +7596,11 @@ export const competitors: Competitor[] = [
 		url: "https://xofu.com/",
 		tagline: "Bottom-of-funnel prompt tracking with entity audits",
 		description:
-			"Xofu deliberately narrows to the prompts buyers use when shortlisting vendors — best X for Y, vendor comparisons, solution evaluations — across ChatGPT, Google AI Overviews, AI Mode, and Gemini, tracking recommendations over time. Citation gap analysis shows which sources get cited when competitors appear and the brand does not, prioritizing pages to improve and publishers to target. It ships a snapshot report and an entity audit, free to start with no card.",
+			"Xofu deliberately narrows to the prompts buyers use when shortlisting vendors — best X for Y, vendor comparisons, solution evaluations — across ChatGPT, Google AI Overviews, AI Mode, and Gemini, tracking recommendations over time. Citation gap analysis shows which sources get cited when competitors appear and the brand does not, prioritizing pages to improve and publishers to target. ChatGPT answers come from OpenAI API models rather than the ChatGPT app, and every plan, including Free, includes a remote MCP server.",
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7268,10 +7612,15 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			queryFanOut: true,
+			geographicTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$99/mo", hasEnterprise: false },
 		highlights: [
@@ -7291,6 +7640,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7330,6 +7680,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 30,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7367,6 +7718,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 28,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7411,6 +7763,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7446,6 +7799,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7490,6 +7844,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 11,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7535,6 +7890,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7569,6 +7925,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7606,6 +7963,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7634,26 +7992,33 @@ export const competitors: Competitor[] = [
 		name: "Revere",
 		domain: "revere-ai.com",
 		url: "https://revere-ai.com/",
-		tagline: "Brand intelligence built on the gap between mentioned and recommended",
+		tagline: "AI brand perception audits and monitoring by persona and market",
 		description:
-			"Revere argues AI is an intermediary you market to rather than optimize for, and measures how leading models perceive, rank, and represent a brand. Its brand audit reports separate visibility, sentiment, and a brand pillar average, with per-competitor visibility bars alongside. It is organized by industry and sold through demos rather than self-serve signup.",
+			"Revere measures how AI models perceive, rank, and represent a brand, sold as a one-off Discovery snapshot, customized brand audits, or ongoing monitoring with alerts. Reports score visibility, sentiment, and brand pillars against competitors, and can be cut by buyer persona and geographic market. A separate employer-brand product applies the same method to how models describe a company to job candidates. Pricing is not published and access is through demos.",
 		category: "tracking",
 		ahrefsDR: 24,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
+			chatgpt: true,
+			gemini: true,
+			claude: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			geographicTracking: true,
+			socialMediaTracking: true,
 			actionRecommendations: true,
+			emailAlerts: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Separates a brand pillar score from raw visibility and sentiment",
 			"Frames AI as an intermediary to market to, not a channel to optimize",
-			"Demo-led with industry-specific positioning",
+			"Breaks results out by buyer persona and geographic market",
 		],
 	},
 	{
@@ -7661,14 +8026,19 @@ export const competitors: Competitor[] = [
 		name: "Algomizer",
 		domain: "algomizer.com",
 		url: "https://algomizer.com/",
-		tagline: "Audit-led GEO and AEO optimization services",
+		tagline: "Performance-priced, done-for-you GEO and AEO agency",
 		description:
-			"Algomizer sells AI search optimization as a service rather than a subscription dashboard: the entry point is a free audit or a booked call, and the site is organized around projects and pricing for engagement work. The stated aim is improving how ChatGPT and other AI platforms represent a brand, its products, and its services.",
+			"Algomizer is a done-for-you AI search agency, not software: its team handles content, PR, outreach, and technical fixes aimed at getting ChatGPT, Claude, Gemini, and Perplexity to recommend a brand. Fees are performance-based, either tied to a visibility-score threshold or a share of new revenue, and engagements start with a partner application. A free, no-signup audit tool and several free page graders sit alongside the service.",
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
+		checkedAt: "2026-11-09",
 		features: {
 			multiLlmTracking: true,
+			chatgpt: true,
+			gemini: true,
+			perplexity: true,
+			claude: true,
 			visibilityScore: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
@@ -7678,9 +8048,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
-			"Service engagement rather than self-serve software",
-			"Free audit is the only entry point short of a call",
-			"Publishes completed client projects rather than product screenshots",
+			"Performance-based fees tied to visibility score or new revenue",
+			"Free no-signup audit queries ChatGPT, Claude, Gemini, and Perplexity",
+			"Done-for-you service, not a dashboard customers log into",
 		],
 	},
 	{
@@ -7694,6 +8064,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.2,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7729,6 +8100,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7762,10 +8134,15 @@ export const competitors: Competitor[] = [
 		url: "https://rankwithleverage.com/",
 		tagline: "Five-engine visibility reports with public documentation",
 		description:
-			"Leverage reports how a brand appears across ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews, pairing detailed visibility reports with optimization strategies for outranking competitors in AI results. Entry is a free visibility report or a demo request, and it publishes developer-facing documentation alongside the marketing site.",
+			"Leverage reports how a brand appears across ChatGPT, Gemini, Perplexity, Claude, and Google AI Overviews, pairing visibility reports with optimization recommendations against competitors. Entry is a free visibility report or a demo request, and it publishes developer-facing documentation alongside the marketing site.",
 		category: "tracking",
 		ahrefsDR: 0.1,
-		status: "active",
+		status: "defunct",
+		checkedAt: "2026-11-09",
+		fate: {
+			date: "2026-11",
+			summary: "The marketing site no longer loads, returning only a Cloudflare error.",
+		},
 		features: {
 			multiLlmTracking: true,
 			visibilityScore: true,
@@ -7777,7 +8154,7 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: true, hasEnterprise: true },
 		highlights: [
 			"Free visibility report before any signup",
-			"Public documentation unusual at this size",
+			"Publishes developer-facing documentation",
 			"Five engines including both Claude and Google AI Overviews",
 		],
 	},
@@ -7792,6 +8169,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "active",
+		checkedAt: "2026-10-20",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7818,6 +8196,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 14,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -7867,6 +8246,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 1.6,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "Apache-2.0",
 		features: {
 			multiLlmTracking: true,
@@ -7913,6 +8293,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 1.5,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "AGPL-3.0",
 		features: {
 			multiLlmTracking: true,
@@ -7949,6 +8330,7 @@ export const competitors: Competitor[] = [
 		category: "open-source",
 		ahrefsDR: 2.8,
 		status: "active",
+		checkedAt: "2026-10-20",
 		license: "MIT",
 		features: {
 			multiLlmTracking: true,
@@ -7985,22 +8367,23 @@ export const competitors: Competitor[] = [
 		url: "https://www.usenotra.com/",
 		tagline: "AI content engine turned AI visibility platform, formerly open source",
 		description:
-			"Notra started in January 2026 as an AI content engine that drafts changelogs and launch posts from GitHub, Linear, and Slack, and added AI visibility tracking in August 2026. It tracks ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews with web search, and queries Grok, DeepSeek, and Meta's models without it. Its code was public under the AGPL-3.0 license until mid-October 2026, when the repository was taken private.",
+			"Notra started in January 2026 as an AI content engine that drafts changelogs and launch posts from GitHub, Linear, and Slack, and added AI visibility tracking in August 2026. It tracks ChatGPT, Gemini, Microsoft Copilot, Google AI Overviews, and Google AI Mode with web search, and queries Claude, Grok, Kimi, GLM, and DeepSeek without it. Visibility tracking requires a paid plan; the free plan covers AI traffic analytics. Its code was public under the AGPL-3.0 license until mid-October 2026, when the repository was taken private.",
 		category: "tracking",
 		ahrefsDR: 51,
 		status: "active",
+		checkedAt: "2026-11-25",
 		soundbite:
 			"Notra was open source until October 2026, then took its code private. Elmo is MIT-licensed, so that can't happen to you.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
-			perplexity: true,
+			copilot: true,
 			claude: true,
 			grok: true,
 			deepseek: true,
-			metaAi: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
@@ -8010,6 +8393,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			dataExportApi: true,
+			typescriptSdk: true,
 			mcpServer: true,
 			contentGeneration: true,
 		},
@@ -8033,6 +8417,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 42,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10-01",
 			summary:
@@ -8053,6 +8438,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 26,
 		status: "acquired",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12-11",
 			summary:
@@ -8073,6 +8459,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary:
@@ -8092,6 +8479,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.6,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025",
@@ -8112,6 +8500,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 1.8,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Went offline after February 2026; the domain no longer resolves.",
@@ -8130,6 +8519,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 2.7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "Went offline after April 2026; the site now returns a 404 page.",
@@ -8148,6 +8538,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.3,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8167,6 +8558,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025",
 			summary: "Went offline after July 2025, and the domain registration has lapsed.",
@@ -8185,6 +8577,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025",
@@ -8206,6 +8599,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8227,6 +8621,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 15,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-09-01",
 			summary:
@@ -8247,6 +8642,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 17,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-11",
@@ -8265,6 +8661,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 18,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-05",
 			summary:
@@ -8284,6 +8681,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 33,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-04",
 			summary:
@@ -8302,6 +8700,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 13,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026-10",
@@ -8322,6 +8721,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.4,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -8340,6 +8740,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 8,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-09",
@@ -8360,6 +8761,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.2,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-11",
 			summary:
@@ -8379,6 +8781,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.1,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-08",
 			summary: "The tool launched on Show HN in May 2025, and its site now no longer loads.",
@@ -8397,6 +8800,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12",
 			summary:
@@ -8416,6 +8820,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2025-12",
@@ -8437,6 +8842,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 1.6,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-12",
 			summary:
@@ -8456,6 +8862,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025-04",
 			summary:
@@ -8475,6 +8882,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 4.2,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-10",
 			summary:
@@ -8494,6 +8902,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.1,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2025",
 			summary: "The domain no longer resolves; the site was last archived live in April 2025.",
@@ -8512,6 +8921,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0.2,
 		darkScreenshot: true,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "The site no longer loads; it was last archived live in December 2025.",
@@ -8529,6 +8939,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.4,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8548,6 +8959,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary: "The site now returns Framer's 'Site Not Found' page; it was last archived live in January 2026.",
@@ -8565,6 +8977,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 0.7,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8584,6 +8997,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 6,
 		status: "defunct",
+		checkedAt: "2026-10-20",
 		noScreenshot: true,
 		fate: {
 			date: "2026",
@@ -8603,6 +9017,7 @@ export const competitors: Competitor[] = [
 		ahrefsDR: 0,
 		darkScreenshot: true,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026",
 			summary:
@@ -8621,6 +9036,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "pivoted",
+		checkedAt: "2026-10-20",
 		fate: {
 			date: "2026-02",
 			summary:
@@ -8662,18 +9078,18 @@ export function getComparisonSlug(competitor: Competitor): string {
  */
 const aeoPopularityRanking: string[] = [
 	// --- Tier A: Category leaders with major funding, customers, and recognition ---
-	"profound", // Category leader: $96M Series C at a $1B valuation (Feb 2026), enterprise roster, G2 AEO Leader
-	"peec-ai", // $21M Series A (Singular), 3,500+ brands, ten engines scraped from the real UIs
+	"profound", // Category leader: $180M Series D at a $1.8B valuation (Sept 2026), enterprise roster
+	"peec-ai", // $21M Series A (Singular), 4,000+ brands, up to 13 models on Enterprise
 	"airops", // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
 	"scrunch", // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
 	"athenahq", // Broad engine coverage incl. all ten tracked engines, API + MCP, widely listed in best-AEO roundups
-	"otterly-ai", // Gartner Cool Vendor 2025, 30k+ users, 2026 European Search Award
+	"otterly-ai", // Gartner Cool Vendor 2025, 40k+ users, 2026 European Search Award
 
 	// --- Tier B: Well-funded or widely adopted AEO tools ---
 	"brandlight", // $30M Series A (Feb 2026, Pelion); Kimberly-Clark, LG, Estée Lauder
 	"bluefish-ai", // $43M Series B (Apr 2026), ~$68M raised, claims ~10% of the Fortune 500
-	"evertune", // $15M Series A, 700+ advertisers and agencies, EverPanel consumer data, self-serve plans
-	"promptwatch", // €6M seed (Jul 2026), ~€2M ARR, 1,780+ brands, UI scraping
+	"evertune", // $20M raised, 700+ advertisers and agencies, EverPanel consumer data, self-serve plans
+	"promptwatch", // €6M seed (Jul 2026), ~€2M ARR, 1,780+ brands, UI scraping for live-search engines
 	"writesonic", // 120M AI conversation dataset, major brand, combined tracking + content
 	"rankscale", // 17+ engines in one plan, 240+ countries, 94 technical checks, DR 63 with case studies + partners
 	"se-ranking", // Large established platform with dedicated AI Overviews + ChatGPT trackers
@@ -8694,19 +9110,19 @@ const aeoPopularityRanking: string[] = [
 	"promptrush", // 5.0 on G2 with named SaaS customers, 100+ brands
 	"xofu", // Bottom-of-funnel prompt scope with publisher target lists
 	"hall", // Acquired by Tracksuit Jul 2026; no longer independently sold
-	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
+	"aiseotracker", // Dedicated AEO tracker sold as a $49 one-off audit plus weekly rescans, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
-	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, whitepapers/webinars, DR 44
-	"finseo", // Query fan-outs + bot traffic + API/MCP, claims 500+ teams, EN/DE
-	"relixir", // Autonomous agent that deploys content, claims 400+ B2B teams, DR 45
-	"sight-ai", // Agent writes and ships content, Slack-native, DR 55; rebranded from IndexPilot
-	"share-of-model", // Brand-marketing framing with creative asset evaluation; powers partner platforms
-	"qwairy", // Ten engines split API vs UI, EU hosting, documented API + MCP; French market leader
+	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, software plus service, DR 44
+	"finseo", // Query fan-outs + bot traffic + API/MCP, three of ten engines per self-serve plan
+	"relixir", // Managed agent that deploys content, claims 400+ B2B teams, DR 45
+	"sight-ai", // Agent writes and ships content, MCP + Slack, DR 55; rebranded from IndexPilot
+	"share-of-model", // Jellyfish-launched, brand-marketing framing with creative asset evaluation; from $799/mo
+	"qwairy", // 18 engines split API vs UI, EU hosting, documented API + MCP; French market leader
 	"erlin", // Unified AI+SEO+GA/GSC with Reddit/YouTube citation tracking and task workflows
-	"geo-metrics", // Nine engines, Share of Model, claims 3,000+ users, MCP + agency program
-	"minddex", // French-market leader — Rossel Advertising reference tech, named Carglass/Ionos work
-	"riff-analytics", // Seven engines incl. Llama, citation gaps + AI readiness scan, DR 37
+	"geo-metrics", // Nine engines, Share of Model, Spanish-market focus, MCP + agency program
+	"minddex", // French-market leader — Rossel Advertising reference tech, publisher partnerships
+	"riff-analytics", // Nine engines incl. Llama, citation gaps + AI readiness scan, DR 37
 	"tesseract", // AdLift-built, AI Mode vs AIO comparison, vertical playbooks, DR 53
 	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented
@@ -8714,7 +9130,8 @@ const aeoPopularityRanking: string[] = [
 	"allmo", // Query Fan-Out + crawler indexing + citation intelligence, 4.8/5 OMR Reviews
 	"gauge", // End-to-end tracking + analysis + content platform
 	"azoma", // Enterprise agentic commerce — Rufus/Sparky/Alexa coverage and SKU-level revenue metrics
-	"passionfruit", // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
+	"passionfruit", // Stanford/CMU founders, managed SEO/GEO service on its own tracker
+	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"daydream", // 12% of Forbes AI 50 as clients, a16z citation, Shorty Award; managed service not software
 
 	// --- Tier D: Niche / emerging AEO tools with some traction ---
@@ -8726,7 +9143,6 @@ const aeoPopularityRanking: string[] = [
 	"superlines", // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
 	"rocketblue", // Samsung/monday.com/Lloyds/Publicis logos despite DR 11; autopilot publishing + MCP
 	"emberos", // Five-module agentic platform, Share-of-Prompt/TAVI metrics; no disclosed customers
-	"babylovegrowth", // DR 76, autopilot content + backlink network for AI citations
 	"genrank", // Ad-spend visibility per prompt plus social sentiment; no disclosed traction
 	"mentions", // Eight models incl. Llama, crawler analytics, DR 34
 	"sellm", // Five engines with paired SEO/AI SEO scores; thin public detail
@@ -8745,6 +9161,7 @@ const aeoPopularityRanking: string[] = [
 	"attensira", // Deliberately narrow 10-20 prompt sets with prioritized fixes; YC-backed startups cited
 	"indexly", // Unified Google + AI tracker, broad feature set
 	"llm-seo-monitor", // Keyword-ranking model, part of the Findable toolkit, 5.0 on Product Hunt
+	"ai-peekaboo", // White-label GEO reports for agencies and brand+agency partnerships, DR 45
 	"highlighted", // Narrow AI Overviews + ChatGPT tracker sold white-label to SEO agencies
 	"rankshift", // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"opttab", // Very broad suite (bot pages, commerce, ads) but DR 11 and no disclosed customers
@@ -8764,13 +9181,14 @@ const aeoPopularityRanking: string[] = [
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"keytomic", // Agent-run SEO+AEO automation at $99, claims 300+ users
+	"rankspot", // Agent-run SEO+AEO through MCP, pay-per-action pricing, DR 31; no disclosed customers
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
 	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"ziptie", // Three-signal AI Success Score; also runs ziptie.dev (DR 71)
 	"essio", // Agency-delivered, link-building emphasis; DR 8
 
 	// --- Tier F: Early, small, or minimal-traction tools ---
-	"algomizer", // Service engagement rather than software; DR 33 but no product access
+	"algomizer", // Performance-priced agency rather than software; DR 33 but no product access
 	"rank-ai", // AI content creation + rank tracking
 	"rank-plus-plus", // Nine tools for solo founders; free tier, narrow scope
 	"engenius", // Page-level GEO optimizer with a light monitor attached
@@ -8813,7 +9231,7 @@ const aeoPopularityRanking: string[] = [
 	"seen-by-ai", // Pay-per-report UK checker from £4.99; narrow scope, DR 1
 	"sorn", // Sales-led audit into a managed engagement; DR 5
 	"llmwatcher", // Polish-language tracker with full response history; DR 2.4
-	"getcito", // Fork of Elmo's codebase since Jul 2026
+	"getcito", // Third codebase in a year; vibe-coded rewrite landed Nov 2026
 	"geo-aeo-tracker", // Open-source self-hosted AEO dashboard, ~295 GitHub stars
 	"canonry", // MIT self-hosted AEO platform, server-log ingestion + MCP, ~186 stars
 	"gego", // GPL-3.0 self-hosted GEO tracker, Docker + CLI + REST API, ~106 stars
@@ -8823,7 +9241,6 @@ const aeoPopularityRanking: string[] = [
 	"local-glyph", // Local SEO platform first; AI visibility is one module. Beta, 70+ agencies
 	"flip-aeo", // AEO tracking + optimization
 	"llmeo", // Four models, unlimited competitors, 30-day trial; DR 1.4
-	"leverage", // Five engines with free report; DR 0.1, minimal public detail
 	"llmclicks", // Search-Console-for-AI positioning — GSC integration + 120-point audit
 	"foglift", // Free no-signup technical audit + 5-engine monitoring, CLI/API/MCP; DR 18 but only ~100 sites analyzed
 	"prominara", // Complete audit/generate/validate loop and a candid methodology page, but no disclosed customers
@@ -8905,6 +9322,7 @@ export const graveyardRanking: string[] = [
 	"peasy",
 	"allsearch",
 	"anvil",
+	"leverage",
 	"chatgeo",
 	"searchone",
 	"genrankengine",

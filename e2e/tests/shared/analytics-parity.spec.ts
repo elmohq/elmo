@@ -7,8 +7,7 @@ import { TEST_API_KEY, TEST_BRAND_ID, brandUrl } from "../../fixtures";
 
 const AUTH = { Authorization: `Bearer ${TEST_API_KEY}` };
 
-/** Half-open, so it runs to the start of tomorrow — anything less drops today's
- * runs and the two sides disagree for that reason alone. */
+/** Ends at the start of tomorrow, or today's runs drop out and the two sides disagree for that alone. */
 function lastMonth(): string {
   const today = new Date();
   const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
@@ -38,8 +37,7 @@ test.describe("dashboard and API parity", () => {
     expect(response.status()).toBe(200);
     const body = await response.json();
 
-    // Ratios against a rendered percentage, each rounded once at its own edge.
-    // The page shows a dash where the API says "nothing to plot".
+    // The page shows a dash where the API has nothing to plot.
     expect(Math.round((body.visibility.current ?? 0) * 100)).toBe(rendered);
   });
 
@@ -97,7 +95,6 @@ test.describe("dashboard and API parity", () => {
     expect(domainBody.totals.citations).toBe(totalOnPage);
     expect(domainBody.totals.uniqueDomains).toBe(domainsOnPage);
 
-    // The whole list is comparable, not just its presence.
     const section = pageText.slice(pageText.indexOf("Top Cited Domains"));
     const onPage = new Map<string, number>();
     for (const [, domain, count] of section.matchAll(/^([a-z0-9.-]+\.[a-z]{2,})\s*\n\s*(\d+)$/gm)) {
@@ -108,8 +105,7 @@ test.describe("dashboard and API parity", () => {
       expect(onPage.get(row.domain), `${row.domain} count differs from the page`).toBe(row.count);
     }
 
-    // The likeliest place for two implementations to drift, so checked per URL
-    // rather than trusted to the totals.
+    // Categories are where the two implementations are likeliest to drift.
     const urls = await request.get(`/api/v1/brands/${TEST_BRAND_ID}/citations/urls?${window}`, {
       headers: AUTH,
     });

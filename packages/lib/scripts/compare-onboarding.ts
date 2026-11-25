@@ -39,10 +39,6 @@ import { isPromptBranded } from "../src/tag-utils";
 
 type ProviderId = ResearchProviderId;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function resolveHomePath(p: string): string {
 	if (p === "~") return homedir();
 	if (p.startsWith("~/")) return resolve(homedir(), p.slice(2));
@@ -91,10 +87,6 @@ async function loadDotEnv(path: string): Promise<void> {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Per-provider runner
-// ---------------------------------------------------------------------------
-
 interface RunResult {
 	providerId: ProviderId;
 	model: string;
@@ -134,10 +126,6 @@ async function runProvider(providerId: ProviderId, ctx: AnalysisContext, timeout
 		brandedCount,
 	};
 }
-
-// ---------------------------------------------------------------------------
-// Reporting
-// ---------------------------------------------------------------------------
 
 function formatMs(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
@@ -250,10 +238,6 @@ function tabulatedComparison(results: RunResult[]): string {
 	}
 	return lines.join("\n");
 }
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
 
 function parseList(value: string | undefined): string[] {
 	return (value ?? "")

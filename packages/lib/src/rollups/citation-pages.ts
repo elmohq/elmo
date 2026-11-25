@@ -101,11 +101,7 @@ export function insertCitations(conn: DbConnection, run: CitingRun, extracted: C
 	return insertRunsCitations(conn, [{ run, citations: extracted }]);
 }
 
-/**
- * Stores many runs' citations with one page upsert and one insert, so a replay
- * batch costs a few statements rather than a few per run. The one way citations
- * are written.
- */
+/** The one way citations are written: one page upsert and one insert per batch. */
 export async function insertRunsCitations(
 	conn: DbConnection,
 	runs: { run: CitingRun; citations: Citation[] }[],
@@ -136,11 +132,8 @@ export async function insertRunsCitations(
 }
 
 /**
- * Points citations stored before pages were resolved at write time (or written
- * straight to the table by a seed) at their pages, and marks their buckets so the
- * rollups pick them up. Walks the heap newest pages first (see `walkHeap`) and
- * updates each window's rows by ctid, locked so it can't move underneath.
- * Resumable: resolved citations leave the filter.
+ * For citations written without a page, such as by a seed. Updates by ctid,
+ * locked so rows can't move underneath; resumable, as resolved rows leave the filter.
  */
 export function resolveUnpagedCitations(
 	conn: DbConnection,

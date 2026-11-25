@@ -1,9 +1,8 @@
 import { currentAnalysisVersions, EXTRACTION_KEY, MENTIONS_KEY } from "@workspace/lib/analysis-versions";
+import { type JevRequest, jevAnalyzer, stubTransport } from "@workspace/lib/mention-judge";
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { describe, expect, it } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
-import { jevAnalyzer } from "../mention-judge/analyze";
-import { type JevRequest, stubTransport } from "../mention-judge/jev";
 import { deriveRunUpdate, type StaleRun } from "./derive-runs";
 
 const config: MentionConfig = {

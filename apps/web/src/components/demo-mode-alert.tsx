@@ -8,7 +8,7 @@ export function DemoModeAlert({ children }: { children: ReactNode }) {
 	if (!readOnly) return null;
 
 	return (
-		<Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+		<Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900">
 			<IconAlertTriangle />
 			<AlertTitle>{children}</AlertTitle>
 		</Alert>

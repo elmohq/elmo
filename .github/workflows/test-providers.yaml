@@ -16,13 +16,15 @@ permissions:
 jobs:
   test:
     name: Test Providers
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    # Private copies of this repo inherit the schedule; it only needs to run here.
+    if: github.repository == 'elmohq/elmo'
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     # All targets run in parallel on a single runner (they're I/O-bound waiting
     # on external provider APIs), so the job wall-clock is ~the slowest target.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v7
         with:
           node-version: 24

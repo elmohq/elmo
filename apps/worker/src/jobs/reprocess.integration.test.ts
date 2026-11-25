@@ -16,12 +16,11 @@ import {
 	runExtractions,
 	runMentions,
 } from "@workspace/lib/db/schema";
+import { jevAnalyzer, stubTransport } from "@workspace/lib/mention-judge";
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
-import { jevAnalyzer } from "../mention-judge/analyze";
-import { stubTransport } from "../mention-judge/jev";
 import { deriveQueue } from "./__fixtures__/derive-queue";
 import { fillLegacyText } from "./fill-legacy-text";
 import {

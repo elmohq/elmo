@@ -50,7 +50,7 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 
 	let response = await makeRequest();
 
-	// Check for web search errors like max_uses_exceeded and retry once
+	// A web search error such as max_uses_exceeded gets one retry.
 	for (const block of response.content) {
 		if (block.type !== "web_search_tool_result") continue;
 		const error = Array.isArray(block.content) ? undefined : block.content;
@@ -72,8 +72,7 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		),
 	);
 
-	// Strip full page text from web search results to reduce storage.
-	// Only url/title are used for citation extraction.
+	// Citation extraction reads only url and title, so the page text isn't stored.
 	const trimmedContent = response.content.map((block) => {
 		if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) return block;
 		return {

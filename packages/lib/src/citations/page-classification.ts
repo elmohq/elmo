@@ -35,8 +35,8 @@ export function classifyPage(url: string, domain: string, title: string | null):
 
 export interface StoredPageClass {
 	domain: string;
-	static_category: string;
-	page_type: string;
+	static_category: StaticCategory;
+	page_type: CitationPageType;
 }
 
 export interface ResolvedPageClass {
@@ -64,13 +64,11 @@ export function resolvePageClass(
 
 export function resolveOwnedPageClass(row: {
 	owner: "brand" | "competitor" | null;
-	static_category: string;
-	page_type: string;
+	static_category: StaticCategory;
+	page_type: CitationPageType;
 }): ResolvedPageClass | null {
 	if (row.static_category === GOOGLE_STATIC_CATEGORY) return null;
-	const category = row.owner ?? (row.static_category as CitationCategory);
-	const storedPageType = row.page_type as CitationPageType;
-	const pageType =
-		storedPageType === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category) ? "article" : storedPageType;
+	const category = row.owner ?? row.static_category;
+	const pageType = row.page_type === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category) ? "article" : row.page_type;
 	return { category, pageType };
 }

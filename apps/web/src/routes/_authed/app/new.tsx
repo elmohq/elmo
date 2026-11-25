@@ -4,6 +4,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useState } from "react";
 import FullPageCard from "@/components/full-page-card";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { useOrganizationsChanged } from "@/hooks/use-organizations";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -66,7 +67,11 @@ function NewOrganizationPage() {
 					/>
 				</div>
 
-				{error && <p className="text-sm text-destructive">{error}</p>}
+				{error && (
+					<p className="text-sm text-destructive">
+						<WriteErrorMessage message={error} />
+					</p>
+				)}
 
 				<Button type="submit" className="w-full" disabled={isLoading || trimmed.length === 0}>
 					{isLoading ? "Creating..." : "Create organization"}

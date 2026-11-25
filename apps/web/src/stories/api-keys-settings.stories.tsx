@@ -127,7 +127,7 @@ export const NoKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("No API keys yet")).toBeVisible();
-		await userEvent.click(await canvas.findByRole("button", { name: "Create your first key" }));
+		await userEvent.click(await canvas.findByRole("button", { name: "Create Your First Key" }));
 		await expect(await within(document.body).findByRole("dialog")).toBeVisible();
 	},
 };
@@ -194,7 +194,7 @@ export const RestrictedToBrands: Story = {
 		await userEvent.click(await within(canvasElement).findByRole("button", { name: "Add Key" }));
 		const dialog = within(await within(document.body).findByRole("dialog"));
 		await expect(dialog.queryByPlaceholderText("Search brands…")).toBeNull();
-		await userEvent.click(await dialog.findByRole("tab", { name: "Specific brands" }));
+		await userEvent.click(await dialog.findByRole("tab", { name: "Specific Brands" }));
 		// The list is portalled, so it lands outside the dialog element.
 		await userEvent.click(await dialog.findByPlaceholderText("Search brands…"));
 		await expect(await within(document.body).findByRole("option", { name: "Acme Labs" })).toBeVisible();
@@ -213,7 +213,9 @@ export const KeyJustCreated: Story = {
 		await userEvent.type(await dialog.findByLabelText("Name"), "Nightly export");
 		await userEvent.click(await dialog.findByRole("button", { name: "Create" }));
 		await expect(await canvas.findByText("Key Created")).toBeVisible();
-		await expect(await canvas.findByText("elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8")).toBeVisible();
+		await expect(await canvas.findByRole("textbox", { name: "API Key" })).toHaveValue(
+			"elmo_5f3b9c1d84a24e7fbc2a6d0e91f7c3b8",
+		);
 	},
 };
 
@@ -255,6 +257,6 @@ export const ReadOnlyDeploymentWithNoKeys: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await expect(await canvas.findByText("Keys can't be issued in demo mode.")).toBeVisible();
-		await expect(canvas.queryByRole("button", { name: "Create your first key" })).toBeNull();
+		await expect(canvas.queryByRole("button", { name: "Create Your First Key" })).toBeNull();
 	},
 };

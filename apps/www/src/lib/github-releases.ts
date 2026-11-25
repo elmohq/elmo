@@ -25,6 +25,7 @@ export const getGitHubReleases = createServerFn({ method: "GET" }).handler(async
 				"User-Agent": "elmo-www",
 				Accept: "application/vnd.github+json",
 			},
+			signal: AbortSignal.timeout(3000),
 		});
 
 		if (!res.ok) {

@@ -24,7 +24,7 @@ import { brands, citations, competitors, promptRuns } from "@workspace/lib/db/sc
 import { type MentionConfig, mentionConfigFrom } from "@workspace/lib/mentions";
 import { extractorFor, extractRun } from "@workspace/lib/text-extraction";
 import { and, asc, eq, gt, gte, inArray } from "drizzle-orm";
-import { mentionAnalyzer } from "../src/mention-judge/analyze";
+import { mentionAnalyzer } from "../src/mention-judge";
 
 if (!process.env.DATABASE_URL) {
 	console.error("Set DATABASE_URL explicitly; this script never reads .env.");

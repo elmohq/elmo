@@ -31,14 +31,13 @@ test.describe("API keys", () => {
 
     const name = `Playwright key ${Date.now()}`;
     await openCreateForm(page, name);
-    // A real click, because the failure this guards against was the dialog
-    // painting over the open listbox and swallowing them.
+    // A real click, because the dialog can paint over the open listbox and swallow it.
     await page.locator("#key-expiry").click();
     await waitForMotion(page);
     await page.getByRole("option", { name: "In 30 days", exact: true }).click();
     await expect(page.locator("#key-expiry")).toContainText("In 30 days");
     await page.getByRole("tab", { name: "Read/Write", exact: true }).click();
-    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
+    await page.getByRole("tab", { name: "Specific Brands", exact: true }).click();
     await page.locator("[data-slot=combobox-chip-input]").click();
     await waitForMotion(page);
     await page.getByRole("option", { name: "Test Organization", exact: true }).click();
@@ -49,7 +48,7 @@ test.describe("API keys", () => {
 
     const issued = page.locator("[data-slot=card]").filter({ hasText: "Key Created" });
     await expect(issued).toBeVisible({ timeout: 30_000 });
-    const key = (await issued.locator("code").innerText()).trim();
+    const key = await issued.getByRole("textbox", { name: "API Key" }).inputValue();
     expect(key).toMatch(/^elmo_[A-Za-z]+$/);
     await expect(page.getByText(name)).toBeVisible();
 
@@ -70,7 +69,7 @@ test.describe("API keys", () => {
 
     // Refused because no scope reaches it, so a read-write key reads the same
     // way a read-only one does.
-    const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-0000-0000-000000000001", {
+    const deletePrompt = await request.delete("/api/v1/prompts/00000000-0000-4000-8000-000000000001", {
       headers: auth,
       failOnStatusCode: false,
     });
@@ -110,7 +109,7 @@ test.describe("API keys", () => {
     await openCreateForm(page, name);
 
     // Must not quietly become "every brand"; the server is what refuses.
-    await page.getByRole("tab", { name: "Specific brands", exact: true }).click();
+    await page.getByRole("tab", { name: "Specific Brands", exact: true }).click();
     await page.getByRole("button", { name: "Create", exact: true }).click();
 
     await expect(page.getByRole("dialog").getByText(/at least one brand/i)).toBeVisible({ timeout: 30_000 });

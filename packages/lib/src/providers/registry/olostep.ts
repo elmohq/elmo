@@ -26,16 +26,6 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		urlTemplate: (q) => `https://gemini.google.com/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
-	copilot: {
-		parserId: "@olostep/microsoft-copilot-results",
-		urlTemplate: (q) => `https://copilot.microsoft.com/chats?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
-	perplexity: {
-		parserId: "@olostep/perplexity-results",
-		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
 };
 
 let _client: Olostep | null = null;
@@ -138,8 +128,6 @@ export const olostep: Provider = {
 			// Store the parsed content directly instead of the full retrieved
 			// wrapper (which double-encodes json_content as a string).
 			rawOutput: parsed,
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
 			webQueries: reportedWebQueries(webQueries, { searchProven: citations.length > 0 }),
 			modelVersion: parsed?.model ?? undefined,
 		};

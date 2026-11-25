@@ -210,7 +210,7 @@ function GraveyardPage() {
 						</p>
 					</div>
 				</DirectoryHero>
-				<DirectorySection>
+				<DirectorySection title="Tools That Shut Down">
 					<ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{graveyardTools
 							.filter((c) => !c.noScreenshot)

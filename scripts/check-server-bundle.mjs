@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 /**
- * Fails when a server bundle still expects to resolve a package from disk at
- * request time.
- *
- * The bundlers turn an unresolved CommonJS `require("x")` into a `__require("x")`
- * that only runs when that module is first needed. Nothing complains at build
- * time, the output looks complete, and the app dies on the first render in any
- * environment that ships the bundle without a `node_modules` beside it — the
- * Docker image and the Vercel function both do. Worse, whether it fires depends
- * on which chunk the module lands in: the same unresolved require can sit
- * harmlessly in a route nobody hits and then start taking down every page after
- * an unrelated dependency change.
+ * Fails when a server bundle still resolves a package from disk at request time.
+ * An unresolved `require("x")` builds cleanly and only throws when first run,
+ * and the Docker image and the Vercel function ship no `node_modules` beside the
+ * bundle. Which chunk it lands in decides when it fires, so an unrelated
+ * dependency change can move it onto every page.
  *
  * Usage: node scripts/check-server-bundle.mjs <app-dir> [...]
  */

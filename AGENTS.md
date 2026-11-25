@@ -60,8 +60,9 @@ Before handing work back or opening a PR, run `pnpm lint` and get it passing; CI
 
 ## Private data
 
-- Unless explicitly authorized, never put identifying information or non-public stats into a PR description, commit message, or any committed text (code, comments, tests, fixtures, docs, changesets). This covers anything you get from MCP servers, databases, or APIs you've been given access to.
-- That includes conversion rates, customer or user names, emails, and domains, revenue and billing figures, cloud usage amounts, traffic numbers, and any other non-public information. Describe the change in general terms or use made-up placeholder data instead.
+- Unless explicitly authorized, never put identifying information or non-public stats into a PR description, commit message, issue or PR comment, or any committed text (code, comments, tests, fixtures, docs, changesets). This covers anything you get from MCP servers, databases, or APIs you've been given access to, including the GitHub API.
+- That includes conversion rates, customer or user names, emails, and domains, revenue and billing figures, cloud usage amounts, traffic numbers, names of private repositories, internal projects, services, or infrastructure, and any other non-public information. Describe the change in general terms or use made-up placeholder data instead.
+- This repo is public. Before running `gh pr create`, `gh pr edit`, `gh pr comment`, `gh issue`, or `git commit`, reread the text against this list and strip anything you learned while investigating that isn't already public. Notes from your investigation are the usual source of leaks.
 
 ## Comments and docs
 

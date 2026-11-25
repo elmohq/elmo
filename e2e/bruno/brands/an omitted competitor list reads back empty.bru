@@ -1,0 +1,27 @@
+meta {
+  name: an omitted competitor list reads back empty
+  type: http
+  seq: 34
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors?brandId={{listsBrandId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{listsBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.competitors: length 1
+}
+
+tests {
+  test("aliases default to an empty list", function() {
+    const [competitor] = res.getBody().competitors;
+    expect(competitor.aliases).to.deep.equal([]);
+  });
+}

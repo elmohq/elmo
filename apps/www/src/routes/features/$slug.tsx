@@ -53,7 +53,7 @@ export const Route = createFileRoute("/features/$slug")({
 					{ name: "Features", path: "/features" },
 					{ name: f.name, path },
 				]),
-				faqJsonLd(f.faqs),
+				faqJsonLd(f.faqs, { path, dateModified: f.updated }),
 			],
 		};
 	},

@@ -1,5 +1,5 @@
 import "../instrument.server.mjs";
-import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
+import * as Sentry from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import { AD_TAG_CSP } from "@workspace/ui/lib/ad-tags";
@@ -51,10 +51,13 @@ function addSecurityHeaders(response: Response): Response {
 }
 
 export default createServerEntry(
-	wrapFetchWithSentry({
-		async fetch(request: Request) {
-			const response = await handler.fetch(request);
-			return addSecurityHeaders(response);
-		},
+	Sentry.wrapFetchWithSentry({
+		// The first request a server instance handles runs before Sentry isolates requests from
+		// each other, so without its own scope the user set on it would stick to every later one.
+		fetch: (request: Request) =>
+			Sentry.withIsolationScope(async () => {
+				const response = await handler.fetch(request);
+				return addSecurityHeaders(response);
+			}),
 	}),
 );

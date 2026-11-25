@@ -10,8 +10,16 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
+import type * as z from "zod";
 import type { DailyScope } from "@/lib/analytics-sql";
 import { isCalendarDay } from "@/lib/analytics-sql";
+import type {
+	brandAnalyticsSchema,
+	modelVisibilitySchema,
+	shareOfVoiceEntrySchema,
+	visibilityPointSchema,
+} from "@/lib/api/schemas/analytics";
+import type { promptPerformanceSchema } from "@/lib/api/schemas/prompt-performance";
 import { generateDateRange } from "@/lib/chart-utils";
 import {
 	getCitationDomainPage,
@@ -47,18 +55,14 @@ import {
 import {
 	averagePosition,
 	isSentiment,
-	type MentionQuality,
 	mentionQuality,
 	NO_ASSESSMENTS,
-	type PositionPoint,
 	type Sentiment,
-	type SentimentCounts,
 	type SentimentSummary,
 	sentimentCounts,
 	sentimentSummary,
 	sumAssessments,
 } from "@/lib/sentiment";
-import { shiftDateStr } from "@/lib/timezone-utils";
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
@@ -92,10 +96,7 @@ export interface AnalyticsFilters {
 	search?: string;
 }
 
-interface VisibilityPoint {
-	date: string;
-	visibility: number | null;
-}
+type VisibilityPoint = z.infer<typeof visibilityPointSchema>;
 
 export interface BrandVisibility {
 	currentVisibility: number | null;
@@ -164,13 +165,7 @@ export async function getBrandVisibility(
 	return { currentVisibility, totalRuns, totalPrompts: promptIds.length, totalCitations, series };
 }
 
-interface ShareOfVoiceEntry extends MentionQuality {
-	name: string;
-	isBrand: boolean;
-	mentions: number;
-	prompts: number;
-	share: number;
-}
+type ShareOfVoiceEntry = z.infer<typeof shareOfVoiceEntrySchema>;
 
 export interface BrandShareOfVoice {
 	brandName: string;
@@ -261,14 +256,7 @@ export async function getBrandShareOfVoice(
 	};
 }
 
-export interface ModelVisibility extends MentionQuality {
-	model: string;
-	label: string;
-	runs: number;
-	brandMentions: number;
-	visibility: number | null;
-	citations: number;
-}
+export type ModelVisibility = z.infer<typeof modelVisibilitySchema>;
 
 async function getBrandModelBreakdown(
 	brandId: string,
@@ -477,12 +465,12 @@ export async function getBrandQueryFanout(
 		resolved.prompts.filter((prompt) => promptIds.includes(prompt.id)).map((prompt) => [prompt.id, prompt.value]),
 	);
 	// Without this every byPrompt row reports zero runs and a zero average.
-	const promptRuns = new Map(promptTotals.map((row) => [row.prompt_id, row.runs]));
+	const promptFanoutRuns = new Map(promptTotals.map((row) => [row.prompt_id, row.fanout_runs]));
 
 	return {
 		brandName,
 		...computeFanoutAnalysis(breakdown, modelTotals, promptValues, {
-			promptRuns,
+			promptFanoutRuns,
 			limits: fanoutLimits(options),
 		}),
 	};
@@ -501,7 +489,7 @@ function emptyFanout(): FanoutAnalysis {
 		uniqueQueries: 0,
 		fanoutRuns: 0,
 		totalRuns: 0,
-		avgPerExecution: 0,
+		avgQueriesPerFanoutRun: 0,
 		coverageRate: 0,
 		topQueries: [],
 		terms: [],
@@ -513,16 +501,7 @@ function emptyFanout(): FanoutAnalysis {
 	};
 }
 
-export interface PromptPerformance extends MentionQuality {
-	promptId: string;
-	value: string;
-	tags: string[];
-	totalRuns: number;
-	brandMentionRate: number;
-	competitorMentionRate: number;
-	lastRunAt: string | null;
-	firstEvaluatedAt: string | null;
-}
+export type PromptPerformance = z.infer<typeof promptPerformanceSchema>;
 
 /** Only prompts that ran appear, which is why no row carries an `enabled` flag. */
 export async function getBrandPromptPerformance(
@@ -559,10 +538,7 @@ export async function getBrandPromptPerformance(
 	});
 }
 
-export interface BrandMentionQuality {
-	sentiment: SentimentSummary & { series: (SentimentCounts & { date: string })[] };
-	position: { average: number | null; series: PositionPoint[] };
-}
+export type BrandMentionQuality = Pick<z.infer<typeof brandAnalyticsSchema>, "sentiment" | "position">;
 
 export async function getBrandMentionQuality(
 	brandId: string,

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.elmohq/elmo",
+  "title": "Elmo",
+  "description": "Track prompts on ChatGPT/Claude and all other models to measure AI visibility and perform AEO.",
+  "version": "1.0.0",
+  "websiteUrl": "https://www.elmohq.com",
+  "repository": {
+    "url": "https://github.com/elmohq/elmo",
+    "source": "github",
+    "subfolder": "mcp"
+  },
+  "icons": [
+    {
+      "src": "https://www.elmohq.com/icons/elmo-icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    },
+    {
+      "src": "https://www.elmohq.com/icons/elmo-icon-512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://app.elmohq.com/api/mcp"
+    }
+  ]
+}

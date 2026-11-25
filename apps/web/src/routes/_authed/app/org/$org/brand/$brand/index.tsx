@@ -2,8 +2,8 @@ import { IconActivity, IconArrowRight, IconClock, IconInfoCircle, IconList, Icon
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
+import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Card, CardContent } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { type ReactNode, useEffect } from "react";
@@ -20,7 +20,6 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { brandRank, LANDSCAPE_METRICS } from "@/lib/landscape";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
-import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
@@ -296,6 +295,12 @@ function OverviewFigures({
 	);
 }
 
+// A brand that failed to load also lands on the wizard, the safe fallback.
+function showsOnboarding(isLoading: boolean, brand: { trackingState: BrandTrackingState } | undefined): boolean {
+	if (isLoading) return false;
+	return !brand || brand.trackingState === "onboarding";
+}
+
 function DashboardPage() {
 	const brandId = useBrandId();
 	const { data: brand, isLoading: isLoadingBrand } = useBrand();
@@ -319,15 +324,13 @@ function DashboardPage() {
 	const trackedTargets = brand?.trackedTargets ?? [];
 	const loading = isLoadingBrand || isLoadingSummary;
 
-	if (!isLoadingBrand && !brand?.onboarded) {
+	if (showsOnboarding(isLoadingBrand, brand)) {
 		return <ResearchBrandData brandId={brandId} clientConfig={clientConfig} />;
 	}
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
 	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
-		return (
-			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
-		);
+		return <AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.promptCount ?? 0) > 0} />;
 	}
 
 	return (

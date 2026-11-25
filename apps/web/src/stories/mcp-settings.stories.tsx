@@ -57,7 +57,9 @@ export const Connect: Story = {
 		const canvas = within(canvasElement);
 		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 		// The endpoint is the host the app is served from, not a placeholder to fill in.
-		await expect(await canvas.findByText(`${window.location.origin}/api/mcp`)).toBeVisible();
+		await expect(await canvas.findByRole("textbox", { name: "Endpoint" })).toHaveValue(
+			`${window.location.origin}/api/mcp`,
+		);
 		await expect(await canvas.findByText("create_prompts")).toBeVisible();
 		await expect(await canvas.findByText("write")).toBeVisible();
 	},

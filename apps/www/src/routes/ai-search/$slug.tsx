@@ -51,7 +51,7 @@ export const Route = createFileRoute("/ai-search/$slug")({
 					description: e.short,
 					steps: e.steps,
 				}),
-				faqJsonLd(engineFaqs(e)),
+				faqJsonLd(engineFaqs(e), { path, dateModified: e.updated }),
 			],
 		};
 	},

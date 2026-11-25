@@ -62,14 +62,14 @@ describe("collectProvider", () => {
 	});
 
 	it("collects both scraper credentials and the picked surfaces", async () => {
-		answers.push(true, "user@example.com", "hunter2", ["chatgpt:oxylabs:online", "perplexity:oxylabs:online"]);
+		answers.push(true, "user@example.com", "hunter2", ["chatgpt:oxylabs:online", "google-ai-mode:oxylabs:online"]);
 		const env: Record<string, string> = {};
 		const targets: string[] = [];
 
 		await collectProvider(providerSpec("oxylabs"), env, targets);
 
 		expect(env).toEqual({ OXYLABS_USERNAME: "user@example.com", OXYLABS_PASSWORD: "hunter2" });
-		expect(targets).toEqual(["chatgpt:oxylabs:online", "perplexity:oxylabs:online"]);
+		expect(targets).toEqual(["chatgpt:oxylabs:online", "google-ai-mode:oxylabs:online"]);
 		expect(asked.map((a) => a.kind)).toEqual(["confirm", "text", "password", "multiselect"]);
 		expect(asked.at(-1)?.message).toBe("LLM Providers to track via Oxylabs");
 	});

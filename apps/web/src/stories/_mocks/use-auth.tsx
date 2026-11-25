@@ -1,7 +1,3 @@
-/**
- * Mock for @/hooks/use-auth — provides controllable auth state for stories.
- */
-
 let _mockAuth = {
 	user: {
 		name: "Demo User",

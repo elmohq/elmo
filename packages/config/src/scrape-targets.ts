@@ -1,8 +1,6 @@
 /**
- * The single module that parses and formats the SCRAPE_TARGETS env var.
- *
- * Format: model:provider[:version][:online]
- * - model: AI model to track (chatgpt, google-ai-mode, copilot, etc.)
+ * SCRAPE_TARGETS format: model:provider[:version][:online]
+ * - model: AI model to track (chatgpt, google-ai-mode, gemini, etc.)
  * - provider: How to reach it (olostep, brightdata, direct, openrouter, dataforseo)
  * - version: Specific version slug, required for direct/openrouter (may contain colons for OpenRouter variants)
  * - :online: Append to enable web search. Omit = no web search.
@@ -17,19 +15,71 @@ export interface ModelConfig {
 	webSearch: boolean;
 }
 
+export interface RetiredScrapeTarget {
+	target: string;
+	reason: string;
+	replacements: string[];
+}
+
+const SCRAPERS = ["brightdata", "cloro", "olostep", "oxylabs", "searchapi"];
+
 /**
- * Parse the SCRAPE_TARGETS env var into structured ModelConfig objects.
+ * Perplexity and the Copilot app went behind a login, so no scraper reaches
+ * them. Perplexity's Sonar model API still works, and Bing AI Mode is the
+ * Microsoft answer signed-out visitors still get.
+ */
+const RETIRED_SCRAPES: Record<string, { providers: string[]; reason: string; replacements: string[] }> = {
+	perplexity: {
+		providers: SCRAPERS,
+		reason: "Perplexity now requires a login, so no scraper can reach it, but its Sonar model API still works.",
+		replacements: ["perplexity:openrouter:perplexity/sonar:online", "perplexity:dataforseo:online"],
+	},
+	copilot: {
+		providers: SCRAPERS,
+		reason: "The Copilot app now requires a login, so no scraper can reach it. Bing AI Mode is still open to scrapers.",
+		replacements: ["bing-ai-mode:cloro:online", "bing-ai-mode:searchapi:online"],
+	},
+};
+
+function isRetiredScrapeTarget(config: ModelConfig): boolean {
+	return RETIRED_SCRAPES[config.model]?.providers.includes(config.provider) ?? false;
+}
+
+/** The SCRAPE_TARGETS entries `parseScrapeTargets` skips, with what to run in their place. */
+export function retiredScrapeTargets(envValue?: string): RetiredScrapeTarget[] {
+	return parseAllScrapeTargets(envValue)
+		.filter(isRetiredScrapeTarget)
+		.map((config) => {
+			const { reason, replacements } = RETIRED_SCRAPES[config.model];
+			return { target: formatScrapeTarget(config), reason, replacements };
+		});
+}
+
+const warned = new Set<string>();
+
+/**
+ * Middle segments rejoin with ":", so OpenRouter variant suffixes like ":free" survive.
  *
- * Parsing: split on ":". First = model, second = provider. If last segment is "online",
- * pop it (websearch = true). Remaining middle segments rejoined with ":" = version slug.
- * This naturally handles OpenRouter variant suffixes like ":free".
+ * Retired scrape targets are dropped with a warning rather than rejected, so an
+ * instance that still lists one keeps running everything else after upgrading.
  */
 export function parseScrapeTargets(envValue?: string): ModelConfig[] {
+	for (const { target, reason, replacements } of retiredScrapeTargets(envValue)) {
+		if (warned.has(target)) continue;
+		warned.add(target);
+		console.warn(
+			`SCRAPE_TARGETS: skipping "${target}". ${reason} Replace it with ${replacements.join(" or ")}. See ${PROVIDERS_DOCS_URL}.`,
+		);
+	}
+	return parseAllScrapeTargets(envValue).filter((config) => !isRetiredScrapeTarget(config));
+}
+
+function parseAllScrapeTargets(envValue?: string): ModelConfig[] {
 	if (!envValue || !envValue.trim()) {
 		throw new Error(
 			"SCRAPE_TARGETS environment variable is required. " +
 				"Set it to configure which AI models to track. Example:\n" +
-				"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online\n" +
+				"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,gemini:olostep:online\n" +
 				`See ${PROVIDERS_DOCS_URL} for details.`,
 		);
 	}
@@ -47,10 +97,6 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	});
 }
 
-/**
- * Inverse of parseScrapeTargets for a single entry: build the
- * model:provider[:version][:online] string from a ModelConfig.
- */
 export function formatScrapeTarget(config: ModelConfig): string {
 	const parts = [config.model, config.provider];
 	if (config.version) parts.push(config.version);
@@ -58,41 +104,30 @@ export function formatScrapeTarget(config: ModelConfig): string {
 	return parts.join(":");
 }
 
-/**
- * The provider:model targets shown on the public status page and exercised by
- * the scheduled test-providers workflow. Both the page and the workflow read
- * this one list so the "what we display" and "what we test" sets can't drift.
- */
+/** One list for the public status page and the scheduled provider tests, so the two can't drift. */
 export const STATUS_TARGETS = [
 	"chatgpt:searchapi",
 	"chatgpt:searchapi:online",
 	"google-ai-mode:searchapi:online",
 	"google-ai-overview:searchapi:online",
 	"gemini:searchapi:online",
-	"copilot:searchapi:online",
-	"perplexity:searchapi:online",
+	"bing-ai-mode:searchapi:online",
 	"chatgpt:olostep:online",
 	"google-ai-mode:olostep:online",
 	"google-ai-overview:olostep:online",
 	"gemini:olostep:online",
-	"copilot:olostep:online",
-	"perplexity:olostep:online",
 	"chatgpt:brightdata",
 	"chatgpt:brightdata:online",
 	"google-ai-mode:brightdata:online",
 	"gemini:brightdata:online",
-	"perplexity:brightdata:online",
-	"copilot:brightdata:online",
 	"google-ai-overview:brightdata:online",
 	"chatgpt:oxylabs",
 	"chatgpt:oxylabs:online",
 	"google-ai-mode:oxylabs:online",
 	"google-ai-overview:oxylabs:online",
-	"perplexity:oxylabs:online",
 	"chatgpt:cloro:online",
-	"perplexity:cloro:online",
-	"copilot:cloro:online",
 	"gemini:cloro:online",
+	"bing-ai-mode:cloro:online",
 	"google-ai-mode:cloro:online",
 	"google-ai-overview:cloro:online",
 	"google-ai-mode:dataforseo:online",
@@ -117,22 +152,29 @@ export const STATUS_TARGETS = [
 	"deepseek:openrouter:deepseek/deepseek-v3.2",
 	"qwen:openrouter:qwen/qwen3-235b-a22b-2507",
 	"kimi:openrouter:moonshotai/kimi-k2.5",
-	"grok:openrouter:x-ai/grok-4.5",
-	"grok:openrouter:x-ai/grok-4.5:online",
+	"grok:openrouter:x-ai/grok-4.7",
+	"grok:openrouter:x-ai/grok-4.7:online",
+	"meta:openrouter:meta/muse-spark-1.3:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
-	// Perplexity's own search, not OpenRouter's Exa fallback: with the plugin
-	// engine left unset, OpenRouter routes Perplexity slugs to native search.
 	"perplexity:openrouter:perplexity/sonar:online",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];
 
-/**
- * Which providers can serve each trackable model, derived from STATUS_TARGETS so
- * the answer is limited to combinations the scheduled provider workflow actually
- * exercises. Used to tell a self-hosted operator what they would need in order
- * to track a platform they have not configured yet.
- */
+/** No longer tested, but still listed on the status page so the change is visible. */
+export const RETIRED_STATUS_TARGETS = [
+	"copilot:brightdata:online",
+	"copilot:cloro:online",
+	"copilot:olostep:online",
+	"copilot:searchapi:online",
+	"perplexity:brightdata:online",
+	"perplexity:cloro:online",
+	"perplexity:olostep:online",
+	"perplexity:oxylabs:online",
+	"perplexity:searchapi:online",
+];
+
+/** Derived from STATUS_TARGETS so it only offers combinations the scheduled provider tests exercise. */
 export function providersByModel(): Map<string, string[]> {
 	const byModel = new Map<string, Set<string>>();
 	for (const target of parseScrapeTargets(STATUS_TARGETS.join(","))) {

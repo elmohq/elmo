@@ -14,8 +14,8 @@ import {
 import { mentionConfigFrom } from "@workspace/lib/mentions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { MentionAnalyzer } from "../mention-judge";
 import { cuedAnalyzer } from "../mention-judge/__fixtures__/cued-judge";
-import type { MentionAnalyzer } from "../mention-judge/analyze";
 import { deriveQueue } from "./__fixtures__/derive-queue";
 import { DERIVE_PRIORITY, deriveRuns, requestUnjudgedRuns, sendDeriveRuns } from "./derive-runs";
 

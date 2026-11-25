@@ -8,17 +8,17 @@
  */
 
 import { IconBrandGoogle } from "@tabler/icons-react";
-import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useRouteContext, useRouter } from "@tanstack/react-router";
 import { MCP_AUTHORIZE_ENDPOINT } from "@workspace/config/constants";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Separator } from "@workspace/ui/components/separator";
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { SalesFooterLinks, SalesPanel } from "@/components/auth/sales-panel";
 import FullPageCard from "@/components/full-page-card";
@@ -27,6 +27,7 @@ import { CAPTCHA_FAILED_MESSAGE, CaptchaError, isCaptchaRejection, useTurnstile 
 import { type AttributionParams, attributionParams } from "@/lib/attribution";
 import { safeReturnTo } from "@/lib/return-to";
 import { buildTitle, getAppName } from "@/lib/route-head";
+import { viewerQuery } from "@/lib/viewer/queries";
 
 /**
  * When the OAuth plugin sent the browser here mid-flow, handing the signed query
@@ -52,6 +53,13 @@ interface LoginSearch extends AttributionParams {
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: (search: Record<string, unknown>): LoginSearch => search,
+	beforeLoad: async ({ context, search }) => {
+		// The authorization endpoint can send a signed-in browser back here to
+		// sign in again, so forwarding to it could go round forever.
+		if (search.sig) return;
+		const viewer = await context.queryClient.fetchQuery({ ...viewerQuery, staleTime: 0 }).catch(() => null);
+		if (viewer) throw redirect({ href: safeReturnTo(search.returnTo), reloadDocument: true });
+	},
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
@@ -72,6 +80,13 @@ function LoginPage() {
 	const mode = context.clientConfig?.mode;
 	const canRegister = context.clientConfig?.canRegister ?? false;
 	const hasUsers = context.clientConfig?.hasUsers ?? false;
+	const router = useRouter();
+
+	useEffect(() => {
+		const recheck = () => void router.invalidate();
+		window.addEventListener("focus", recheck);
+		return () => window.removeEventListener("focus", recheck);
+	}, [router]);
 
 	if (mode === "whitelabel") {
 		return <SSOLogin destination={destination} />;
@@ -180,6 +195,18 @@ function signInErrorMessage(error: { code?: string; message?: string }, isCloud?
 	return error.message ?? "Invalid email or password";
 }
 
+function LastUsedBadge() {
+	// The leading space keeps the button's accessible name "Sign In Last Used" rather than "Sign InLast Used".
+	return (
+		<>
+			{" "}
+			<Badge variant="secondary" className="pointer-events-none absolute -top-3 right-3">
+				Last Used
+			</Badge>
+		</>
+	);
+}
+
 export function EmailPasswordLogin({
 	destination = "/app",
 	returnTo,
@@ -198,8 +225,13 @@ export function EmailPasswordLogin({
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null);
 	const source = isCloud ? "cloud-signin" : "self-hosted-signin";
 	const turnstile = useTurnstile();
+
+	useEffect(() => {
+		setLastLoginMethod(isCloud ? authClient.getLastUsedLoginMethod() : null);
+	}, [isCloud]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -247,11 +279,12 @@ export function EmailPasswordLogin({
 					<Button
 						type="button"
 						variant="outline"
-						className="w-full"
+						className="relative w-full"
 						onClick={() => authClient.signIn.social({ provider: "google", callbackURL: destination })}
 					>
 						<IconBrandGoogle className="size-4" />
 						Continue with Google
+						{lastLoginMethod === "google" && <LastUsedBadge />}
 					</Button>
 					<LegalConsentNotice action="continuing with Google" />
 					<div className="flex items-center gap-3">
@@ -300,8 +333,9 @@ export function EmailPasswordLogin({
 					/>
 				</div>
 				{turnstile.widget}
-				<Button type="submit" className="w-full" disabled={loading}>
-					{loading ? "Signing in..." : "Sign in"}
+				<Button type="submit" className="relative w-full" disabled={loading}>
+					{loading ? "Signing in..." : "Sign In"}
+					{lastLoginMethod === "email" && <LastUsedBadge />}
 				</Button>
 			</form>
 			{canRegister && (

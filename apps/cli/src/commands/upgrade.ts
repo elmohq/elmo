@@ -64,11 +64,7 @@ async function pullAtCurrentVersion(configDir: string, cliVersion: string, assum
 	p.outro(pc.green("Nothing to upgrade."));
 }
 
-/**
- * With no detected version we can't tell which migrations apply, so we skip
- * them and just re-pin + pull. (planMigrations would also return [] here since
- * from === to, but it is special-cased for a clearer message.)
- */
+/** With no detected version, which migrations apply is unknown, so none run. */
 function planUpgradeMigrations(detectedVersion: string | null, fromVersion: string, cliVersion: string) {
 	const plan = detectedVersion === null ? [] : planMigrations(fromVersion, cliVersion, MIGRATIONS);
 	if (detectedVersion === null) {
@@ -121,13 +117,13 @@ async function restartAfterUpgrade(configDir: string, wasRunning: boolean): Prom
 	spinner.stop("Health check timed out.");
 	log.warn("Some services did not report healthy status.");
 }
+
 export async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<void> {
 	printBanner();
 	p.intro(pc.bold("Upgrading Elmo"));
 
 	await confirmStaleCli(cliVersion, options.yes);
 
-	// ── Resolve config + the version it was last rendered with ───────────
 	const configDir = await resolveConfigDir(options.dir);
 	const composePath = path.join(configDir, "elmo.yaml");
 	const detectedVersion = await readRenderedVersion(composePath);
@@ -143,9 +139,7 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		process.exit(1);
 	}
 
-	// Only a *detected* matching version is "nothing to do". A legacy install
-	// with no version header (detectedVersion === null) still needs its image
-	// tags re-pinned, so it falls through to the upgrade path below.
+	// An install with no version header still needs its image tags re-pinned.
 	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
 		await pullAtCurrentVersion(configDir, cliVersion, options.yes);
 		return;
@@ -163,7 +157,6 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 	const judgedBefore = detectedVersion !== null && semver.gte(detectedVersion, FIRST_JEV_VERSION);
 	await ensureJudgeKey(configDir, buildMigrationContext(configDir, cliVersion), options.yes, judgedBefore);
 
-	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
 	assertDockerRunning();
 	const wasRunning = await stackHasRunningServices(configDir);
 	if (wasRunning) {
@@ -171,16 +164,13 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		await runDockerCompose(configDir, ["down"]);
 	}
 
-	// ── Run migrations ───────────────────────────────────────────────────
 	await applyUpgradeMigrations(plan, buildMigrationContext(configDir, cliVersion), wasRunning);
 
-	// ── Re-pin image tags + refresh the version recorded in the config ───
 	const isDev = await composeUsesBuild(composePath);
 	await repinComposeImages(composePath, cliVersion);
 	await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
 	log.success(`Pinned config to ${cliVersion}.`);
 
-	// ── Pull new images (dev builds from source, so nothing to pull) ─────
 	if (isDev) {
 		log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
 	} else {
@@ -188,7 +178,6 @@ export async function runUpgrade(options: UpgradeOptions, cliVersion: string): P
 		await runDockerCompose(configDir, ["pull"]);
 	}
 
-	// ── Restart only if the stack was running before the upgrade ─────────
 	await restartAfterUpgrade(configDir, wasRunning);
 
 	await trackCliEvent(configDir, "cli_upgrade", {

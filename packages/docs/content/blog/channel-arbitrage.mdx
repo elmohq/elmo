@@ -1,0 +1,113 @@
+---
+title: "Channel Arbitrage: See Which Channels Drive AI Mentions for You and Your Competitors"
+description: "Channel arbitrage is finding the channels that shape AI answers while your competitors ignore them. Elmo's new Channels table shows, per channel, how often the answers citing it mention you and each competitor."
+date: "2026-11-13"
+author: ai
+metaTitle: "Channel Arbitrage in AI Search: Elmo's Channels Table"
+tags:
+  - aeo
+  - ai-visibility
+  - ai-citations
+  - ai-search
+definedTerms:
+  - term: Channel arbitrage
+    definition: "Channel arbitrage, a term coined by Chris (@chris_nectiv on X), is the practice of finding channels that strongly influence AI search answers but that your competitors are not investing in, and putting your effort there. It depends on two measurements: which channels AI engines cite within a given ecosystem, and which companies the answers drawing on each channel mention."
+  - term: Channel mention rate
+    definition: "A channel mention rate is the share of a channel's citations that came from answers mentioning a given company. If 200 citations point at YouTube and 80 of them appear in answers that mention a company, that company's YouTube mention rate is 40%. Comparing it with the company's rate across all channels shows where it is over- or under-represented."
+howTo:
+  name: "How to look for channel arbitrage with the Channels table"
+  description: "Use channel totals to find the channels that matter, mention rates to see who benefits from each, and the model filter to check one AI ecosystem at a time."
+  steps:
+    - name: Start from unbranded prompts
+      text: "Filter the Citations page to unbranded prompts. Answers to prompts that name your brand mention you almost by definition, which inflates your rates on every channel and hides the gaps you are looking for."
+    - name: Find the channels that carry weight
+      text: "Read the Channel Total column first. A channel with a large share of all citations is one the engines lean on for your prompts, whoever benefits from it."
+    - name: Compare each company with its own baseline
+      text: "The All Channels row is each company's mention rate across every source. A competitor whose rate on one channel sits well above its baseline is being helped by that channel. A rate below your own baseline is a channel where you are missing."
+    - name: Repeat per ecosystem
+      text: "Switch the model filter to one engine at a time. A competitor can stand out in a channel on Google's AI surfaces while looking ordinary on ChatGPT, and the combined view averages that away."
+    - name: Check the pages before you invest
+      text: "A rate tells you where to look, not what to make. Open the Top URLs list, search for the platform or filter by source type, and read what is actually being cited before deciding what to publish there."
+faq:
+  - question: What is channel arbitrage in AI search?
+    answer: "Channel arbitrage is finding channels that heavily influence AI search answers but that your competitors are not investing in. The term comes from Chris (@chris_nectiv on X), who described a competitor climbing from roughly seventh to third by mention share inside Google's AI ecosystem after investing in YouTube Shorts while better-known brands ignored the channel."
+  - question: How does Elmo decide which company a citation counts for?
+    answer: "A citation counts for a company when the answer that made the citation mentions that company. Elmo already judges which tracked companies each answer mentions, so the Channels table joins those judgments to the answer's citations. The exception is Own Website, where a citation counts for the company whose domain it points to."
+  - question: Does a high mention rate mean a competitor published that content?
+    answer: "No. A high rate means the competitor is mentioned in answers that cite the channel. That is a correlation, and it is the signal for where to look. Whether the cited videos, threads, or posts are the competitor's own is something you confirm by reading the cited pages."
+  - question: Which channels does the Channels table track?
+    answer: "Own Website, a set of named platforms including YouTube, Reddit, LinkedIn, X, TikTok, Instagram, Facebook, Pinterest, Quora, Medium, Substack, GitHub, and Wikipedia, and every other source grouped by type, such as review sites, editorial, marketplaces, forums, and developer sites. The table shows the 10 most cited channels for the filters you have selected."
+  - question: Can I see channel data for one AI engine at a time?
+    answer: "Yes. The Channels table follows the Citations page filters, so choosing a model shows that engine's citations and mentions on their own. Date range and tag filters apply the same way."
+---
+
+**AI search rewards a different set of channels than classic SEO, and most teams have not caught up.** That gap is the idea behind "channel arbitrage," a term [@chris_nectiv recently coined on X](https://x.com/chris_nectiv/status/2121311002319102435). Elmo's Citations page now has a Channels table built to answer the question he poses.
+
+## What Channel Arbitrage Means
+
+Chris defines it in one line:
+
+> Which channels highly influence AI search BUT your competitors don't invest in them.
+
+His argument is that AI search diverges from traditional SEO in the channels it takes to win. YouTube, social, and affiliate content are all in play, and anyone who has read through their own citation data has seen it. He breaks the idea into two questions:
+
+1. Which channels are driving citations and mentions within a particular ecosystem?
+2. Where are the company's competitors not investing in that ecosystem?
+
+The example he gives is a B2B company whose competitor "had no business being in the top 5 by mention rate" overall, yet went from about seventh to third by share once the data was segmented to Google's ecosystem of Gemini and AI Mode. The cause turned out to be YouTube. The competitor had published a run of YouTube Shorts aimed at the same queries, in a channel the larger, better-funded brands were ignoring.
+
+That is a finding you can only reach with three things side by side: the channel, the ecosystem, and who gets mentioned. Most citation reports stop at the first one.
+
+## The Channels Table
+
+The new table sits on the Citations page. Each row is a channel, and each column is a company: you, then up to seven tracked competitors.
+
+Here is what it looks like, with made-up numbers:
+
+| Channel | Channel Total | You | Competitor A | Competitor B |
+|---|---|---|---|---|
+| **All Channels** | **2,450** | **37%** | **57%** | **26%** |
+| Review Sites | 420 | 36% | 69% | 40% |
+| Editorial | 310 | 29% | 68% | 26% |
+| YouTube | 190 | 11% | 37% | 79% |
+| Reddit | 140 | 29% | 57% | 21% |
+
+Three parts do the work:
+
+- **Channel Total** is every citation to a source in that channel. It tells you which channels the engines lean on for your prompts.
+- **Each cell** is the share of that channel's citations that came from answers mentioning the company. In the example, 79% of YouTube citations appear in answers that mention Competitor B.
+- **All Channels** is the same share across every source. It is each company's baseline, and it is what makes the rest readable.
+
+Competitor B is mentioned alongside 26% of citations overall and 79% of YouTube citations. Answers that draw on YouTube favor it heavily, while you sit at 11% there against a baseline of 37%. That is the shape of the example in the post: a channel doing far more for one competitor than its overall standing would suggest.
+
+Channels cover your own website, named platforms such as YouTube, Reddit, LinkedIn, X, TikTok, and GitHub, and everything else grouped by type: review sites, editorial, marketplaces, forums, and so on. The table shows the 10 most cited.
+
+## How a Citation Is Credited
+
+A citation counts for a company when the answer that made the citation mentions that company. Elmo already judges which tracked companies each answer names, so the table joins that judgment to the answer's citations rather than guessing from page titles.
+
+We tried title matching first. It missed most of the picture, because a cited video or thread rarely names a company in its title, and it produced false matches for brands whose names are also ordinary words.
+
+Own Website works differently. There, a citation counts for the company whose domain it points to, so the row shows how citations to owned sites are split between you and your competitors.
+
+## Finding Arbitrage in Your Own Data
+
+1. **Start from unbranded prompts.** Answers to prompts that name your brand mention you almost by definition, which lifts your rate on every channel and hides the gaps.
+2. **Find the channels that carry weight.** A channel with a large Channel Total matters for your prompts regardless of who benefits.
+3. **Compare each company with its own baseline.** A competitor well above its All Channels rate on one channel is being helped by it. If you are below your own baseline on the same channel, you are missing from it.
+4. **Repeat per ecosystem.** Use the model filter to look at one engine at a time. [Engines cite very different sources](/blog/do-ai-engines-cite-the-same-sources), and [YouTube's share in particular swings widely between them](/blog/youtube-ai-citations), so a combined view can average away exactly the pattern you are looking for.
+5. **Look for the empty channels too.** A channel with a large total where no tracked company stands above its baseline is the purest form of arbitrage: the engines rely on it and nobody in your set owns it.
+
+## What the Table Does Not Tell You
+
+A mention rate is a correlation. It says a company was mentioned in answers that cited a channel. It does not say the cited pages are about that company, or that the company published them.
+
+So treat a standout rate as a lead, not a conclusion. The follow-up is to open the Top URLs list on the same page, search for the platform or filter by source type, and read what is being cited. That is the step where "Competitor B does well on YouTube" becomes "Competitor B has a dozen short videos answering these exact questions." The same reading applies to [Reddit](/blog/reddit-ai-citations) and [LinkedIn](/blog/linkedin-ai-citations), where the cited content is often individuals rather than company accounts.
+
+Rates on small channels are also noisy. A channel with a handful of citations can show an extreme percentage that means little, which is why the table shades low-volume rows more lightly.
+
+## Try It
+
+The Channels table is live on the Citations page in [Elmo](https://www.elmohq.com/), in both the open-source self-hosted version and Elmo Cloud. It follows the page's date, tag, and model filters, so the ecosystem-by-ecosystem comparison is one dropdown away. The [citations guide](/docs/user-guide/citations) covers the details.
+
+The question to bring to it is the one from the post: which channels are shaping the answers in your category, and which of them are your competitors leaving alone?

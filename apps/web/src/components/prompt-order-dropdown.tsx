@@ -10,7 +10,7 @@ import { ArrowUpDown } from "lucide-react";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import { coercePromptOrder, DEFAULT_PROMPT_ORDER, PROMPT_ORDER_OPTIONS, type PromptOrder } from "@/lib/prompt-order";
 
-/** Sort control for the prompts list (#60). Reads/writes the `order` URL key
+/** Sort control for the prompts list. Reads/writes the `order` URL key
  *  the visibility route declares in its `validateSearch`. Like the filter-bar
  *  widgets it subscribes to just its own key, and writes with `replace` + no
  *  scroll reset, dropping the key when set back to the default so default

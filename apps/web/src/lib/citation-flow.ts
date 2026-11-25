@@ -56,10 +56,20 @@ export function matchesDomain(host: string, domain: string): boolean {
 }
 
 interface ParsedPage {
+	url: string;
 	host: string;
 	path: string;
 	section: string;
 	sectionLabel: string;
+}
+
+/** Engines tag the links they cite (?utm_source=chatgpt.com), which would otherwise split one page in two. */
+function pageUrl(url: URL): string {
+	const page = new URL(url);
+	for (const key of [...page.searchParams.keys()])
+		if (key.toLowerCase().startsWith("utm_")) page.searchParams.delete(key);
+	page.hash = "";
+	return page.toString();
 }
 
 /**
@@ -77,10 +87,11 @@ function sectionFor(url: string, domain: string): ParsedPage | null {
 	const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
 	if (!matchesDomain(host, domain)) return null;
 	const path = parsed.pathname.replace(/\/+$/, "") || "/";
-	if (host !== domain) return { host, path, section: host, sectionLabel: host };
+	const page = { url: pageUrl(parsed), host, path };
+	if (host !== domain) return { ...page, section: host, sectionLabel: host };
 	const segments = path.split("/").filter(Boolean);
-	if (segments.length < 2) return { host, path, section: host, sectionLabel: TOP_LEVEL };
-	return { host, path, section: `${host}/${segments[0]}`, sectionLabel: `/${segments[0]}` };
+	if (segments.length < 2) return { ...page, section: host, sectionLabel: TOP_LEVEL };
+	return { ...page, section: `${host}/${segments[0]}`, sectionLabel: `/${segments[0]}` };
 }
 
 /** The path relative to its section, so the page column doesn't repeat `/blog/` twenty times. */
@@ -124,11 +135,11 @@ function sectionAgg(sections: Map<string, SectionAgg>, parsed: ParsedPage): Sect
 	return section;
 }
 
-function pageAgg(pages: Map<string, PageAgg>, url: string, parsed: ParsedPage, section: SectionAgg, domain: string) {
-	let page = pages.get(url);
+function pageAgg(pages: Map<string, PageAgg>, parsed: ParsedPage, section: SectionAgg, domain: string) {
+	let page = pages.get(parsed.url);
 	if (!page) {
 		page = {
-			url,
+			url: parsed.url,
 			label: pageLabel(parsed, domain),
 			fullLabel: parsed.host === domain ? parsed.path : `${parsed.host}${parsed.path === "/" ? "" : parsed.path}`,
 			title: null,
@@ -136,7 +147,7 @@ function pageAgg(pages: Map<string, PageAgg>, url: string, parsed: ParsedPage, s
 			section,
 			byModel: new Map(),
 		};
-		pages.set(url, page);
+		pages.set(parsed.url, page);
 		section.pages.push(page);
 	}
 	return page;
@@ -154,7 +165,7 @@ function aggregate(rows: readonly CitationFlowRow[], domain: string) {
 		const section = sectionAgg(sections, parsed);
 		section.count += count;
 		add(section.byModel, row.model, count);
-		const page = pageAgg(pages, row.url, parsed, section, domain);
+		const page = pageAgg(pages, parsed, section, domain);
 		page.title ??= row.title;
 		page.count += count;
 		add(page.byModel, row.model, count);

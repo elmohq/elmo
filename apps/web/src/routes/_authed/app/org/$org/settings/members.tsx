@@ -6,6 +6,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useState } from "react";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
@@ -76,7 +77,9 @@ function TeamSettingsPage() {
 
 			{error && (
 				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
+					<AlertDescription>
+						<WriteErrorMessage message={error} />
+					</AlertDescription>
 				</Alert>
 			)}
 
@@ -142,7 +145,7 @@ function TeamSettingsPage() {
 
 			{invitations.length > 0 && (
 				<div className="space-y-3">
-					<h2 className="text-lg font-semibold">Pending invitations</h2>
+					<h2 className="text-lg font-semibold">Pending Invitations</h2>
 					<div className="divide-y rounded-md border">
 						{invitations.map((inv) => (
 							<div key={inv.id} className="flex items-center justify-between gap-3 p-3">

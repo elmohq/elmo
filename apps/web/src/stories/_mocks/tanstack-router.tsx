@@ -1,15 +1,7 @@
-/**
- * Mock for @tanstack/react-router used in Storybook stories.
- * Provides stubs for the router hooks and components that the app uses.
- */
 import React, { createContext, type ReactNode, useContext, useSyncExternalStore } from "react";
 
 // This mock is used for Storybook bundling. It intentionally provides a broad
 // surface-area of exports to satisfy app imports without pulling in a real router.
-
-// ---------------------------------------------------------------------------
-// Settable route context — stories call setMockRouteContext() before rendering
-// ---------------------------------------------------------------------------
 
 const RouteCtx = createContext<Record<string, unknown>>({});
 
@@ -30,20 +22,13 @@ export function setMockRouteContext(ctx: Record<string, unknown>) {
 	_routeContext = ctx;
 }
 
-/**
- * Wraps story content so that useRouteContext returns the provided value.
- */
 export function MockRouteContextProvider({ value, children }: { value: Record<string, unknown>; children: ReactNode }) {
 	return <RouteCtx.Provider value={value}>{children}</RouteCtx.Provider>;
 }
 
-// ---------------------------------------------------------------------------
-// Stubs for @tanstack/react-router exports used by app components
-// ---------------------------------------------------------------------------
-
 export function useRouteContext(opts?: { select?: (context: Record<string, unknown>) => unknown }) {
 	const ctx = useContext(RouteCtx);
-	// Merge with module-level context so both approaches work
+	// A story may seed context through setMockRouteContext or the provider.
 	const merged = { ...BASE_ROUTE_CONTEXT, ..._routeContext, ...ctx };
 	return opts?.select ? opts.select(merged) : merged;
 }
@@ -69,12 +54,8 @@ export function createFileRoute(_path: string) {
 	});
 }
 
-// ---------------------------------------------------------------------------
-// Settable loader data — for stories that render a route's component directly
-// (Route.options.component) instead of a plain presentational component. The
-// route's loader never runs in Storybook, so the story supplies its result.
-// ---------------------------------------------------------------------------
-
+// Stories that render a route's component directly (Route.options.component)
+// need loader data, and the route's loader never runs in Storybook.
 let _loaderData: unknown;
 
 export function setMockLoaderData(data: unknown) {

@@ -1,10 +1,10 @@
-/**
- * Server functions for the platform-picker UI (LLMs settings page, onboarding
- * wizard). Extracted from brands.ts so brand CRUD and platform/pick management
- * stay in separate files.
- */
 import { createServerFn } from "@tanstack/react-start";
-import { parseScrapeTargets, providersByModel } from "@workspace/config/scrape-targets";
+import {
+	parseScrapeTargets,
+	providersByModel,
+	type RetiredScrapeTarget,
+	retiredScrapeTargets,
+} from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -37,56 +37,35 @@ export type PlatformOption = {
 	/** Scraped consumer surface vs direct API call — shown as a pill. */
 	access: ProviderAccess;
 	/**
-	 * Which vendor serves this target, and its model slug. Operator-only: which
-	 * scraper sits behind ChatGPT is our plumbing, not something a cloud or
-	 * whitelabel customer is buying, and it can change without affecting them.
-	 * Withheld from the payload rather than merely hidden, so no UI change can
-	 * leak it. The slug goes with it — an OpenRouter model id names OpenRouter.
+	 * Operator-only, and withheld from the payload rather than hidden: which vendor
+	 * serves a platform is our plumbing. The slug goes too, since it can name the vendor.
 	 */
 	providerName?: string;
 	version?: string;
-	/**
-	 * Rough USD per provider call. Operator-only for the same reason plus one
-	 * more: it is what the deployment pays, which for whitelabel is the agency's
-	 * margin.
-	 */
+	/** Operator-only: what the deployment pays, which for whitelabel is the agency's margin. */
 	costPerRunUsd: number | null;
 };
 
 export type ModelPickerState = {
-	/** Models this brand may choose from, with target metadata for display. */
 	available: PlatformOption[];
-	/** Whether the page offers checkboxes and a save bar. The one answer to "can
-	 *  this be changed" — the page renders it, it does not re-derive it. */
+	/** The page renders this rather than re-deriving whether picks can change. */
 	editable: boolean;
-	/** The resolved list, never the raw `brands.enabledModels` column — null there
-	 *  means "use the default", which the page once showed as "all platforms". */
+	/** Resolved, never the raw `brands.enabledModels`, where null means "use the default". */
 	enabledModels: string[];
-	/** Cloud plan constraints; null outside cloud (no pick limit). */
+	/** Null outside cloud, where there is no pick limit. */
 	planLimits: { platformPicks: number; platformMenu: string[] } | null;
-	/**
-	 * Platforms the plan menu excludes but the instance configures — what an
-	 * upgrade would unlock. Empty outside cloud and on the top plan.
-	 */
+	/** Configured platforms the plan menu excludes: what an upgrade would unlock. */
 	upgradeOptions: PlatformOption[];
-	/**
-	 * What this brand's tracking currently costs to run, for projecting the price
-	 * of a platform. Self-hosted only: in cloud and whitelabel the person looking
-	 * pays a plan price rather than the provider bills, and these are internal
-	 * attribution figures.
-	 */
+	/** Self-hosted only: elsewhere the viewer pays a plan price, not the provider bills. */
 	costBasis: { enabledPrompts: number; runsPerDay: number; replication: number } | null;
-	/**
-	 * Self-hosted only: platforms Elmo can track that this instance has not
-	 * configured, with the providers that can serve each and where to read how.
-	 * Empty in cloud and whitelabel, where SCRAPE_TARGETS is the operator's
-	 * concern rather than the viewer's.
-	 */
+	/** Self-hosted only: elsewhere SCRAPE_TARGETS is the operator's concern, not the viewer's. */
 	unconfiguredPlatforms: {
 		model: string;
 		/** Split by how each reaches the model: the two are not interchangeable. */
 		providers: { id: string; name: string; access: ProviderAccess; docsUrl: string }[];
 	}[];
+	/** Self-hosted only: SCRAPE_TARGETS entries the instance skips, which only the server log mentions otherwise. */
+	retiredTargets: RetiredScrapeTarget[];
 };
 
 export type OnboardingPlatformState = {
@@ -96,11 +75,7 @@ export type OnboardingPlatformState = {
 	defaultSelected: string[];
 } | null;
 
-/**
- * `forOperator` is the one predicate behind everything a customer shouldn't see:
- * the deployment's vendors and what they cost. True only when the person looking
- * runs the deployment.
- */
+/** `forOperator` gates everything a customer shouldn't see: the deployment's vendors and their cost. */
 function toOption(config: ModelConfig, forOperator: boolean): PlatformOption {
 	const shared = {
 		model: config.model,
@@ -117,14 +92,9 @@ function toOption(config: ModelConfig, forOperator: boolean): PlatformOption {
 }
 
 /**
- * One option per model, in SCRAPE_TARGETS order. Picks are stored by model name
- * (`brands.enabledModels`), so two targets for the same model can never be
- * chosen independently — offering both would render duplicate rows whose
- * checkboxes moved together.
- *
- * `excludePremium` is set in cloud, where a grounded API call is a pooled
- * per-prompt allowance rather than a pick. Self-hosted has no pool, so it keeps
- * whichever target is configured first for each model.
+ * One option per model: picks are stored by model name, so two targets for the
+ * same model could only ever be ticked together. In cloud a grounded call comes
+ * from the premium pool, not a pick, hence `excludePremium`.
  */
 function optionsByModel(
 	configs: ModelConfig[],
@@ -141,11 +111,7 @@ function optionsByModel(
 	return options;
 }
 
-/**
- * Provider spend is only the viewer's concern when they run the deployment.
- * Whitelabel is excluded deliberately: the agency pays the bills, but the person
- * looking at this page is their customer.
- */
+/** Not whitelabel: the agency pays the bills, but the person looking is their customer. */
 async function selfHostedCostBasis(brand: {
 	id: string;
 	delayOverrideHours: number | null;
@@ -165,11 +131,7 @@ async function selfHostedCostBasis(brand: {
 	};
 }
 
-/**
- * Trackable platforms this instance has no target for. Derived from the combos
- * the provider status workflow exercises, so every suggestion is one we know
- * works, and ordered to match the picker above.
- */
+/** Drawn from the combos the provider status workflow exercises, so every suggestion is known to work. */
 function unconfiguredPlatforms(configs: ModelConfig[]): ModelPickerState["unconfiguredPlatforms"] {
 	const configured = new Set(configs.map((config) => config.model));
 	const suggestions: ModelPickerState["unconfiguredPlatforms"] = [];
@@ -180,12 +142,7 @@ function unconfiguredPlatforms(configs: ModelConfig[]): ModelPickerState["unconf
 	return suggestions;
 }
 
-/**
- * Whether the viewer decides this brand's picks. Beyond the deployment gate,
- * "editable" also means there is something to change: a plan that pays for one
- * platform and offers one has nothing to offer, and unticking it would leave
- * zero, which the save bar refuses anyway.
- */
+/** One platform paid for and one offered leaves nothing to change, so that isn't editable either. */
 function picksEditable(available: PlatformOption[], picks: number | null): boolean {
 	if (!canEditPlatformPicks()) return false;
 	if (available.length === 0) return false;
@@ -208,14 +165,17 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		if (entitlements.unlimited) {
 			const selfHosted = await selfHostedCostBasis(brand);
 			const available = optionsByModel(configs, { forOperator: selfHosted !== null, excludePremium: false });
+			const models = available.map((option) => option.model);
 			return {
 				available,
 				editable: picksEditable(available, null),
-				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
+				// A pick whose target is gone has no checkbox, so it could never be cleared.
+				enabledModels: models.filter((model) => brand.enabledModels?.includes(model) ?? true),
 				planLimits: null,
 				upgradeOptions: [],
 				costBasis: selfHosted,
 				unconfiguredPlatforms: selfHosted !== null ? unconfiguredPlatforms(configs) : [],
+				retiredTargets: selfHosted !== null ? retiredScrapeTargets(process.env.SCRAPE_TARGETS) : [],
 			};
 		}
 
@@ -234,14 +194,13 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 			upgradeOptions: pickable.filter((option) => !menu.has(option.model)),
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		};
 	});
 
 /**
- * Platform choices for the brand onboarding wizard, resolved from the
- * organization because the brand row does not exist yet. Null — non-cloud,
- * unlimited entitlements, or nothing offerable — means the wizard skips the
- * step and creation falls back to the plan defaults.
+ * Resolved from the organization, since the brand doesn't exist yet. Null means
+ * the wizard skips the step and creation falls back to the plan defaults.
  */
 export const getOnboardingPlatformStateFn = createServerFn({ method: "GET" })
 	.validator(z.object({ organizationId: z.string() }))
@@ -286,9 +245,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 		const models = data.models === null ? null : [...new Set(data.models)];
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-		// Both branches below need the entitlements, so load them once and decide
-		// in-process rather than going through assertEnabledModelsAllowed, which
-		// would load them again.
+		// Loaded once for both branches; assertEnabledModelsAllowed would load them again.
 		const entitlements = await getOrgEntitlements(brand.organizationId);
 
 		if (models === null) {
@@ -296,8 +253,7 @@ export const updateEnabledModelsFn = createServerFn({ method: "POST" })
 				throw new Error("Choose which platforms to track — your plan defines how many.");
 			}
 		} else {
-			// Loud validation against the configured targets (same rule the worker
-			// applies), so a typo can't silently stop tracking.
+			// Throws on an unconfigured model, so a typo can't silently stop tracking.
 			selectTargetsForBrand(configs, models);
 			if (!entitlements.unlimited) assertAllowed(decideEnabledModels(entitlements, models));
 		}

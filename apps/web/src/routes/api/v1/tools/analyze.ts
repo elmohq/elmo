@@ -11,6 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { analyzeBrand, cleanOnboardingUrl } from "@workspace/lib/onboarding";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { onboardingSuggestionSchema } from "@/lib/api/schemas/tools";
 
 const analyzeBody = z.object({
 	// Mirrors the checks inside analyzeBrand so an unparseable or unfetchable
@@ -25,24 +26,27 @@ const analyzeBody = z.object({
 	maxCompetitors: z
 		.int("maxCompetitors must be a non-negative integer")
 		.min(0, "maxCompetitors must be a non-negative integer")
-		.optional(),
+		.max(100, "maxCompetitors must be at most 100")
+		.default(20),
 	maxPrompts: z
 		.int("maxPrompts must be a non-negative integer")
 		.min(0, "maxPrompts must be a non-negative integer")
-		.optional(),
+		.max(100, "maxPrompts must be at most 100")
+		.default(30),
 });
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
 		handlers: withMethodGuard({
 			POST: createApiHandler({
+				response: onboardingSuggestionSchema,
 				adminOnly: true,
 				body: analyzeBody,
 				handle: async ({ body }) => {
 					return await analyzeBrand({
 						website: body.website,
 						brandName: body.brandName,
-						maxCompetitors: body.maxCompetitors ?? 20,
+						maxCompetitors: body.maxCompetitors,
 						maxPrompts: body.maxPrompts,
 					});
 				},

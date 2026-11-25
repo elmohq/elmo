@@ -2,28 +2,21 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/rollup-read";
 
+// Shared, because charts format a date per axis tick and `toLocaleDateString` builds a formatter per call.
+const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
 /** A calendar day ("2026-03-04") as a chart labels it ("Mar 4"). */
-export const formatShortDate = (date: string) =>
-	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const formatShortDate = (date: string) => SHORT_DATE.format(new Date(`${date}T00:00:00Z`));
+
+const LONG_DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** A calendar day ("2026-03-04") as a chart tooltip titles it ("March 4, 2026"). */
+export const formatLongDate = (date: string) => LONG_DATE.format(new Date(`${date}T00:00:00Z`));
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
 	id: string;
 	name: string;
-}
-
-/** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
-export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
-	if (!earliestDataDate) {
-		return "1m";
-	}
-
-	const earliestDate = new Date(earliestDataDate);
-	const now = new Date();
-	const diffInMs = now.getTime() - earliestDate.getTime();
-	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-	return diffInDays > 7 ? "1m" : "1w";
 }
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
@@ -60,7 +53,7 @@ export function getLookbackEndDate(
 function lookbackChartWindow(lookback: LookbackPeriod, timezone: string): { startDate: Date; endDate: Date } {
 	const endDate = new Date(getLookbackEndDate(lookback, timezone));
 	const startDate = new Date(endDate);
-	startDate.setDate(startDate.getDate() - (getDaysFromLookback(lookback) - 1));
+	startDate.setUTCDate(startDate.getUTCDate() - (getDaysFromLookback(lookback) - 1));
 	return { startDate, endDate };
 }
 
@@ -70,19 +63,15 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 
 	while (current <= endDate) {
 		dates.push(current.toISOString().split("T")[0]);
-		current.setDate(current.getDate() + 1);
+		current.setUTCDate(current.getUTCDate() + 1);
 	}
 
 	return dates;
 }
 
 /**
- * Citation comparison window for a lookback of `days` days — computed entirely in
- * UTC so it's independent of server timezone. The current window is `days` calendar
- * days ending on `today` (inclusive): [today-(days-1), today]. The previous window
- * is the contiguous equal-length window ending the day before the current one
- * starts. `dateRange` is the current window as one YYYY-MM-DD per day (what the
- * trend charts iterate) so totals and charts cover exactly the same span.
+ * In UTC so the server's timezone can't shift it. `dateRange` is the current
+ * window day by day, so totals and charts cover exactly the same span.
  */
 export function citationDateWindow(
 	today: Date,
@@ -141,10 +130,8 @@ export function toBatchChartData(
 }
 
 /**
- * Walk each prompt's series across `dateRange`, carrying its last observation
- * forward over the days it didn't run. Pre-seeded with the prompt's earliest
- * observation so days before its first run still contribute — otherwise a
- * staggered schedule reads as a ramp-up rather than steady coverage.
+ * Seeded with each prompt's earliest observation so days before its first run
+ * still count; otherwise a staggered schedule reads as a ramp-up.
  */
 export function carryForward<V>(
 	byPrompt: Map<string, Map<string, V>>,
@@ -163,13 +150,7 @@ export function carryForward<V>(
 	}
 }
 
-/**
- * Generalized per-prompt LVCF with cadence normalization over arbitrary string
- * keys (citation category, page type, …). For each prompt, carries forward its
- * last known per-key counts, normalized by the brand's cadence so daily totals
- * reflect a steady rate rather than spiking on run days. Pre-seeds each prompt
- * with its earliest observation to avoid ramp-up artifacts.
- */
+/** Divided by the brand's cadence so daily totals read as a steady rate, not spikes on run days. */
 export function applyPerPromptKeyedLVCF<K extends string>(
 	rows: { prompt_id: string; date: string | Date; key: K; count: number }[],
 	dateRange: string[],
@@ -196,10 +177,8 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 		daily.set(date, day);
 	});
 
-	// Values are intentionally left fractional: both consumers
-	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
-	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
-	// rounded to zero before the percentage is taken.
+	// Left fractional: consumers take percentages, where the cadence factor cancels,
+	// and rounding first would zero out a tiny category.
 	return daily;
 }
 
@@ -384,15 +363,9 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 }
 
 /**
- * Extends line chart data to the edges of the time frame.
- * For each entity (brand/competitor), extends the first non-null value backward
- * to fill the start of the chart, and extends the last non-null value forward
- * to fill the end of the chart. This prevents gaps at the edges of the chart
- * when data collection started mid-period or hasn't been collected yet for recent dates.
- *
- * Extended points are marked with `_extended_{key}: true` so the chart can:
- * - Skip rendering dots for extended points
- * - Skip showing extended values in tooltips
+ * Fills the edges where collection started mid-period or hasn't caught up yet.
+ * Filled points carry `_extended_{key}: true` so the chart draws no dot or
+ * tooltip value for them.
  */
 export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: string[]): ChartDataPoint[] {
 	if (chartData.length === 0) return chartData;

@@ -11,63 +11,43 @@ import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { clampedCount } from "@/lib/api/query";
+import { promptSnapshotSchema } from "@/lib/api/schemas/snapshots";
 import { requirePromptInScope } from "@/lib/api/scope";
 import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
 import { mentionQuality } from "@/lib/sentiment";
 
-function isValidDate(dateStr: string): boolean {
-	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-	if (!dateRegex.test(dateStr)) return false;
-	const d = new Date(`${dateStr}T00:00:00Z`);
-	return !Number.isNaN(d.getTime());
+function day() {
+	return z.iso.date({
+		error: (issue) =>
+			issue.input === undefined ? "is required (YYYY-MM-DD format)" : "must be a valid date in YYYY-MM-DD format",
+	});
 }
 
 /** Top-K lists are bounded so one request can't ask for the whole history. */
 const MAX_TOP_K = 50;
-const DEFAULT_TOP_MENTIONS = 5;
-const DEFAULT_TOP_CITATIONS = 10;
 
-function boundedTopK(raw: string | null, fallback: number): number {
-	const parsed = Number.parseInt(raw || String(fallback), 10);
-	return Number.isNaN(parsed) ? fallback : Math.max(1, Math.min(MAX_TOP_K, parsed));
-}
-
-function parseSnapshotQuery(url: URL): { startDate: string; endDate: string; kMentions: number; kCitations: number } {
-	const { searchParams } = url;
-	const startDate = searchParams.get("startDate");
-	const endDate = searchParams.get("endDate");
-
-	if (!startDate || !endDate) {
-		throw new ApiError(
-			400,
-			"Validation Error",
-			"startDate and endDate query parameters are required (YYYY-MM-DD format)",
-		);
-	}
-	if (!isValidDate(startDate) || !isValidDate(endDate)) {
-		throw new ApiError(400, "Validation Error", "startDate and endDate must be valid dates in YYYY-MM-DD format");
-	}
-	if (startDate > endDate) {
-		throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
-	}
-
-	return {
-		startDate,
-		endDate,
-		kMentions: boundedTopK(searchParams.get("kMentions"), DEFAULT_TOP_MENTIONS),
-		kCitations: boundedTopK(searchParams.get("kCitations"), DEFAULT_TOP_CITATIONS),
-	};
-}
+const snapshotQuery = z.object({
+	startDate: day(),
+	endDate: day(),
+	kMentions: clampedCount(MAX_TOP_K, 5),
+	kCitations: clampedCount(MAX_TOP_K, 10),
+});
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
-				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+				response: promptSnapshotSchema,
+				params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
+				query: snapshotQuery,
 				scopes: ["read"],
-				handle: async ({ params, request, auth }) => {
+				handle: async ({ params, query, auth }) => {
 					const { promptId } = params;
-					const { startDate, endDate, kMentions, kCitations } = parseSnapshotQuery(new URL(request.url));
+					const { startDate, endDate, kMentions, kCitations } = query;
+					if (startDate > endDate) {
+						throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
+					}
 
 					const { prompt, brand } = await requirePromptInScope(auth, promptId);
 					const competitorsList = await db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId));

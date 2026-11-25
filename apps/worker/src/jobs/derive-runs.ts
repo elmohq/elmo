@@ -28,7 +28,7 @@ import { type Citation, extractorFor, extractRun } from "@workspace/lib/text-ext
 import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { Job, PgBoss, QueueOptions } from "pg-boss";
 import { getBoss } from "../boss";
-import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge/analyze";
+import { type MentionAnalyzer, mentionAnalyzer, type RunMentions } from "../mention-judge";
 
 export const DERIVE_RUNS_QUEUE = "derive-runs";
 
@@ -124,13 +124,9 @@ export interface RunUpdate {
 }
 
 /**
- * Brings one run up to `target`. A run that predates stored text gets it filled in for mention
- * matching, but keeps its extraction stamp: its citations weren't re-extracted.
- *
- * A replay never replaces something with nothing. Payloads stored by older code may lack what
- * that code read at the time, so when the stored payload yields no text, no citations, or (for
- * want of text) no mentions where the run has some, the run keeps what it has and `kept` says so.
- * The stamp still moves, so the run isn't retried forever. A judge that fails throws.
+ * A replay never replaces something with nothing: older payloads may lack what was read from them
+ * at the time, so the run keeps what it has and `kept` says so. The stamp still moves, so it isn't
+ * retried forever. Text filled in for an old run leaves its extraction stamp alone.
  */
 export async function deriveRunUpdate(
 	run: StaleRun,

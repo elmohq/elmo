@@ -25,12 +25,14 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import { buildChannelMix, type ChannelMix } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 import {
 	type CitationClassTotalRow,
 	type CitationDomainStatsRow,
 	type CitationSummary,
 	type CitationUrlListRow,
+	getCitationChannelRows,
 	getCitationDomainPage,
 	getCitationFlowRows,
 	getCitationSummary,
@@ -159,7 +161,7 @@ function buildWhatsChanged(
 			domain: url.domain,
 			count: url.count,
 			promptCount: url.prompt_count,
-			category: url.category as CitationCategory,
+			category: url.category,
 		})),
 		droppedUrls: summary.droppedUrls.flatMap((page) => {
 			const resolved = resolvePageClass(page, brandDomains, competitorDomains);
@@ -177,7 +179,7 @@ function buildWhatsChanged(
 		newDomains: summary.newDomains.map((domain) => ({
 			domain: domain.domain,
 			count: domain.count,
-			category: (domain.category ?? categorizeDomain(domain.domain)) as CitationCategory,
+			category: domain.category ?? categorizeDomain(domain.domain),
 		})),
 		droppedDomains: summary.droppedDomains.map((domain) => ({
 			domain: domain.domain,
@@ -192,8 +194,8 @@ function tallyClasses(rows: CitationClassTotalRow[]) {
 	const pageTypeCounts = emptyPageTypeCounts();
 	let totalCitations = 0;
 	for (const row of rows) {
-		categoryCounts[row.category as CitationCategory] += row.count;
-		pageTypeCounts[row.page_type as CitationPageType] += row.count;
+		categoryCounts[row.category] += row.count;
+		pageTypeCounts[row.page_type] += row.count;
 		totalCitations += row.count;
 	}
 	return {
@@ -429,6 +431,20 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		};
 	});
 
+export const getCitationChannelsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema)
+	.handler(async ({ data }): Promise<ChannelMix> => {
+		await requireBrandSession(data.brandId);
+		const { scope, brand, brandDomains, competitorsList } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { totalCitations: 0, subjects: [], overall: {}, channels: [] };
+
+		return buildChannelMix({
+			rows: await getCitationChannelRows(scope),
+			brand: { name: brand?.name ?? "", domains: [...brandDomains] },
+			competitors: competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains })),
+		});
+	});
+
 const listPageSchema = {
 	search: z.string().max(200).optional(),
 	category: z.string().optional(),
@@ -462,8 +478,8 @@ function toUrlListItem(row: CitationUrlListRow): CitationUrlListItem {
 		title: row.title ?? undefined,
 		domain: row.domain,
 		count: row.count,
-		category: row.category as CitationCategory,
-		pageType: row.page_type as CitationPageType,
+		category: row.category,
+		pageType: row.page_type,
 		avgPosition: row.avg_position,
 		promptCount: row.prompt_count,
 		isNew: row.is_new,
@@ -501,7 +517,7 @@ function toDomainListItem(row: CitationDomainStatsRow): CitationDomainListItem {
 	return {
 		domain: row.domain,
 		count: row.count,
-		category: (row.category ?? "other") as CitationCategory,
+		category: row.category ?? "other",
 		exampleTitle: row.example_title ?? undefined,
 		previousCount: row.previous_count,
 		changePercent:

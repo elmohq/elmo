@@ -1,13 +1,10 @@
 /**
- * Mode-compatibility boot smoke test (issue #341).
+ * Mode-compatibility boot smoke test.
  *
  * For each DEPLOYMENT_MODE — cloud included — proves the boot path resolves:
  *   1. env validation     — the canonical minimal env satisfies the registry
  *   2. factory resolution — getDeployment() returns the expected mode
  *   3. auth initialization — createAuth() constructs with the mode's options
- *
- * This guards the elmo-cloud build-out: open-source, demo, and whitelabel
- * deployments must keep booting unchanged while cloud lands (issue #8).
  *
  * Runs the real shared-package boot path via tsx — no build, no live DB.
  * createAuth() returns as soon as the instance is constructed, so a dummy
@@ -126,19 +123,19 @@ function getAuthOptions(
 	}
 }
 
-async function smokeMode(mode: SmokeMode): Promise<string[]> {
-	const failures: string[] = [];
-	const env = applyEnv(mode);
-
-	// 1. env validation
+function checkEnv(mode: SmokeMode, env: Record<string, string>): string[] {
 	const validation = getEnvValidationState(env);
 	if (!validation.isValid) {
-		failures.push(`env invalid — missing: ${validation.missing.map((m) => m.id).join(", ")}`);
-	} else if (validation.mode !== mode) {
-		failures.push(`env validated as mode "${validation.mode}", expected "${mode}"`);
+		return [`env invalid — missing: ${validation.missing.map((m) => m.id).join(", ")}`];
 	}
+	if (validation.mode !== mode) {
+		return [`env validated as mode "${validation.mode}", expected "${mode}"`];
+	}
+	return [];
+}
 
-	// 2. deployment factory resolution
+function checkDeploymentFactory(mode: SmokeMode, env: Record<string, string>): string[] {
+	const failures: string[] = [];
 	try {
 		resetDeploymentCache();
 		const deployment = getDeployment({ env });
@@ -151,9 +148,12 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	} catch (error) {
 		failures.push(`factory threw: ${(error as Error).message}`);
 	}
+	return failures;
+}
 
-	// 3. auth initialization — dynamic import so DATABASE_URL is live before db.ts runs
+async function checkAuthInit(mode: SmokeMode): Promise<string[]> {
 	try {
+		// Imported only now so DATABASE_URL is already set when db.ts runs.
 		const { createAuth } = await import("@workspace/lib/auth/server");
 		const { getWhitelabelAuthOptions } = await import("@workspace/deployment/auth-hooks/whitelabel");
 		const { getCloudAuthOptions } = await import("@workspace/deployment/auth-hooks/cloud");
@@ -163,13 +163,17 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 		// an unhandled rejection and takes the runner down mid-sweep.
 		auth.$context.catch(() => {});
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {
-			failures.push("auth initialized without a handler/api");
+			return ["auth initialized without a handler/api"];
 		}
+		return [];
 	} catch (error) {
-		failures.push(`auth init threw: ${(error as Error).message}`);
+		return [`auth init threw: ${(error as Error).message}`];
 	}
+}
 
-	return failures;
+async function smokeMode(mode: SmokeMode): Promise<string[]> {
+	const env = applyEnv(mode);
+	return [...checkEnv(mode, env), ...checkDeploymentFactory(mode, env), ...(await checkAuthInit(mode))];
 }
 
 async function main(): Promise<void> {

@@ -7,6 +7,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { cleanAndValidateDomain, validateAdditionalDomain } from "@workspace/lib/citations/domain-categories";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
@@ -16,6 +17,7 @@ import { AlertCircle, Play, Rocket } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
 import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import { WriteErrorMessage } from "@/components/write-error-message";
 import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
@@ -43,17 +45,26 @@ interface WizardData {
 	prompts: EditablePrompt[];
 }
 
+const DOMAIN_PASTE_SPLITTER = /[\n,\t]+/;
+const normalizeDomain = (raw: string) => cleanAndValidateDomain(raw) ?? raw.trim();
+
 const EditableTagsInput = memo(
 	({
 		items,
 		onValueChange,
 		placeholder = "Add item...",
 		maxItems = 10,
+		normalizeValue,
+		pasteSplitter,
+		onValidate,
 	}: {
 		items: string[];
 		onValueChange: (value: string[]) => void;
 		placeholder?: string;
 		maxItems?: number;
+		normalizeValue?: (raw: string) => string;
+		pasteSplitter?: RegExp;
+		onValidate?: (value: string, current: string[]) => true | string;
 	}) => (
 		<div className="space-y-2">
 			<TagsInput
@@ -62,6 +73,9 @@ const EditableTagsInput = memo(
 				placeholder={placeholder}
 				searchPlaceholder={placeholder}
 				maxItems={maxItems}
+				normalizeValue={normalizeValue}
+				pasteSplitter={pasteSplitter}
+				onValidate={onValidate}
 			/>
 			<p className="text-xs text-muted-foreground">
 				<strong>
@@ -103,10 +117,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		poll: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
 		cancel: () => cancelAnalyzeBrandFn({ data: { brandId: brandId! } }),
 		onDone: ({ suggestion }) => {
+			const website = brand?.website || suggestion.website || "";
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
-				website: brand?.website || suggestion.website || "",
-				additionalDomains: suggestion.additionalDomains,
+				website,
+				additionalDomains: suggestion.additionalDomains.reduce<string[]>(
+					(kept, domain) => (validateAdditionalDomain(domain, [website, ...kept]) === true ? [...kept, domain] : kept),
+					[],
+				),
 				aliases: suggestion.aliases,
 				competitors: suggestion.competitors.map((c) =>
 					newCompetitorEntry({
@@ -149,6 +167,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		[],
 	);
 	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
+
+	const validateDomain = useCallback(
+		(val: string, current: string[]) =>
+			validateAdditionalDomain(val, [data.website.trim() || brand?.website, ...current]),
+		[data.website, brand?.website],
+	);
 
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
@@ -214,9 +238,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					domains/aliases, and a starter set of AI prompts to track.
 				</p>
 				{error && (
-					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-						<span>{error}</span>
+						<span>
+							<WriteErrorMessage message={error} />
+						</span>
 					</div>
 				)}
 				<div className="flex items-center gap-2">
@@ -273,6 +299,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							onValueChange={updateAdditionalDomains}
 							placeholder="Add domain..."
 							maxItems={10}
+							normalizeValue={normalizeDomain}
+							pasteSplitter={DOMAIN_PASTE_SPLITTER}
+							onValidate={validateDomain}
 						/>
 					</div>
 					<div>
@@ -311,9 +340,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			</div>
 
 			{submitError && (
-				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
 					<AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-					<div className="text-sm">{submitError}</div>
+					<div className="text-sm">
+						<WriteErrorMessage message={submitError} />
+					</div>
 				</div>
 			)}
 

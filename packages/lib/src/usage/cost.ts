@@ -1,15 +1,6 @@
 /**
- * Rough per-run cost estimates in USD, by provider, used to stamp
- * usage_events.estimated_cost_usd.
- *
- * These are deliberately coarse placeholders for internal attribution and
- * anomaly spotting — tune them against real provider invoices (that
- * comparison is the point of collecting usage_events, not something these
- * numbers replace). Missing provider → null cost, event still recorded.
- *
- * NOTE: These numbers live in the public repository. They are coarse
- * placeholders for internal attribution — if they ever approach public
- * list prices, move them to config/env so they remain internal.
+ * Coarse per-run estimates for usage_events, to be checked against real invoices.
+ * They are public, so if they ever approach list prices, move them to config.
  */
 
 const PROVIDER_COST_ESTIMATES_USD: Record<string, number> = {
@@ -42,18 +33,9 @@ export function estimateRunCostUsd(provider: string | null, webSearchEnabled: bo
 	return base;
 }
 
-/** Days per month used for cost projections — a flat 30, not a calendar month. */
 export const PROJECTION_DAYS_PER_MONTH = 30;
 
-/**
- * What one target costs to keep running for a month, at a brand's current
- * prompt count and cadence: every enabled prompt fires the target `runsPerDay`
- * times, each firing making `replication` provider calls.
- *
- * Self-hosted only. It exists to answer "what does adding this platform cost
- * me", so it inherits the coarseness of the per-provider estimates above and
- * should be presented as an estimate.
- */
+/** Self-hosted only, and as coarse as the estimates above, so present it as an estimate. */
 export function projectMonthlyTargetCostUsd(input: {
 	costPerRunUsd: number | null;
 	enabledPrompts: number;

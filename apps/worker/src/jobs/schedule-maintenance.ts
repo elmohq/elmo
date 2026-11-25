@@ -2,8 +2,15 @@ import * as Sentry from "@sentry/node";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { brands, promptRuns, prompts, reports } from "@workspace/lib/db/schema";
 import { getOrgEntitlementsMap } from "@workspace/lib/entitlements";
+import {
+	PROCESS_PROMPT_QUEUE,
+	PROMPT_JOB_OPTIONS,
+	PROMPT_SINGLETON_SECONDS,
+	promptSingletonKey,
+} from "@workspace/lib/queues/prompt-jobs";
+import { abandonedReports, REPORT_STALE_AFTER_MS } from "@workspace/lib/reports/lifecycle";
 import {
 	computeMaintenanceDecisions,
 	type LastRunRow,
@@ -14,11 +21,12 @@ import {
 	resolveBrandPromptRunPlans,
 	slowestIntervalHours,
 } from "@workspace/lib/run-policy";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { requestUnjudgedRuns } from "./derive-runs";
-import { PROMPT_JOB_OPTIONS } from "./process-prompt";
+
+export const MAINTENANCE_CRON = "*/5 * * * *";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -29,13 +37,8 @@ const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
 let lastOverdueAlertMs = 0;
 
 /**
- * Maintenance job that ensures all enabled prompts have scheduled jobs.
- * This is a self-healing mechanism that catches any prompts that fell through
- * the cracks (e.g., due to worker crashes, failed jobs, etc.) — and, since the
- * run policy landed, also what starts a prompt again after it stopped while an
- * org was unentitled (canceled → resubscribed) or a brand had no platform
- * picks. The decision logic itself is pure (computeMaintenanceDecisions);
- * this job only gathers state and executes the decisions.
+ * Restarts prompts whose job was lost or that stopped while their org had no
+ * plan. The decisions are computeMaintenanceDecisions'; this carries them out.
  */
 export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[]): Promise<void> {
 	for (const job of jobs) {
@@ -51,6 +54,10 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 		// Never holds up scheduling prompts, and is retried by the next tick anyway.
 		await requestJudging().catch((error) => {
 			console.error("[schedule-maintenance] Requesting judging failed:", error);
+			Sentry.captureException(error);
+		});
+		await failAbandonedReports().catch((error) => {
+			console.error("[schedule-maintenance] Failing abandoned reports failed:", error);
 			Sentry.captureException(error);
 		});
 	}
@@ -73,6 +80,26 @@ async function requestJudging(): Promise<void> {
 		scope.setTag("scheduler", "unjudged-runs");
 		scope.setFingerprint(["scheduler-unjudged-runs"]);
 		Sentry.captureMessage(`Judging: ${unjudged} answers still unjudged after 10 minutes`, "error");
+	});
+}
+
+async function failAbandonedReports(): Promise<void> {
+	const cutoff = new Date(Date.now() - REPORT_STALE_AFTER_MS);
+	const candidates = await db
+		.select({ id: reports.id, status: reports.status, updatedAt: reports.updatedAt })
+		.from(reports)
+		.where(and(inArray(reports.status, ["pending", "processing"]), lt(reports.updatedAt, cutoff)));
+
+	const abandoned = abandonedReports(candidates, new Date());
+	if (abandoned.length === 0) return;
+
+	await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(inArray(reports.id, abandoned));
+	console.warn(`[schedule-maintenance] Failed ${abandoned.length} report(s) whose worker never came back`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "abandoned-reports");
+		scope.setFingerprint(["scheduler-abandoned-reports"]);
+		Sentry.captureMessage(`Reports: ${abandoned.length} abandoned by their worker`, "error");
 	});
 }
 
@@ -102,11 +129,7 @@ function groupPrompts(
 	return { byOrg, byBrand };
 }
 
-/**
- * Every prompt's plan, brand by brand. A brand with a broken configuration
- * (e.g. enabledModels naming a model no longer in SCRAPE_TARGETS) must not take
- * maintenance down for everyone — contain it and move on.
- */
+/** A brand whose configuration doesn't resolve is skipped, not allowed to stop maintenance for everyone. */
 function resolveRunPlans(args: {
 	promptsByBrand: Map<string, EnabledPrompt[]>;
 	promptsByOrg: Map<string, EnabledPrompt[]>;
@@ -151,7 +174,7 @@ async function loadLastRuns(plans: Map<string, PromptRunPlan>): Promise<Map<stri
 			model: promptRuns.model,
 			provider: promptRuns.provider,
 			webSearchEnabled: promptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			lastRunAt: sql<string>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
 		.where(gt(promptRuns.createdAt, windowStart))
@@ -193,11 +216,11 @@ async function scheduleNewJobs(promptIds: string[]): Promise<void> {
 		const results = await Promise.allSettled(
 			promptIds.slice(i, i + SCHEDULE_BATCH_SIZE).map((promptId) =>
 				getBoss().send(
-					"process-prompt",
+					PROCESS_PROMPT_QUEUE,
 					{ promptId },
 					{
-						singletonKey: `prompt-${promptId}`,
-						singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
+						singletonKey: promptSingletonKey(promptId),
+						singletonSeconds: PROMPT_SINGLETON_SECONDS,
 						...PROMPT_JOB_OPTIONS,
 					},
 				),
@@ -275,13 +298,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	if (decisions.toSchedule.length > 0) await scheduleNewJobs(decisions.toSchedule.map((d) => d.promptId));
 }
 
-/**
- * Report to Sentry (as an error, so it pages) when enabled, entitled prompts
- * are overdue on any of their targets past the grace window. Parked chains
- * (unentitled orgs, no picks) never count — a canceled customer is not an
- * outage. Throttled in-process so a sustained outage doesn't emit a new event
- * on every maintenance tick.
- */
+/** An error so it pages. Parked chains never count: a canceled customer is not an outage. */
 function reportOverduePrompts(overduePrompts: number): void {
 	if (overduePrompts === 0) return;
 	const now = Date.now();
@@ -297,10 +314,6 @@ function reportOverduePrompts(overduePrompts: number): void {
 	});
 }
 
-/**
- * Get pending jobs for each prompt, preferring the most active state.
- * Returns at most one job per prompt: active > retry > created.
- */
 interface PendingJobInfo {
 	jobId: string;
 	state: "created" | "active" | "retry";
@@ -308,12 +321,13 @@ interface PendingJobInfo {
 	consecutiveFailures: number;
 }
 
+/** At most one job per prompt, the most active one. */
 async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
 		SELECT id, data->>'promptId' as prompt_id, state,
 		       COALESCE((data->>'consecutiveFailures')::int, 0) as consecutive_failures
 		FROM pgboss.job
-		WHERE name = 'process-prompt'
+		WHERE name = ${PROCESS_PROMPT_QUEUE}
 		  AND state IN ('created', 'active', 'retry')
 		  AND data->>'promptId' IS NOT NULL
 		ORDER BY

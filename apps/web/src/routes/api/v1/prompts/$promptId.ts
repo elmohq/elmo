@@ -10,6 +10,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { deletedPromptSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { requirePromptInScope } from "@/lib/api/scope";
 import {
 	deletePrompt,
@@ -19,9 +20,7 @@ import {
 	updatePromptInputSchema,
 } from "@/server/prompts-core";
 
-// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
-// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
-const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
+const promptParams = z.object({ promptId: z.uuid("Invalid prompt ID format") });
 
 /** The writes re-check under their own lock, so a prompt that a concurrent
  * delete takes between the scope check and the write reads as 404 here rather
@@ -33,12 +32,14 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: withMethodGuard({
 			GET: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				scopes: ["read"],
 				handle: async ({ params, auth }) => toPromptSummary((await requirePromptInScope(auth, params.promptId)).prompt),
 			}),
 
 			PATCH: createApiHandler({
+				response: promptSchema,
 				params: promptParams,
 				body: updatePromptInputSchema,
 				scopes: ["write"],
@@ -53,6 +54,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			// at any role — so no scope grants it. Disabling frees the plan slot
 			// just the same and keeps the history.
 			DELETE: createApiHandler({
+				response: deletedPromptSchema,
 				params: promptParams,
 				adminOnly: true,
 				adminOnlyHint: "Send PATCH with `enabled: false` to stop tracking this prompt without losing its history.",

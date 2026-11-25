@@ -1,14 +1,4 @@
-/**
- * What makes an Elmo Cloud deployment different.
- *
- * Cloud is the multi-tenant hosted product: anyone allowed by the signup
- * allowlist can register, addresses must be verified before sign-in, teammates
- * are invited by email, and the one-time report generator is switched off.
- *
- * The verification email itself is not exercised — that needs a real
- * transactional-email provider — so the specs verify addresses in the database
- * and assert on everything around it.
- */
+/** The verification email itself would need a real email provider, so specs verify addresses in the database. */
 import { expect, failedResource, test } from "../../test";
 import { CLOUD_SIGNUP, TEST_BRAND_ID, TEST_USER, brandUrl, organizationUrl } from "../../fixtures";
 import { deleteUsers, userExists, verifyEmail } from "../../session";
@@ -23,8 +13,7 @@ const DISPOSABLE_EMAIL = `throwaway@${CLOUD_SIGNUP.disposableDomain}`;
 const BLOCKED_EMAIL = `outsider@${CLOUD_SIGNUP.blockedDomain}`;
 
 test.describe("Cloud self-serve signup", () => {
-  // Serial: these tests create and delete the same accounts, so running them
-  // concurrently would have one wipe another's fixture mid-test.
+  // These tests create and delete the same accounts.
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -111,13 +100,9 @@ test.describe("Cloud self-serve signup", () => {
   });
 
   /**
-   * Cloud requires email verification, which puts better-auth in the mode where
-   * a refused creation answers exactly as a duplicate address does — a 200 over
-   * a synthetic user — so that signup cannot be used to learn who is already
-   * registered. The allowlist refusal is a 403, the status that rule covers, so
-   * the response says nothing either way and the account never existing is the
-   * whole of what this can assert. Read it against the allowlisted signup
-   * above, which does create one.
+   * With email verification on, better-auth answers a refused signup with the
+   * same 200 as a duplicate address, so signup can't reveal who is registered.
+   * The missing account is all this can assert.
    */
   test("an address outside the allowlist creates no account", async ({ request }) => {
     const response = await request.post("/api/auth/sign-up/email", {
@@ -148,7 +133,6 @@ test.describe("Cloud features", () => {
       page.locator(`a[href="${organizationUrl()}/settings/members"][data-sidebar="menu-button"]`),
     ).toHaveCount(0);
 
-    // The admin section is present (this user is an admin) but has no Reports entry.
     const menu = await openAccountMenu(page);
     await expect(menu.locator('a[href="/admin"]')).toBeVisible();
     await expect(menu.locator('a[href="/reports"]')).toHaveCount(0);
@@ -160,7 +144,6 @@ test.describe("Cloud features", () => {
     await expect(page.getByRole("heading", { name: "Team" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByRole("button", { name: "Invite" })).toBeVisible();
-    // The signed-in admin is listed as a member of the brand.
     await expect(page.getByRole("main").getByText(TEST_USER.email)).toBeVisible();
   });
 

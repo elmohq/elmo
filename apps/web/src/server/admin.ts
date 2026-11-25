@@ -1,14 +1,19 @@
-/**
- * Server functions for admin operations.
- * Replaces apps/web/src/app/api/admin/* API routes.
- */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
 import { getModelMeta } from "@workspace/config/models";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	member,
+	organization,
+	type Prompt,
+	prompts,
+	rollupPromptRuns,
+	user,
+} from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import type { ModelConfig } from "@workspace/lib/providers";
@@ -19,15 +24,11 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
+import { count, desc, eq, ilike, inArray, or, type SQL, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
-
-// ============================================================================
-// Admin guard helper
-// ============================================================================
 
 async function requireAdmin() {
 	const session = await requireAuthSession();
@@ -47,10 +48,6 @@ async function organizationSlugs(organizationIds: string[]): Promise<Map<string,
 function organizationSegment(slugs: Map<string, string>, organizationId: string): string {
 	return slugs.get(organizationId) ?? organizationId;
 }
-
-// ============================================================================
-// Admin analytics queries
-// ============================================================================
 
 interface AdminRunsOverTime {
 	date: string;
@@ -121,10 +118,6 @@ async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime
 	return rows;
 }
 
-// ============================================================================
-// Postgres client helper for pg-boss queries
-// ============================================================================
-
 async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
@@ -139,13 +132,6 @@ async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
 	}
 }
 
-// ============================================================================
-// Admin Dashboard - Brand Stats
-// ============================================================================
-
-/**
- * Get admin dashboard statistics (all brands, run counts, time series charts).
- */
 export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
@@ -158,7 +144,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		await Promise.all([
 			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-			// Cumulative brand count over time (last 30 days)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -175,7 +160,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 				.groupBy(sql`date_series`)
 				.orderBy(sql`date_series`),
 
-			// Cumulative prompts count over time (enabled vs disabled)
 			db
 				.select({
 					date: sql<string>`date_series::date`,
@@ -254,13 +238,6 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	};
 });
 
-// ============================================================================
-// Admin Dashboard - Delay Override
-// ============================================================================
-
-/**
- * Update delay override for a brand.
- */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -280,15 +257,74 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		return result[0];
 	});
 
-// ============================================================================
-// Admin Tools - Analyze Brand
-// ============================================================================
+const ADMIN_USERS_PAGE_SIZE = 25;
 
-/**
- * Provider-agnostic brand analysis. Returns brand info, competitors, and
- * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `POST /api/v1/tools/analyze` use.
- */
+export interface AdminUser {
+	id: string;
+	name: string;
+	email: string;
+	role: string;
+	banned: boolean;
+	createdAt: string;
+	organizations: { id: string; name: string }[];
+}
+
+export const listAdminUsersFn = createServerFn({ method: "GET" })
+	.validator(z.object({ search: z.string().max(200).default(""), page: z.number().int().min(0).default(0) }))
+	.handler(async ({ data }): Promise<{ users: AdminUser[]; total: number; pageSize: number }> => {
+		await requireAdmin();
+		const term = data.search.trim().replace(/[\\%_]/g, "\\$&");
+		const where = term ? or(ilike(user.email, `%${term}%`), ilike(user.name, `%${term}%`)) : undefined;
+
+		const [rows, [totals]] = await Promise.all([
+			db
+				.select({
+					id: user.id,
+					name: user.name,
+					email: user.email,
+					role: user.role,
+					banned: user.banned,
+					createdAt: user.createdAt,
+				})
+				.from(user)
+				.where(where)
+				.orderBy(desc(user.createdAt), user.id)
+				.limit(ADMIN_USERS_PAGE_SIZE)
+				.offset(data.page * ADMIN_USERS_PAGE_SIZE),
+			db.select({ total: count() }).from(user).where(where),
+		]);
+
+		const memberships =
+			rows.length === 0
+				? []
+				: await db
+						.select({ userId: member.userId, id: organization.id, name: organization.name })
+						.from(member)
+						.innerJoin(organization, eq(member.organizationId, organization.id))
+						.where(
+							inArray(
+								member.userId,
+								rows.map((row) => row.id),
+							),
+						)
+						.orderBy(organization.name);
+
+		return {
+			total: totals?.total ?? 0,
+			pageSize: ADMIN_USERS_PAGE_SIZE,
+			users: rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				email: row.email,
+				role: row.role ?? "user",
+				banned: row.banned === true,
+				createdAt: row.createdAt.toISOString(),
+				organizations: memberships.filter((m) => m.userId === row.id).map(({ id, name }) => ({ id, name })),
+			})),
+		};
+	});
+
+/** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -307,10 +343,6 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 			maxPrompts: data.maxPrompts,
 		});
 	});
-
-// ============================================================================
-// Admin Workflows - Data Fetching
-// ============================================================================
 
 function parseJobData(data: unknown): { promptId?: string } {
 	if (!data) return {};
@@ -673,9 +705,6 @@ function targetColumnsFor(plans: (PromptRunPlan | undefined)[]): { key: string; 
 	return [...columns.values()];
 }
 
-/**
- * Get full workflow data: queue stats, recent jobs, brand schedule summaries.
- */
 interface WorkflowContext {
 	orgSlugs: Map<string, string>;
 	runPlans: Map<string, PromptRunPlan>;
@@ -731,8 +760,6 @@ function promptWorkflowStatus(
 			brandId: brand.id,
 			brandName: brand.name,
 			enabled: prompt.enabled,
-			// The chain's own cadence: its fastest target, which is what the
-			// scheduler reschedules on. Zero when the plan parks the prompt.
 			runFrequencyMs: intervalMsOf(targets),
 			lastRunsByTarget,
 			schedulerInfo: scheduleInfo
@@ -761,9 +788,6 @@ function brandWorkflowSummary(
 		enabled: brand.enabled,
 		totalPrompts: brandPrompts.length,
 		enabledPrompts: enabled.length,
-		// Prompts of one brand can run different targets (premium is per prompt),
-		// so the table's columns are the union rather than whatever the first row
-		// happens to have.
 		targetColumns: targetColumnsFor(brandPrompts.map((p) => context.runPlans.get(p.id))),
 		runFrequencyMs: fastestCadenceMs(statuses.map((status) => status.row.runFrequencyMs)),
 		overduePrompts: enabled.filter((status) => status.overdue).length,
@@ -793,7 +817,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 			model: rollupPromptRuns.model,
 			provider: rollupPromptRuns.provider,
 			webSearchEnabled: rollupPromptRuns.webSearchEnabled,
-			lastRunAt: sql<Date>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
+			lastRunAt: sql<string>`max(${rollupPromptRuns.lastRunAt})`.as("last_run_at"),
 		})
 		.from(rollupPromptRuns)
 		.groupBy(
@@ -827,10 +851,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		getQueueStats(),
 	]);
 
-	// The dashboard reports against what each prompt is actually supposed to run,
-	// so it resolves the same plans the worker does. Reading every configured
-	// SCRAPE_TARGETS model at the brand cadence instead would mark every platform
-	// a plan doesn't sell as permanently overdue.
+	// The worker's own plans, or every platform a plan doesn't sell would read as overdue.
 	const entitlementsByOrg = await getOrgEntitlementsMap([...new Set(allBrands.map((b) => b.organizationId))]);
 	const runPlans = resolveRunPlansForBrands({
 		brands: allBrands,
@@ -878,13 +899,6 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	};
 });
 
-// ============================================================================
-// Admin Workflows - Retry Job
-// ============================================================================
-
-/**
- * Retry a prompt job (send immediate job for a prompt).
- */
 export const retryJobFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
@@ -913,13 +927,6 @@ export const retryJobFn = createServerFn({ method: "POST" })
 		return { success: true, message: `Triggered immediate job for prompt ${targetPromptId}` };
 	});
 
-// ============================================================================
-// Admin Workflows - Job Logs
-// ============================================================================
-
-/**
- * Get logs for a specific job.
- */
 function formatJobLogs(job: Record<string, any>): string[] {
 	/** JSON columns arrive as text or as parsed objects depending on the driver. */
 	const pretty = (value: unknown) => {

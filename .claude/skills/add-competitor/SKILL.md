@@ -22,6 +22,7 @@ Use WebFetch to read the competitor's website at `$ARGUMENTS`. Gather:
 - Pricing info (free tier? starting price? enterprise?)
 - Status: `active`, `beta`, `acquired`, `shutting-down`, `defunct`, or `pivoted` (set `fate` for the last four so the tool shows up correctly in the AEO Graveyard)
 - License (SPDX id, e.g. `MIT`, `AGPL-3.0`) if the code is public
+- `checkedAt`: today's date (`YYYY-MM-DD`). Comparison pages show it as "last checked", so bump it on an existing entry whenever you re-verify it, even if nothing else changed
 - 3 highlights (short bullet points about what makes it notable)
 
 ## 2. Determine feature flags
@@ -53,7 +54,7 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 - `typescriptSdk` / `pythonSdk` — an official, published client library for their API (not just curl snippets)
 - `mcpServer` — an MCP server for AI assistants
 - `biConnectors` — Looker Studio, NinjaCat, etc.
-- `whiteLabelAgency` — white-label or agency features
+- `whiteLabelAgency` — white-label: custom-branded dashboards or reports for agency clients (multi-client workspaces alone don't count)
 - `openSource` — source code available
 - `contentGeneration` — AI content creation
 
@@ -109,6 +110,7 @@ Use the same code style as the existing entries. Example entry:
     category: "tracking",
     ahrefsDR: 55,
     status: "active",
+    checkedAt: "2026-11-03",
     features: {
         multiLlmTracking: true,
         visibilityScore: true,

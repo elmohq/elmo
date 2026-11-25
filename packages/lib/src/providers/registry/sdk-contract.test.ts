@@ -105,8 +105,6 @@ describe("installed ai SDK contract: Output.object", () => {
 	});
 });
 
-// --- Anthropic ---------------------------------------------------------------
-
 const anthropicClient = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock("@anthropic-ai/sdk", () => ({
 	default: class {

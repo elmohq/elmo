@@ -63,13 +63,12 @@ function formatEnvValue(value: string): string {
 		return '""';
 	}
 	if (/[\s#"']/u.test(value)) {
-		const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+		const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 		return `"${escaped}"`;
 	}
 	return value;
 }
 
-// Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
 export async function readRenderedVersion(filePath: string): Promise<string | null> {
 	try {
 		return parseRenderedVersion(await fs.readFile(filePath, "utf8"));

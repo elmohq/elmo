@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Build the Discord webhook payload announcing a release.
- *
- * Discord's markdown covers most of what the release notes carry, so the
- * message reads close to the GitHub release. The two differences it has to
- * paper over are the 2000-character `content` limit and bare URLs, which
- * GitHub shortens and Discord does not.
+ * Discord's markdown covers most of the release notes; what this papers over is
+ * the 2000-character `content` limit and bare URLs, which GitHub shortens and
+ * Discord does not.
  *
  * Usage:
  *   REPO=elmohq/elmo node scripts/discord-release-payload.mjs 0.2.1 release-notes.md
@@ -17,13 +14,9 @@
 
 import { readFileSync } from "node:fs";
 
-/** Discord rejects a message whose `content` exceeds this many characters. */
 const CONTENT_LIMIT = 2000;
 
-/**
- * SUPPRESS_EMBEDS. Without it every link in the notes unfurls into a media
- * embed underneath the message.
- */
+/** Without it every link in the notes unfurls into an embed. */
 const SUPPRESS_EMBEDS = 1 << 2;
 
 /** The announcement header already says this. */
@@ -111,8 +104,6 @@ function readNotes(file) {
   try {
     return readFileSync(file, "utf8").trim();
   } catch {
-    // A release that published but somehow lost its notes file should still
-    // be announced.
     console.error(
       `discord-release-payload: cannot read ${file}; announcing the link only.`,
     );

@@ -1,6 +1,7 @@
 // Imported by the browser too, so it reads nothing from the database layer.
 import type { Sentiment } from "@workspace/lib/mentions";
 import { z } from "zod";
+import type { sentimentSummarySchema } from "@/lib/api/schemas/sentiment";
 
 export type { Sentiment };
 export const SENTIMENTS = ["positive", "neutral", "mixed", "negative"] as const satisfies readonly Sentiment[];
@@ -22,26 +23,26 @@ export const SENTIMENT_STYLES: Record<Sentiment, { label: string; color: string;
 	positive: {
 		label: "Positive",
 		color: "#009E73",
-		text: "text-[#00795a] dark:text-[#3fc79f]",
-		soft: "bg-[#009E73]/15 dark:bg-[#009E73]/30",
+		text: "text-[#00795a]",
+		soft: "bg-[#009E73]/15",
 	},
 	neutral: {
 		label: "Neutral",
 		color: "#cbd5e1",
-		text: "text-slate-500 dark:text-slate-400",
-		soft: "bg-slate-200/70 dark:bg-slate-700/60",
+		text: "text-slate-500",
+		soft: "bg-slate-200/70",
 	},
 	mixed: {
 		label: "Mixed",
 		color: "#E69F00",
-		text: "text-[#a66f00] dark:text-[#f0b840]",
-		soft: "bg-[#E69F00]/20 dark:bg-[#E69F00]/30",
+		text: "text-[#a66f00]",
+		soft: "bg-[#E69F00]/20",
 	},
 	negative: {
 		label: "Negative",
 		color: "#D55E00",
-		text: "text-[#b34d00] dark:text-[#ff8a3d]",
-		soft: "bg-[#D55E00]/15 dark:bg-[#D55E00]/30",
+		text: "text-[#b34d00]",
+		soft: "bg-[#D55E00]/15",
 	},
 };
 
@@ -73,14 +74,7 @@ export const NO_ASSESSMENTS: AssessmentSums = {
 
 export type SentimentCounts = Record<Sentiment, number>;
 
-export interface SentimentSummary extends SentimentCounts {
-	/**
-	 * Net sentiment on a 0–1 scale: positive counts 1, neutral and mixed ½, negative 0. So ½ means AI is
-	 * neutral about the company on balance, rather than counting a factual mention against it. Null with
-	 * no mention that has a sentiment.
-	 */
-	score: number | null;
-}
+export type SentimentSummary = z.infer<typeof sentimentSummarySchema>;
 
 export interface MentionQuality {
 	sentiment: SentimentSummary;
@@ -91,12 +85,6 @@ export interface MentionQuality {
 /** Runs with a sentiment; shares are of these. */
 const sentimentRuns = (sums: AssessmentSums) =>
 	sums.positive_runs + sums.neutral_runs + sums.negative_runs + sums.mixed_runs;
-
-export interface PositionPoint {
-	date: string;
-	/** The brand's average position that day, 1 being named first; null when never ranked. */
-	average: number | null;
-}
 
 /** One decimal: positions are small whole numbers, so a finer average only adds noise. */
 export function averagePosition(sum: number, runs: number): number | null {

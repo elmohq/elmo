@@ -36,7 +36,7 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 		<CardTitle className="text-sm">
 			{segments.map((segment) =>
 				segment.isMatch ? (
-					<mark key={segment.key} className="bg-yellow-200 dark:bg-yellow-800 rounded-sm">
+					<mark key={segment.key} className="bg-yellow-200 rounded-sm">
 						{segment.part}
 					</mark>
 				) : (
@@ -114,7 +114,6 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		return chartContext.getChartDataForPrompt(promptId);
 	}, [chartContext, promptId]);
 
-	// Setup export functionality
 	const fileName = chartContext?.brand
 		? `${chartContext.brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
 		: `chart-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
@@ -184,7 +183,6 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		);
 	}
 
-	// No visibility data state
 	if (!hasVisibilityData) {
 		return (
 			<>
@@ -222,7 +220,6 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		);
 	}
 
-	// Success state with chart
 	return (
 		<>
 			{exportPortal}
@@ -241,14 +238,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 				<Separator className="py-0 my-0" />
 				<CardContent className="pl-0 pr-6">
 					{brand && data && competitors && (
-						<BaseChart
-							data={data}
-							lookback={lookback}
-							brand={brand}
-							competitors={competitors}
-							isAnimationActive={false}
-							chartType="line"
-						/>
+						<BaseChart data={data} lookback={lookback} brand={brand} competitors={competitors} />
 					)}
 				</CardContent>
 				<div className="print:hidden">

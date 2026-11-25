@@ -10,7 +10,7 @@ import { useListFilters } from "@/hooks/use-list-filters";
  * `useFilteredVisibility` itself, so it's a sibling of the chart section
  * rather than something the parent has to wire through. The tag + search
  * filters are resolved to prompt IDs server-side, so we pass the criteria
- * rather than a prompt-id list (issue #68).
+ * rather than a prompt-id list.
  *
  * The skeleton stays mounted inside a grid overlay so the bar reserves
  * its vertical space on load and doesn't shove the charts down when the
@@ -52,7 +52,7 @@ export function VisibilityBarSection({ brandId }: { brandId: string | undefined 
 			</div>
 			{hasData && (
 				<VisibilityBar
-					currentVisibility={stable.currentVisibility}
+					currentVisibilityPct={stable.currentVisibilityPct}
 					totalRuns={stable.totalRuns}
 					totalPrompts={stable.totalPrompts}
 					totalCitations={stable.totalCitations}

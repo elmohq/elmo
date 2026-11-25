@@ -1,5 +1,90 @@
 # @workspace/web
 
+## 0.7.12
+
+### Patch Changes
+
+- 0e36796: Admins can now impersonate other users.
+- f167423: The citations page now has a table showing which channels (own website, YouTube, Reddit, review sites, etc) AI models cite and how often answers citing each one mention you and each competitor.
+- @workspace/api-spec@0.7.12
+  - @workspace/config@0.7.12
+  - @workspace/deployment@0.7.12
+  - @workspace/lib@0.7.12
+  - @workspace/og@0.7.12
+  - @workspace/ui@0.7.12
+
+## 0.7.11
+
+### Patch Changes
+
+- 1102815: The MCP endpoint no longer hands connected clients an empty event stream they reconnect to every second, which could add tens of thousands of requests a day per client.
+- @workspace/api-spec@0.7.11
+  - @workspace/config@0.7.11
+  - @workspace/deployment@0.7.11
+  - @workspace/lib@0.7.11
+  - @workspace/og@0.7.11
+  - @workspace/ui@0.7.11
+
+## 0.7.10
+
+### Patch Changes
+
+- 13dd6af: Sentry now traces each worker job with its database calls, leaves health checks out of web traces, and raises an issue when the worker stops running.
+- Updated dependencies [3db9f08]
+  - @workspace/lib@0.7.10
+  - @workspace/deployment@0.7.10
+  - @workspace/api-spec@0.7.10
+  - @workspace/config@0.7.10
+  - @workspace/og@0.7.10
+  - @workspace/ui@0.7.10
+
+## 0.7.9
+
+### Patch Changes
+
+- ed4432f: The Microsoft Copilot app now requires a sign-in, so Elmo no longer scrapes it and tracks Bing AI Mode, the AI answer Bing still shows signed-out visitors, in its place. Brands that picked Copilot now track Bing AI Mode, which starts its own history. Past Copilot runs are kept and still count under "All models", but Copilot is no longer an option in the model filter. For self-hosted users, every `copilot` scrape target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `bing-ai-mode:cloro:online` or `bing-ai-mode:searchapi:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do.
+- 880f913: Elmo Cloud's premium Grok tracking moved from Grok 4.5 at default reasoning effort to Grok 4.7 at minimal reasoning effort. On self-hosted deployments, Grok targets through OpenRouter now use minimal reasoning effort, which reduces their cost per run; the Grok version stays whatever your `SCRAPE_TARGETS` pins.
+- a4d8390: Fixed the MCP analytics tools reading a `start` or `end` without an offset in the server's time zone; they now reject it, as the API does.
+- 7de432f: Added Meta AI (Muse Spark) as a premium model for Elmo Cloud. Self-hosted users can track it by adding `meta:openrouter:meta/muse-spark-1.3:online` to `SCRAPE_TARGETS`.
+- a9aa769: With OpenRouter, onboarding and opportunities research now return structured results more reliably.
+- a9aa769: Web search through OpenRouter now uses OpenRouter's web search tool in place of the deprecated `:online` alias, which also saves money on Perplexity runs.
+- ed4432f: Elmo Cloud now offers Perplexity Sonar as a premium model.
+- 7650f38: Fixed a spurious "Invalid API key" error logged for MCP requests signed in with OAuth.
+- 2590faf: Additional domains in brand settings and onboarding now skip domains your website or another listed domain already covers, and accept pasted lists.
+- ed4432f: Perplexity now requires a sign-in, so no scraping provider can reach it and Elmo no longer scrapes it. On Elmo Cloud, Perplexity is no longer a scraped engine: brands that picked it have an open slot to fill under Settings → LLMs, and Perplexity is tracked through Sonar as a premium model instead. For self-hosted users, every scraped `perplexity` target is skipped after upgrading, so replace it in `SCRAPE_TARGETS` with `perplexity:openrouter:perplexity/sonar:online` or `perplexity:dataforseo:online` to keep collecting. The LLMs settings page lists any skipped scrape target with its replacement until you do. Sonar API runs cost 2-5x what a scrape did, and Sonar Pro and Sonar Reasoning Pro cost more still. Past Perplexity runs are kept.
+- 8d854f3: Fixed a bug in `/api/v1/prompts/{promptId}/runs` and the `list_runs` MCP tool, where `createdAt` values were Postgres-formatted strings instead of valid RFC 3339 timestamps.
+- Updated dependencies [ed4432f]
+- Updated dependencies [ed4432f]
+  - @workspace/lib@0.7.9
+  - @workspace/deployment@0.7.9
+  - @workspace/api-spec@0.7.9
+  - @workspace/config@0.7.9
+  - @workspace/og@0.7.9
+  - @workspace/ui@0.7.9
+
+## 0.7.8
+
+### Patch Changes
+
+- 4a4ec93: Fixed the brand analysis API accepting a `maxCompetitors` or `maxPrompts` above the documented maximum of 100.
+- be639cb: Fixed the API and MCP tools reporting a plan's billing interval as `month` or `year` instead of the documented `monthly` or `annual`.
+- b504e08: The citation flow chart counts a page once even when AI engines tag its links with UTM parameters.
+- aa55138: The demo now invites visitors to start their own Elmo Cloud workspace, including when they try to save a change.
+- 0a7cd97: Stop a prompt's scheduled run being charged twice when its job outlives a 15-minute expiry.
+- 7a8a3a8: Show the last used sign-in method when returning to Elmo Cloud.
+- a6c87c2: Reports now show how far along they are, and one whose worker died is marked failed instead of appearing to run forever.
+- c82f25f: A rate-limited API request's `Retry-After` header now gives the wait in seconds instead of milliseconds, and the API reference lists it as the only header a `429` carries.
+- 94b01f8: Fixed the API's prompt runs list rejecting an out-of-range `page` or `limit` with a `400` instead of clamping it as documented.
+- d59eee3: Remove the stray divider and empty space at the bottom of the account menu in the demo.
+- Updated dependencies [7a8a3a8]
+- Updated dependencies [c82f25f]
+  - @workspace/deployment@0.7.8
+  - @workspace/lib@0.7.8
+  - @workspace/api-spec@0.7.8
+  - @workspace/config@0.7.8
+  - @workspace/og@0.7.8
+  - @workspace/ui@0.7.8
+
 ## 0.7.7
 
 ### Patch Changes

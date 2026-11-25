@@ -5,14 +5,7 @@
 
 import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
-import {
-	type AnalyticsScope,
-	modelFilter,
-	type PromptListScope,
-	queryPg,
-	scopeFilter,
-	windowFilter,
-} from "@/lib/analytics-sql";
+import { modelFilter, type PromptListScope, queryPg, scopeFilter, windowFilter } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
 import { responseOrder, sentimentBucket, sentimentCondition, toSentimentFilterCounts } from "@/lib/sentiment-sql";
@@ -34,9 +27,7 @@ export async function getPromptWebQueryCounts(
 	timezone: string,
 	model?: string,
 ): Promise<WebQueryCount[]> {
-	// The `unavailable` sentinel (search happened, query strings unexposed) isn't
-	// a usable web query — without this filter it becomes a model's "top query"
-	// whenever a provider never exposes strings (OpenRouter; DataForSEO Google).
+	// Unfiltered, the `unavailable` sentinel becomes the top query of any provider that hides its searches.
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
 			model,
@@ -124,10 +115,6 @@ export async function countPromptRuns(
 	return rows[0]?.total ?? 0;
 }
 
-// ============================================================================
-// Response search
-// ============================================================================
-
 /** Runs a response search covers. Without a `query` every run in scope matches. */
 export type ResponseSearchScope = PromptListScope & { query?: string; sentiment?: SentimentFilter };
 
@@ -200,10 +187,6 @@ export async function getResponseSentimentCounts(scope: ResponseSearchScope): Pr
 	`);
 	return toSentimentFilterCounts(rows);
 }
-
-// ============================================================================
-// Sentiment quotes
-// ============================================================================
 
 export interface SentimentQuoteRow {
 	id: string;

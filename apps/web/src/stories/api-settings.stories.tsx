@@ -40,7 +40,9 @@ export const Reference: Story = {
 		await expect(await canvas.findByRole("heading", { name: "API Docs" })).toBeVisible();
 		await expect(canvas.queryByText(/disabled in demo mode/)).toBeNull();
 		// Whatever host the app is being served from is the one people should call.
-		await expect(await canvas.findByText(`${window.location.origin}/api/v1`)).toBeVisible();
+		await expect(await canvas.findByRole("textbox", { name: "Base URL" })).toHaveValue(
+			`${window.location.origin}/api/v1`,
+		);
 		// The reference reads the instance's own spec rather than a hosted copy.
 		await expect(await canvas.findByTestId("api-reference-mock")).toHaveTextContent("/api/v1/openapi.json");
 		await expect(canvas.getByText("npm install @elmohq/sdk")).toBeVisible();

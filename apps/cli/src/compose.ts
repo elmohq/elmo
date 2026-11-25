@@ -4,8 +4,7 @@ import { refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-p
 import type { PostgresMode } from "./config.js";
 import { indentBlock } from "./util.js";
 
-// Rewrites `elmohq/elmo-*:<tag>` image tags in place, preserving any manual
-// edits the user made to the compose file, then refreshes the version header.
+// Edits the file in place rather than re-rendering it, so the user's own changes survive.
 export async function repinComposeImages(composePath: string, version: string): Promise<void> {
 	const contents = await fs.readFile(composePath, "utf8");
 	await fs.writeFile(composePath, refreshHeaderVersion(repinImages(contents, version), version), "utf8");
@@ -16,7 +15,7 @@ export async function refreshRenderedVersion(filePath: string, version: string):
 		const contents = await fs.readFile(filePath, "utf8");
 		await fs.writeFile(filePath, refreshHeaderVersion(contents, version), "utf8");
 	} catch {
-		// File is optional (e.g. .env may be absent in some setups).
+		// .env may be absent in some setups.
 	}
 }
 
@@ -102,9 +101,8 @@ function buildPostgresService(): string {
 		"    POSTGRES_PASSWORD: postgres",
 		"    POSTGRES_DB: elmo",
 		"  volumes:",
-		// PostgreSQL 18 puts PGDATA in a version-specific child directory and
-		// declares its volume at this parent. Mounting the child path can silently
-		// place the cluster in an anonymous volume that disappears on recreation.
+		// PostgreSQL 18 declares its volume at this parent; mounting the versioned
+		// PGDATA child instead lands the cluster in an anonymous volume that recreation loses.
 		"    - postgres_data:/var/lib/postgresql",
 		"  ports:",
 		'    - "5432:5432"',
@@ -202,9 +200,8 @@ function buildWorkerService(options: {
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
 
-	// On SIGTERM the worker gives pg-boss 30s to finish in-flight jobs, then
-	// flushes telemetry. Compose's 10s default would SIGKILL it partway through
-	// an evaluation, burning the provider call that job already paid for.
+	// The worker drains jobs for 30s on SIGTERM; Compose's 10s default would kill
+	// it mid-evaluation and waste a provider call already paid for.
 	lines.push("  stop_grace_period: 35s");
 
 	if (options.dependsOn.length > 0) {
