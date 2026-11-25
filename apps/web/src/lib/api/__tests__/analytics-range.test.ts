@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { publicRange, resolveAnalyticsWindow } from "../analytics-range";
-import { analyticsListPaging, analyticsQuery, offsetOf, paging } from "../query";
+import { analyticsListPaging, analyticsQuery, offsetOf, paging, topK } from "../query";
 
 /** The query as a route reads it, failing as the handler would answer `400`. */
 function parsed<T>(schema: z.ZodType<T>, search: string): T {
@@ -40,6 +40,19 @@ describe("analytics API query parsing", () => {
 		expect(read("page=3&limit=50")).toEqual({ page: 3, limit: 50, offset: 100 });
 		expect(() => read("limit=1001")).toThrow("must be a whole number from 1 to 1000");
 		expect(() => read("limit=abc")).toThrow("must be a whole number from 1 to 1000");
+	});
+
+	it("defaults a missing top-K count and refuses one outside the range", () => {
+		const read = (search: string) => parsed(z.object({ kMentions: topK(5), kCitations: topK(10) }), search);
+		expect(read("")).toEqual({ kMentions: 5, kCitations: 10 });
+		expect(read("kMentions=1&kCitations=50")).toEqual({ kMentions: 1, kCitations: 50 });
+		expect(() => read("kMentions=51")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kCitations=999")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kMentions=0")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kMentions=-3")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kCitations=abc")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kCitations=2.5")).toThrow("must be a whole number from 1 to 50");
+		expect(() => read("kMentions=")).toThrow("must be a whole number from 1 to 50");
 	});
 
 	it("requires both bounds of the window", () => {

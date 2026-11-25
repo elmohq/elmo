@@ -1,0 +1,23 @@
+meta {
+  name: get prompt snapshot top-K past the ceiling 400
+  type: http
+  seq: 39
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}/snapshot?startDate=2000-01-01&endDate=2100-01-01&kCitations=51
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startDate: 2000-01-01
+  endDate: 2100-01-01
+  kCitations: 51
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+  res.body.message: startsWith kCitations
+}

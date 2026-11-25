@@ -7,22 +7,12 @@ import { z } from "zod";
 
 const INSTANT_EXAMPLE = "an ISO 8601 timestamp with an offset, e.g. 2026-01-01T00:00:00Z";
 
-/** A top-k past its cap still answers with as many as there are, so it is clamped rather than refused. */
-export function clampedCount(max: number, fallback: number) {
-	return z
-		.string()
-		.optional()
-		.transform((raw) => {
-			const value = Number.parseInt(raw ?? "", 10);
-			return Number.isNaN(value) ? fallback : Math.max(1, Math.min(max, value));
-		});
-}
-
 /**
- * Refused rather than clamped: a page size quietly cut to the cap shifts every
- * later page's offset, so a client paging past it would skip rows without knowing.
+ * Refused rather than clamped: a count quietly cut to the cap answers a different
+ * question than the one asked, and a clamped page size shifts every later page's
+ * offset, so a client paging past it would skip rows without knowing.
  */
-export function pagingCount(max: number, fallback: number) {
+export function boundedCount(max: number, fallback: number) {
 	const range = max === Number.MAX_SAFE_INTEGER ? "a whole number of at least 1" : `a whole number from 1 to ${max}`;
 	return z
 		.string()
@@ -36,14 +26,19 @@ export function pagingCount(max: number, fallback: number) {
 		});
 }
 
-export const page = pagingCount(Number.MAX_SAFE_INTEGER, 1);
+export const page = boundedCount(Number.MAX_SAFE_INTEGER, 1);
 
 export const DEFAULT_LIMIT = 20;
 
-const limit = pagingCount(100, DEFAULT_LIMIT);
+const limit = boundedCount(100, DEFAULT_LIMIT);
 
 /** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
-const analyticsListLimit = pagingCount(1000, 1000);
+const analyticsListLimit = boundedCount(1000, 1000);
+
+/** Top-K lists are bounded so one request can't ask for the whole history. */
+export function topK(fallback: number) {
+	return boundedCount(50, fallback);
+}
 
 /** RFC 3339, as the spec's `format: date-time` says: without an offset, `Date` would read the server's local time. */
 export const instant = z.iso.datetime({

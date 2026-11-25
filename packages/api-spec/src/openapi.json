@@ -4062,7 +4062,7 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"description": "Number of top competitor entities to return in mentionsTopK",
+						"description": "Number of top competitor entities to return in mentionsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -4073,7 +4073,7 @@
 					{
 						"name": "kCitations",
 						"in": "query",
-						"description": "Number of top cited URLs to return in citedUrlsTopK",
+						"description": "Number of top cited URLs to return in citedUrlsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -4344,7 +4344,7 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"description": "Number of top competitor entities to return in each prompt's mentionsTopK",
+						"description": "Number of top competitor entities to return in each prompt's mentionsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
