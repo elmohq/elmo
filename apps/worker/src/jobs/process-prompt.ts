@@ -72,14 +72,12 @@ export async function scheduleNextRun(
 }
 
 async function hasQueuedPromptJob(promptId: string): Promise<boolean> {
-	const result = await db.execute(sql`
-		SELECT 1 FROM pgboss.job
-		WHERE name = ${PROCESS_PROMPT_QUEUE}
-		  AND singleton_key = ${promptSingletonKey(promptId)}
-		  AND state < 'active'
-		LIMIT 1
-	`);
-	return result.rows.length > 0;
+	const queued = await getBoss().findJobs(PROCESS_PROMPT_QUEUE, {
+		key: promptSingletonKey(promptId),
+		queued: true,
+		limit: 1,
+	});
+	return queued.length > 0;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
