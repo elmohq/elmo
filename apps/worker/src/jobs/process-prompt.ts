@@ -46,29 +46,24 @@ export async function scheduleNextRun(
 	consecutiveFailures: number,
 ): Promise<void> {
 	const startAfterSeconds = Math.round(delayHours * 60 * 60);
-	const data: ProcessPromptData = { promptId, consecutiveFailures };
-	const options = { singletonKey: promptSingletonKey(promptId), startAfter: startAfterSeconds, ...PROMPT_JOB_OPTIONS };
-	const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
 
 	try {
-		const boss = getBoss();
-		const jobId = await boss.send(PROCESS_PROMPT_QUEUE, data, { ...options, singletonSeconds: startAfterSeconds });
-		if (!jobId) {
-			// pg-boss places the singleton slot at send time, not at startAfter, so the job
-			// running right now can occupy the slot its own follow-up needs. send() then
-			// returns null without throwing, and the failure streak is lost with the job:
-			// maintenance later restarts the chain at zero failures, so a broken provider
-			// never backs off past the first step. Only a job still waiting to run is a
-			// real duplicate.
-			if (await hasQueuedPromptJob(promptId)) {
-				console.log(`Next run for prompt ${promptId} is already queued; not scheduling another`);
-				return;
-			}
-			if (!(await boss.send(PROCESS_PROMPT_QUEUE, data, options))) {
-				console.error(`Failed to schedule next run for prompt ${promptId}: pg-boss rejected the job`);
-				return;
-			}
+		if (await hasQueuedPromptJob(promptId)) {
+			console.log(`Next run for prompt ${promptId} is already queued; not scheduling another`);
+			return;
 		}
+		// No singletonSeconds: pg-boss places that slot at send time, so the job running now
+		// can hold the slot its own follow-up needs, and the send is dropped without an error.
+		const jobId = await getBoss().send(
+			PROCESS_PROMPT_QUEUE,
+			{ promptId, consecutiveFailures },
+			{ singletonKey: promptSingletonKey(promptId), startAfter: startAfterSeconds, ...PROMPT_JOB_OPTIONS },
+		);
+		if (!jobId) {
+			console.error(`Failed to schedule next run for prompt ${promptId}: pg-boss rejected the job`);
+			return;
+		}
+		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
 		console.log(`Scheduled next run for prompt ${promptId} in ${delayHours}h${reason}`);
 	} catch (error) {
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
@@ -80,8 +75,8 @@ async function hasQueuedPromptJob(promptId: string): Promise<boolean> {
 	const result = await db.execute(sql`
 		SELECT 1 FROM pgboss.job
 		WHERE name = ${PROCESS_PROMPT_QUEUE}
-		  AND state IN ('created', 'retry')
-		  AND data->>'promptId' = ${promptId}
+		  AND singleton_key = ${promptSingletonKey(promptId)}
+		  AND state < 'active'
 		LIMIT 1
 	`);
 	return result.rows.length > 0;
