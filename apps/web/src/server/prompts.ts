@@ -2,23 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { extractDomain } from "@workspace/lib/citations/domain-categories";
 import { rollUpCitationDomains, rollUpCitationUrls, tallyCitations } from "@workspace/lib/citations/rollup";
 import { db } from "@workspace/lib/db/db";
-import { loadRawOutputs, selectRuns } from "@workspace/lib/db/runs";
-import { brands, competitors, promptRuns, prompts, runMentions, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import {
-	assertAllowed,
-	assertPromptSaveAllowed,
-	decidePromptCap,
-	promptSaveDelta,
-	withQuotaLock,
-} from "@workspace/lib/entitlements";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { assertAllowed, assertPromptSaveAllowed, decidePromptCap, promptSaveDelta } from "@workspace/lib/entitlements";
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
-import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
-import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";

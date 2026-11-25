@@ -63,7 +63,7 @@ function formatEnvValue(value: string): string {
 		return '""';
 	}
 	if (/[\s#"']/u.test(value)) {
-		const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+		const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 		return `"${escaped}"`;
 	}
 	return value;

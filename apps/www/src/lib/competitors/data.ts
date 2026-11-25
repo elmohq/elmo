@@ -1176,33 +1176,36 @@ export const competitors: Competitor[] = [
 		name: "AISEOTracker",
 		domain: "aiseotracker.com",
 		url: "https://aiseotracker.com/",
-		tagline: "249K+ brands tracked with Page Inspector feature",
+		tagline: "One-off AI visibility audits with optional weekly tracking",
 		description:
-			"AISEOTracker monitors how AI engines mention brands and includes a Page Inspector that shows how AI crawlers see your content (stripped HTML view), helping identify invisible content like dynamic pricing or JS-heavy elements. It offers a free visibility report.",
+			"AISEOTracker sells a $49 one-time report that scans up to 50 prompts daily for seven days across ChatGPT, Perplexity, Gemini, Bing AI Mode (which it calls Copilot), Google AI Overviews, and Bing AI Overviews, then adds competitor gaps, cited sources, and an action plan. Ongoing tracking is a separate subscription with weekly rescans, and an MCP server lets agents read project data. It does not scan Claude or Grok, and there is no free plan beyond a one-question ChatGPT check and free tools like the Page Inspector.",
 		category: "tracking",
 		ahrefsDR: 52,
 		ahrefsTraffic: 213,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
 			gemini: true,
 			perplexity: true,
-			copilot: true,
 			visibilityScore: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
 			mcpServer: true,
 		},
-		pricing: { hasFree: true, startingPrice: "$49 one-off report; $79/mo", hasEnterprise: false },
+		pricing: { hasFree: false, startingPrice: "$49 one-off report; $79/mo", hasEnterprise: false },
 		highlights: [
-			"Page Inspector — see how AI crawlers view your content",
-			"Free visibility report available",
-			"Dedicated AI visibility tracker",
+			"Pay-once $49 audit with seven days of daily scans, no subscription required",
+			"Page Inspector shows what AI crawlers can read on a page",
+			"Weekly rescans only on paid tracking plans",
 		],
 	},
 	{
@@ -3226,12 +3229,12 @@ export const competitors: Competitor[] = [
 		url: "https://gracker.ai/",
 		tagline: "AEO and GEO platform focused on cybersecurity and B2B SaaS",
 		description:
-			"GrackerAI tracks AI search citations across ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Grok, and Google, with a Content Engine that autopilots thought leadership articles, listicles, and comparison pages. Vertical focus on cybersecurity and B2B SaaS, with multi-brand workspaces and SSO for agencies.",
+			"GrackerAI tracks AI citations, mentions, and sentiment across up to ten engines — ChatGPT, Perplexity, Google AI Overviews and AI Mode, Gemini, Copilot, DeepSeek, Grok, Claude, and Brave Leo — but Individual covers three and Team four, so the full set needs Enterprise. A Content Engine drafts articles, listicles, and comparison pages and publishes to WordPress, HubSpot, and headless CMSs from the Team plan up. It targets cybersecurity and other technical B2B SaaS, with white-label reporting and the REST API reserved for Enterprise and its agency program.",
 		category: "tracking",
 		ahrefsDR: 58,
 		ahrefsTraffic: 3889,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -3252,6 +3255,7 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			keywordResearch: true,
 			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
@@ -3260,9 +3264,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
 		highlights: [
-			"Vertical focus on cybersecurity and B2B SaaS",
-			"50% startup discount for cybersecurity and DevTools companies",
-			"Customer case studies: Gopher.security 73% visibility uplift, MojoAuth +52% pipeline",
+			"Vertical focus on cybersecurity and technical B2B SaaS",
+			"Engines gated by plan: 3 on Individual, 4 on Team, all 10 on Enterprise",
+			"50% off the Team plan for 12 months for qualifying cybersecurity, DevTools, and DevOps startups",
 		],
 	},
 	{
@@ -4854,7 +4858,7 @@ export const competitors: Competitor[] = [
 		category: "tracking",
 		ahrefsDR: 40,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5261,11 +5265,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.brandrank.ai/",
 		tagline: "Recommendation Share tracking with an explicit defensive monitoring side",
 		description:
-			"BrandRank measures Recommendation Share — how often engines recommend a brand when buyers ask, question by question across ChatGPT, Gemini, Perplexity, and Copilot, benchmarked against every competitor in the category. Its offense side finds buying questions a competitor wins and maps the sources to take them; its defense side watches for engines repeating outdated claims, resurfacing old controversies, or confusing a brand's products with a rival's. It also scores existing content for AI readiness and produces the missing pages and third-party signals.",
+			"BrandRank measures Recommendation Share — how often engines recommend a brand when buyers ask, question by question across ChatGPT, Gemini, Perplexity, Claude, Grok, Meta AI, and DeepSeek, benchmarked against competitors in the category. Its offense side finds buying questions a competitor wins and maps the sources to take them; its defense side, the Brand Risk Monitor, watches for engines repeating outdated claims, resurfacing old controversies, or attributing a rival's flaws to the brand. It also scores existing content for AI readiness, and its team builds the missing pages and third-party signals as part of a software-plus-service engagement.",
 		category: "tracking",
 		ahrefsDR: 44,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5291,7 +5295,7 @@ export const competitors: Competitor[] = [
 		highlights: [
 			"Flags outdated claims, revived controversies, and product mix-ups as a first-class defensive feature",
 			"Reports Recommendation Share per buying question rather than a blended visibility number",
-			"Publishes category whitepapers and runs recurring webinars",
+			"Sold as software plus service, with a named strategist reviewing findings each quarter",
 		],
 	},
 	{
@@ -5647,11 +5651,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.finseo.ai/",
 		tagline: "AI visibility stack with query fan-outs, bot traffic, and an agent",
 		description:
-			"Finseo covers visibility tracking, prompt research, AI bot traffic, query fan-outs, and a report builder across ChatGPT, Claude, Perplexity, Gemini, and Google AI Mode, with competitor views that name each rival's top cited source and citation share. It exposes an API and MCP server alongside integrations, ships an agent plus attribution, generates expert-backed content, and runs in English and German with per-region prompt checks. It claims 500+ teams across brands and agencies.",
+			"Finseo covers visibility tracking, prompt research, AI bot traffic, query fan-outs, and a report builder, with competitor views that name each rival's top cited source and citation share. Self-serve plans track any three of ten engines (ChatGPT, Gemini, Google AI Overviews, AI Mode, Claude, Perplexity, Copilot, Grok, DeepSeek, Mistral); regional engines such as Meta AI, Qwen, and Naver are add-ons set up through sales. It exposes an API (from the Growth plan) and an MCP server, ships a CMS-editing agent plus CRM attribution, and tracks prompts across 40+ countries and languages.",
 		category: "tracking",
 		ahrefsDR: 31,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -5687,7 +5691,7 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: false, startingPrice: "€84/mo", hasEnterprise: true },
 		highlights: [
 			"Query fan-out reporting plus AI bot traffic in the same product",
-			"API and MCP server, with an agent and attribution layer",
+			"Three engines per self-serve plan, chosen from ten; regional engines are sales-led add-ons",
 			"Claims 500+ teams; separate tracks for AEO, content, PR, and agency users",
 		],
 	},
@@ -5698,11 +5702,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.erlin.ai/",
 		tagline: "Unified AI search, SEO, and analytics with Reddit and YouTube citation tracking",
 		description:
-			"Erlin pulls AI visibility, sentiment, share of voice, prompt and keyword performance, GA traffic, and Search Console data into one view instead of separate tools, and tracks citations from Reddit and YouTube specifically. An Opportunities layer surfaces content, entity, and coverage gaps plus citation openings on those communities, and an Action Center turns them into trackable team tasks with automated research, brief, and draft workflows kept human-in-the-loop.",
+			"Erlin pulls AI visibility, sentiment, share of voice, GA traffic, and Search Console data into one view and tracks citations from Reddit and YouTube specifically. An Opportunities layer surfaces content, source, and community gaps, and an Action Center turns them into team tasks, with research, brief, and draft workflows on Standard and above. Engines are gated by plan: Starter covers ChatGPT and Perplexity, Gemini starts on Standard, and Claude and API access on the $397 Pro plan; the company also sells a lead-qualification chatbot and CRM add-on, in beta.",
 		category: "tracking",
 		ahrefsDR: 38,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6054,13 +6058,13 @@ export const competitors: Competitor[] = [
 		name: "GEO Metrics",
 		domain: "trygeometrics.com",
 		url: "https://www.trygeometrics.com/",
-		tagline: "Nine-engine Share of Model tracking with hallucination correction",
+		tagline: "Nine-engine Share of Model tracking with inaccurate-answer monitoring",
 		description:
-			"GEO Metrics, formerly LLMO Metrics, measures how ChatGPT, Gemini, Perplexity, Copilot, Grok, and four more engines answer a category, reporting Share of Model against competitors and flagging hallucinations to fix. It claims 3,000+ users, runs an MCP server and an affiliate program, and has a dedicated agency track alongside free resources.",
+			"GEO Metrics, formerly LLMO Metrics, checks daily how ChatGPT, Google AI Overviews, AI Mode, Gemini, Perplexity, Copilot, DeepSeek, and Grok answer a brand's prompts, with Claude added from the Pro plan, and reports position, sentiment, and Share of Model against competitors alongside flags for inaccurate answers. Plans cap tracked prompts (20 on Freelance, 100 on Pro), and Pro adds API access, ChatGPT and AI Mode ad tracking, and shopping cards. The Spain-based team focuses on Spanish-speaking markets and offers an MCP server, a Looker Studio template, and an agency program with white-label delivery.",
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6082,16 +6086,18 @@ export const competitors: Competitor[] = [
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			siteAudits: true,
 			keywordResearch: true,
 			dataExportApi: true,
 			mcpServer: true,
+			biConnectors: true,
 			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, startingPrice: "EUR80/mo", hasEnterprise: true },
 		highlights: [
-			"Nine tracked engines, one of the broader coverage claims in the category",
-			"Treats hallucination detection and correction as a headline use case",
-			"Claims 3,000+ users; MCP server and agency program",
+			"Nine tracked engines, with Claude reserved for Pro and above",
+			"Treats inaccurate-answer detection as a headline use case",
+			"Spanish-language focus, with an MCP server, Looker Studio template, and agency program",
 		],
 	},
 	{
@@ -6382,13 +6388,13 @@ export const competitors: Competitor[] = [
 		name: "Minddex",
 		domain: "minddex.ai",
 		url: "https://minddex.ai/",
-		tagline: "French-market GEO platform with a query fan-out tool and GEO academy",
+		tagline: "French GEO platform with six-engine tracking and content generation",
 		description:
-			"Minddex measures and works on visibility in AI-generated answers for the French market, with the interface and academy in French and English. Rossel Advertising selected it as its reference GEO technology in Europe, and its published work includes named client engagements with Carglass and Ionos. It ships a fan-out query tool and an orchestrator alongside the tracking product.",
+			"Minddex is a Paris-based GEO platform, hosted in France, that tracks ChatGPT, Gemini, Perplexity, Claude, Google AI Overviews, and AI Mode in any country or language, grouping prompts into purchase-decision territories and reporting share of voice, sentiment, and the sources cited. Beyond tracking it generates FAQs, product pages, and briefs, sends weekly email alerts on mention changes, detects product carousels in answers, and exposes data to AI assistants through an MCP connector. Rossel Advertising selected it as its reference GEO technology in Europe, and publishers such as Prisma Media use it to sell sponsored GEO to advertisers.",
 		category: "tracking",
 		ahrefsDR: 33,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -6403,18 +6409,20 @@ export const competitors: Competitor[] = [
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
 			geographicTracking: true,
+			shoppingTracking: true,
 			multiLanguage: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			keywordResearch: true,
 			emailAlerts: true,
+			mcpServer: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Selected by Rossel Advertising as its European reference GEO technology",
+			"Publisher-side use: media groups such as Prisma Media sell sponsored GEO with it",
 			"French-first product with a French-language GEO academy",
-			"Named client work including Carglass and Ionos",
 		],
 	},
 	{
@@ -6939,17 +6947,18 @@ export const competitors: Competitor[] = [
 		name: "Relixir",
 		domain: "relixir.ai",
 		url: "https://www.relixir.ai/",
-		tagline: "Autonomous GEO agent that monitors, writes, and deploys",
+		tagline: "Managed GEO agent that tracks prompts, then writes and deploys content",
 		description:
-			"Relixir sells Rex, framed as an autonomous GEO employee rather than a dashboard: it monitors visibility across ChatGPT, Perplexity, Claude, and Google AI Overviews, then generates and deploys GEO-optimized content to close the gaps, running citation optimization and content ops on a continuous loop. It connects into the rest of the marketing stack and reports 400+ fast-growing B2B teams as users.",
+			"Relixir sells Rex, an agent that Relixir's own team configures and runs for each customer: it tracks buyer prompts across ChatGPT, Perplexity, Gemini, Claude, and Google AI Overviews, then drafts, publishes, and refreshes content through a connected or Relixir-hosted CMS. Weekly reports cover mentions, citations, rankings, and sentiment, with optional per-country and per-state tracking and a Visitor ID snippet that attributes AI-referred visits. Pricing is credit-based and quote-only, and it claims 400+ B2B teams.",
 		category: "tracking",
 		ahrefsDR: 45,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
+			gemini: true,
 			perplexity: true,
 			claude: true,
 			visibilityScore: true,
@@ -6957,16 +6966,18 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			geographicTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
 			contentGeneration: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
 			"Deploys the content it generates rather than handing back a task list",
-			"Sold as an autonomous employee, hireable alongside other agents",
+			"Set up and run by Relixir's team rather than self-serve",
 			"Claims 400+ B2B teams",
 		],
 	},
@@ -6977,11 +6988,11 @@ export const competitors: Competitor[] = [
 		url: "https://www.qwairy.co/",
 		tagline: "French GEO platform that distinguishes API from UI results per engine",
 		description:
-			"Qwairy tracks ten engines and labels each by how it is queried — ChatGPT, Perplexity, Gemini, and Grok via both API and UI, AI Overview and AI Mode via UI, Claude, Mistral, and DeepSeek via API — which matters because API answers and what users actually see diverge. The platform runs cockpit, monitor, analyze, act, optimize, measure, and explore stages, with API reference, MCP documentation, playbooks, and an agency track. It is French, GDPR aligned, and hosts data in the EU.",
+			"Qwairy tracks 18 engines and model families and labels each by how it is queried: most, including ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Copilot, Grok, and Meta AI, are read in their consumer interface, while Mistral, Qwen, Kimi, and others are compared through the API, and several (Claude's interface, Meta AI, Muse Spark) are labeled beta. Paid plans are credit-based; the REST API starts on Growth, crawler analytics and Looker Studio on Business, and white-label on Enterprise, with MCP on every paid plan. It is French, ISO 27001 certified, and hosts data in the EU.",
 		category: "tracking",
 		ahrefsDR: 43,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7008,6 +7019,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
 			dataExportApi: true,
 			mcpServer: true,
 			biConnectors: true,
@@ -7017,8 +7029,8 @@ export const competitors: Competitor[] = [
 		pricing: { hasFree: true, startingPrice: "€79/mo", hasEnterprise: true },
 		highlights: [
 			"Labels every engine as API or UI sourced, since the two disagree",
-			"EU data hosting and GDPR alignment, built in France",
-			"Documented API and MCP server alongside the dashboard",
+			"Covers Chinese and Korean engines (Qwen, Wenxin, Kimi, GLM, MiniMax, Naver) alongside the US assistants",
+			"EU data hosting and ISO 27001 certification, built in France",
 		],
 	},
 	{
@@ -7064,13 +7076,13 @@ export const competitors: Competitor[] = [
 		name: "Riff Analytics",
 		domain: "riffanalytics.ai",
 		url: "https://www.riffanalytics.ai/",
-		tagline: "Seven-engine tracking framed around answer share and citation gaps",
+		tagline: "Multi-engine tracking framed around answer share and citation gaps",
 		description:
-			"Riff Analytics tracks brand visibility across ChatGPT, Google AI Mode, Perplexity, Claude, Grok, DeepSeek, and Llama, reporting answer share and identifying top-cited sources so citation gaps can be closed. It scans a site for AI readiness — what engines see when they crawl the content — and returns a free report in about five minutes, with a seven-day trial.",
+			"Riff Analytics tracks brand visibility across ChatGPT, Google AI Overviews and AI Mode, Gemini, Perplexity, Claude, Grok, DeepSeek, and Llama, reporting answer share, position, sentiment, and top-cited sources so citation gaps can be closed. It scans a site for AI readiness — what engines see when they crawl the content — and returns a free report in about five minutes, with a seven-day trial on the Starter plan and CSV export.",
 		category: "tracking",
 		ahrefsDR: 37,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7089,10 +7101,11 @@ export const competitors: Competitor[] = [
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
+			dataExportApi: true,
 		},
 		pricing: { hasFree: false, startingPrice: "$49/mo", hasEnterprise: false },
 		highlights: [
-			"Tracks Llama and DeepSeek alongside the mainstream five",
+			"Tracks Llama and DeepSeek alongside the mainstream engines",
 			"Free report in about five minutes before any signup",
 			"AI readiness scan reports what crawlers actually see",
 		],
@@ -7417,13 +7430,13 @@ export const competitors: Competitor[] = [
 		name: "Sight AI",
 		domain: "trysight.ai",
 		url: "https://www.trysight.ai/",
-		tagline: "Agent that tracks weekly, then writes and ships the content",
+		tagline: "SEO content agent with AI visibility tracking and CMS publishing",
 		description:
-			"Sight AI, previously IndexPilot, runs an agent that tracks where a brand appears in ChatGPT, Perplexity, and Google — reporting visibility, sentiment, position, and models per prompt on a weekly check — then writes and publishes the content meant to put it in those answers. It includes website indexing tools and operates from Slack.",
+			"Sight AI, previously IndexPilot, checks tracked prompts on ChatGPT, Claude, Gemini, and Perplexity on a schedule the customer sets, with Grok as an opt-in that answers without web search, and reports mentions, citations, position, and sentiment. Google AI Mode and AI Overviews tracking start on the Pro plan. Its agents write articles, publish them to the CMS, and submit them for indexing, alongside an SEO suite with rank tracking, site audits, and backlinks, all drawing on one pool of credits and reachable from Slack or an MCP server.",
 		category: "tracking",
 		ahrefsDR: 55,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7450,9 +7463,9 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, startingPrice: "$99/mo", hasEnterprise: true },
 		highlights: [
-			"Writes and ships content rather than stopping at recommendations",
-			"Runs from Slack with weekly prompt checks",
-			"Includes indexing tools; rebranded from IndexPilot",
+			"Writes and publishes content rather than stopping at recommendations",
+			"Google AI Mode, AI Overviews, and the REST API start at the $199 Pro plan",
+			"Every visibility check, article, and agent action draws from one credit pool",
 		],
 	},
 	{
@@ -7500,13 +7513,13 @@ export const competitors: Competitor[] = [
 		name: "Share of Model",
 		domain: "shareofmodel.ai",
 		url: "https://shareofmodel.ai/",
-		tagline: "Brand-marketing framing — perception, visibility, creative testing, activation",
+		tagline: "AI perception and search visibility platform aimed at brand marketers",
 		description:
-			"Share of Model is built for brand marketers rather than SEO teams, with four modules: how AI perceives a brand, AI search visibility, asset evaluation for testing and optimizing creative against AI, and activation that turns the insight into campaigns. It runs a partner program with other platforms powered by its data, plus a community with events and named experts.",
+			"Share of Model, launched by the agency Jellyfish, is aimed at brand marketers rather than SEO teams, with modules for how AI describes a brand, AI search visibility, shopping visibility, creative asset testing against AI models, and activation through Pencil and Google Ads. The $799/mo self-serve plan collects 500 queries weekly or monthly across ChatGPT, Perplexity, Gemini, Claude, Google AI Mode, and Google and Bing AI Overviews. Copilot, DeepSeek, Llama, Mistral, the API, and the Looker Studio integration are reserved for the custom-priced Strategic Suite.",
 		category: "tracking",
 		ahrefsDR: 46,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7514,6 +7527,7 @@ export const competitors: Competitor[] = [
 			googleAiMode: true,
 			gemini: true,
 			perplexity: true,
+			copilot: true,
 			claude: true,
 			deepseek: true,
 			visibilityScore: true,
@@ -7521,15 +7535,18 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			shoppingTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
+			dataExportApi: true,
+			biConnectors: true,
 			contentGeneration: true,
 		},
-		pricing: { hasFree: false, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$799/mo", hasEnterprise: true },
 		highlights: [
-			"Evaluates creative assets against AI, not just pages and prompts",
-			"Powers partner platforms under its own brand",
-			"Framed for brand and campaign teams rather than SEO",
+			"Evaluates text, image, and video assets against AI models, not just pages and prompts",
+			"Search visibility is collected weekly or monthly, not daily",
+			"API, integrations, and Copilot and DeepSeek tracking are limited to the custom-priced tier",
 		],
 	},
 	{
@@ -7539,11 +7556,11 @@ export const competitors: Competitor[] = [
 		url: "https://tesseract.adlift.com/",
 		tagline: "AI Mode versus AI Overview tracking, from the AdLift agency",
 		description:
-			"Tesseract, built by agency AdLift, tracks visibility across Google AI Overviews, AI Mode, ChatGPT, Gemini, Perplexity, Claude, and DeepSeek, with a recent focus on comparing AI Mode and AI Overview side by side for visibility, competitor gaps, and citations. It combines that with conventional SEO ranking data and sells AEO and LLM SEO services alongside, with playbooks by vertical including healthcare, hospitality, retail, FMCG, and D2C.",
+			"Tesseract, built by agency AdLift, tracks visibility across Google AI Overviews, AI Mode, ChatGPT, Gemini, Perplexity, Claude, and DeepSeek, including a side-by-side comparison of AI Mode and AI Overview for visibility, competitor gaps, and citations. Claude, AI Mode, and sentiment analysis start on the $399/mo Pro plan, and Grok is listed as coming soon. It combines that with conventional SEO ranking data and sells AEO and LLM SEO services alongside, with playbooks by vertical including healthcare, hospitality, retail, FMCG, and D2C.",
 		category: "tracking",
 		ahrefsDR: 53,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7562,9 +7579,10 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			dataExportApi: true,
 			whiteLabelAgency: true,
 		},
-		pricing: { hasFree: true, hasEnterprise: true },
+		pricing: { hasFree: false, startingPrice: "$249/mo", hasEnterprise: true },
 		highlights: [
 			"Side-by-side AI Mode versus AI Overview comparison",
 			"Agency-built, with AEO and LLM SEO services sold alongside the tool",
@@ -7578,11 +7596,11 @@ export const competitors: Competitor[] = [
 		url: "https://xofu.com/",
 		tagline: "Bottom-of-funnel prompt tracking with entity audits",
 		description:
-			"Xofu deliberately narrows to the prompts buyers use when shortlisting vendors — best X for Y, vendor comparisons, solution evaluations — across ChatGPT, Google AI Overviews, AI Mode, and Gemini, tracking recommendations over time. Citation gap analysis shows which sources get cited when competitors appear and the brand does not, prioritizing pages to improve and publishers to target. It ships a snapshot report and an entity audit, free to start with no card.",
+			"Xofu deliberately narrows to the prompts buyers use when shortlisting vendors — best X for Y, vendor comparisons, solution evaluations — across ChatGPT, Google AI Overviews, AI Mode, and Gemini, tracking recommendations over time. Citation gap analysis shows which sources get cited when competitors appear and the brand does not, prioritizing pages to improve and publishers to target. ChatGPT answers come from OpenAI API models rather than the ChatGPT app, and every plan, including Free, includes a remote MCP server.",
 		category: "tracking",
 		ahrefsDR: 32,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-23",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
@@ -7594,10 +7612,15 @@ export const competitors: Competitor[] = [
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
 			sentimentAnalysis: true,
+			queryFanOut: true,
+			geographicTracking: true,
 			actionRecommendations: true,
 			contentGapAnalysis: true,
 			siteAudits: true,
 			keywordResearch: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			mcpServer: true,
 		},
 		pricing: { hasFree: true, startingPrice: "$99/mo", hasEnterprise: false },
 		highlights: [
@@ -8344,23 +8367,23 @@ export const competitors: Competitor[] = [
 		url: "https://www.usenotra.com/",
 		tagline: "AI content engine turned AI visibility platform, formerly open source",
 		description:
-			"Notra started in January 2026 as an AI content engine that drafts changelogs and launch posts from GitHub, Linear, and Slack, and added AI visibility tracking in August 2026. It tracks ChatGPT, Claude, Gemini, Perplexity, and Google AI Overviews with web search, and queries Grok, DeepSeek, and Meta's models without it. Its code was public under the AGPL-3.0 license until mid-October 2026, when the repository was taken private.",
+			"Notra started in January 2026 as an AI content engine that drafts changelogs and launch posts from GitHub, Linear, and Slack, and added AI visibility tracking in August 2026. It tracks ChatGPT, Gemini, Microsoft Copilot, Google AI Overviews, and Google AI Mode with web search, and queries Claude, Grok, Kimi, GLM, and DeepSeek without it. Visibility tracking requires a paid plan; the free plan covers AI traffic analytics. Its code was public under the AGPL-3.0 license until mid-October 2026, when the repository was taken private.",
 		category: "tracking",
 		ahrefsDR: 51,
 		status: "active",
-		checkedAt: "2026-10-20",
+		checkedAt: "2026-11-25",
 		soundbite:
 			"Notra was open source until October 2026, then took its code private. Elmo is MIT-licensed, so that can't happen to you.",
 		features: {
 			multiLlmTracking: true,
 			chatgpt: true,
 			googleAiOverviews: true,
+			googleAiMode: true,
 			gemini: true,
-			perplexity: true,
+			copilot: true,
 			claude: true,
 			grok: true,
 			deepseek: true,
-			metaAi: true,
 			citationAnalytics: true,
 			competitorBenchmarking: true,
 			brandMentionTracking: true,
@@ -8370,6 +8393,7 @@ export const competitors: Competitor[] = [
 			contentGapAnalysis: true,
 			siteAudits: true,
 			dataExportApi: true,
+			typescriptSdk: true,
 			mcpServer: true,
 			contentGeneration: true,
 		},
@@ -9086,19 +9110,19 @@ const aeoPopularityRanking: string[] = [
 	"promptrush", // 5.0 on G2 with named SaaS customers, 100+ brands
 	"xofu", // Bottom-of-funnel prompt scope with publisher target lists
 	"hall", // Acquired by Tracksuit Jul 2026; no longer independently sold
-	"aiseotracker", // Dedicated AEO tracker, claims 249K brands, Page Inspector
+	"aiseotracker", // Dedicated AEO tracker sold as a $49 one-off audit plus weekly rescans, Page Inspector
 	"gracker", // Cybersecurity/B2B-SaaS vertical with documented customer case studies
 	"aiso", // Clients incl. H&M, Uber, Wise, Dentsu, IHG; official Claude connector; publishes own conversation research
-	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, whitepapers/webinars, DR 44
-	"finseo", // Query fan-outs + bot traffic + API/MCP, claims 500+ teams, EN/DE
-	"relixir", // Autonomous agent that deploys content, claims 400+ B2B teams, DR 45
-	"sight-ai", // Agent writes and ships content, Slack-native, DR 55; rebranded from IndexPilot
-	"share-of-model", // Brand-marketing framing with creative asset evaluation; powers partner platforms
-	"qwairy", // Ten engines split API vs UI, EU hosting, documented API + MCP; French market leader
+	"brandrank", // Recommendation Share metric + defensive misinformation monitoring, software plus service, DR 44
+	"finseo", // Query fan-outs + bot traffic + API/MCP, three of ten engines per self-serve plan
+	"relixir", // Managed agent that deploys content, claims 400+ B2B teams, DR 45
+	"sight-ai", // Agent writes and ships content, MCP + Slack, DR 55; rebranded from IndexPilot
+	"share-of-model", // Jellyfish-launched, brand-marketing framing with creative asset evaluation; from $799/mo
+	"qwairy", // 18 engines split API vs UI, EU hosting, documented API + MCP; French market leader
 	"erlin", // Unified AI+SEO+GA/GSC with Reddit/YouTube citation tracking and task workflows
-	"geo-metrics", // Nine engines, Share of Model, claims 3,000+ users, MCP + agency program
-	"minddex", // French-market leader — Rossel Advertising reference tech, named Carglass/Ionos work
-	"riff-analytics", // Seven engines incl. Llama, citation gaps + AI readiness scan, DR 37
+	"geo-metrics", // Nine engines, Share of Model, Spanish-market focus, MCP + agency program
+	"minddex", // French-market leader — Rossel Advertising reference tech, publisher partnerships
+	"riff-analytics", // Nine engines incl. Llama, citation gaps + AI readiness scan, DR 37
 	"tesseract", // AdLift-built, AI Mode vs AIO comparison, vertical playbooks, DR 53
 	"cognizo", // Full platform incl. prompt volumes, AI traffic analytics, ChatGPT Ads, agency marketplace
 	"rankability", // AI Search Analyzer with NLP/entity focus, agency-oriented

@@ -14,11 +14,11 @@ export const DISPLAY_FAMILY = "'Titan One','Trebuchet MS',system-ui,sans-serif";
 
 function esc(value: string): string {
 	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
 }
 
 /** Compact count: 1234 → "1.2k". */
