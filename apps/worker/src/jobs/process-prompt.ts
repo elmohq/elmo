@@ -45,22 +45,27 @@ export async function scheduleNextRun(
 	delayHours: number,
 	consecutiveFailures: number,
 ): Promise<void> {
-	const startAfterSeconds = Math.round(delayHours * 60 * 60);
+	const runAt = new Date(Date.now() + Math.round(delayHours * 60 * 60) * 1000);
+	const singletonKey = promptSingletonKey(promptId);
 
 	try {
-		if (await hasQueuedPromptJob(promptId)) {
-			console.log(`Next run for prompt ${promptId} is already queued; not scheduling another`);
-			return;
-		}
-		// No singletonSeconds: pg-boss places that slot at send time, so the job running now
-		// can hold the slot its own follow-up needs, and the send is dropped without an error.
-		const jobId = await getBoss().send(
-			PROCESS_PROMPT_QUEUE,
-			{ promptId, consecutiveFailures },
-			{ singletonKey: promptSingletonKey(promptId), startAfter: startAfterSeconds, ...PROMPT_JOB_OPTIONS },
-		);
+		const boss = getBoss();
+		// The lock is what keeps two cycles of one prompt from each queuing a follow-up. pg-boss's
+		// singletonSeconds can't: it places the slot at send time, so the job running now can hold
+		// the slot its own follow-up needs, and the send is dropped without an error.
+		const jobId = await db.transaction(async (tx) => {
+			await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-prompt-follow-up'), hashtext(${promptId}))`);
+			const queued = await boss.findJobs(PROCESS_PROMPT_QUEUE, { key: singletonKey, queued: true });
+			// A job due later doesn't cover this one: a backoff retry still has to run before the cadence job.
+			if (queued.some((job) => job.startAfter <= runAt)) return null;
+			return boss.send(
+				PROCESS_PROMPT_QUEUE,
+				{ promptId, consecutiveFailures },
+				{ singletonKey, startAfter: runAt, ...PROMPT_JOB_OPTIONS },
+			);
+		});
 		if (!jobId) {
-			console.error(`Failed to schedule next run for prompt ${promptId}: pg-boss rejected the job`);
+			console.log(`A run for prompt ${promptId} is already queued within ${delayHours}h; not scheduling another`);
 			return;
 		}
 		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
@@ -69,15 +74,6 @@ export async function scheduleNextRun(
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		// The cycle's runs are already saved; a failed reschedule shouldn't fail the job.
 	}
-}
-
-async function hasQueuedPromptJob(promptId: string): Promise<boolean> {
-	const queued = await getBoss().findJobs(PROCESS_PROMPT_QUEUE, {
-		key: promptSingletonKey(promptId),
-		queued: true,
-		limit: 1,
-	});
-	return queued.length > 0;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
