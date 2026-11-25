@@ -50,9 +50,8 @@ export async function scheduleNextRun(
 
 	try {
 		const boss = getBoss();
-		// The lock is what keeps two cycles of one prompt from each queuing a follow-up. pg-boss's
-		// singletonSeconds can't: it places the slot at send time, so the job running now can hold
-		// the slot its own follow-up needs, and the send is dropped without an error.
+		// A lock rather than singletonSeconds: pg-boss places that slot at send time, so the job
+		// running now can hold the slot its own follow-up needs, and the send is silently dropped.
 		const jobId = await db.transaction(async (tx) => {
 			await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-prompt-follow-up'), hashtext(${promptId}))`);
 			// Read under the lock and from the database, so whoever holds it later is never due earlier.

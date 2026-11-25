@@ -16,10 +16,8 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
  * rather than paid for a second time.
  *
  * Best-effort by design. A prompt whose cycle is mid-flight has no queued row
- * to move, so it is sent a new job. That job usually runs alongside the cycle
- * and can pay again for a target the cycle hasn't saved yet. If pg-boss drops it
- * because the running job holds the same singleton slot, the added target waits
- * for maintenance to expedite the job that cycle queues on its way out.
+ * to move, so it is sent a new job, which usually runs alongside the cycle and
+ * can pay again for a target the cycle hasn't saved yet.
  */
 export async function expeditePromptRuns(promptIds: string[]): Promise<void> {
 	if (promptIds.length === 0) return;
