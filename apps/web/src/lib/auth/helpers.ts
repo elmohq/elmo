@@ -1,6 +1,6 @@
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { getDeployment } from "@workspace/deployment";
 import { isOrgAdminRole } from "@workspace/config/roles";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { brands, member, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -15,10 +15,7 @@ export async function getAuthSession() {
 }
 
 /** Session plus org, requiring an org-admin role. Reads stay open to every member. */
-export async function requireOrganizationAdmin(
-	userId: string,
-	organizationId: string,
-): Promise<UserOrganization> {
+export async function requireOrganizationAdmin(userId: string, organizationId: string): Promise<UserOrganization> {
 	const org = await requireOrganization(userId, organizationId);
 	if (!isOrgAdminRole(org.role)) throw new Error("Forbidden: Admin access required");
 	return org;

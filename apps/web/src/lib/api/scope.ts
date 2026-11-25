@@ -2,10 +2,11 @@
  * The one answer to what a caller reaches. A brand out of reach reads exactly as
  * one that does not exist, so nobody can probe for another tenant's ids.
  */
+
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { db } from "@workspace/lib/db/db";
 import { brands, member } from "@workspace/lib/db/schema";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
-import { isOrgAdminRole } from "@workspace/config/roles";
 import { type Principal, principalReach } from "@/lib/auth/api-auth";
 import { findPromptBrandId, type Prompt, PromptNotFoundError, requirePrompt } from "@/server/prompts-core";
 import { ApiError } from "./handler";
@@ -84,7 +85,12 @@ export async function requireBrandWriteAccess(auth: Principal, brand: Brand): Pr
 		.where(and(eq(member.userId, auth.userId), eq(member.organizationId, brand.organizationId)))
 		.limit(1);
 	if (!row || !isOrgAdminRole(row.role)) {
-		throw new ApiError(403, "Forbidden", "Only organization admins can change tracked brands, prompts, and competitors.", "forbidden");
+		throw new ApiError(
+			403,
+			"Forbidden",
+			"Only organization admins can change tracked brands, prompts, and competitors.",
+			"forbidden",
+		);
 	}
 }
 

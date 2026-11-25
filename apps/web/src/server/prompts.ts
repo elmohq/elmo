@@ -17,7 +17,12 @@ import { extractTextContent } from "@workspace/lib/text-extraction";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { requireAuthSession, requireBrandAccess, requireBrandAdminSession, requireBrandSession } from "@/lib/auth/helpers";
+import {
+	requireAuthSession,
+	requireBrandAccess,
+	requireBrandAdminSession,
+	requireBrandSession,
+} from "@/lib/auth/helpers";
 import { generateDateRange } from "@/lib/chart-utils";
 import { expeditePromptRuns } from "@/lib/expedite-prompts";
 import { buildGoogleModule } from "@/lib/google-module";

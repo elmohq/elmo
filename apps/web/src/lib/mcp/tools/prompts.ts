@@ -4,7 +4,12 @@
  */
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { brandScopeCondition, requireBrandInScope, requireBrandWriteAccess, requirePromptWriteAccess } from "@/lib/api/scope";
+import {
+	brandScopeCondition,
+	requireBrandInScope,
+	requireBrandWriteAccess,
+	requirePromptWriteAccess,
+} from "@/lib/api/scope";
 import {
 	bulkPromptInputSchema,
 	createPrompts,
