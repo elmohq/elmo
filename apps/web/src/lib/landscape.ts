@@ -217,12 +217,18 @@ export function buildLandscape(input: LandscapeInput): Landscape {
 		};
 	};
 
+	// Mentions are counted by name, so competitors that share one are one company here.
+	const competitorDomains = new Map<string, string | null>();
+	for (const c of input.competitors) {
+		if (!competitorDomains.has(c.name)) competitorDomains.set(c.name, c.domain);
+	}
+
 	return {
 		dates: input.dates,
 		models,
 		companies: [
 			company(input.brand.name, input.brand.domain, true),
-			...input.competitors.map((c) => company(c.name, c.domain, false)),
+			...[...competitorDomains].map(([name, domain]) => company(name, domain, false)),
 		],
 	};
 }

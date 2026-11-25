@@ -73,6 +73,15 @@ describe("buildLandscape", () => {
 		expect(initech.totals).toMatchObject({ visibility: 0, share: 0, position: null });
 	});
 
+	it("lists competitors that share a name once", () => {
+		const landscape = buildLandscape({
+			...input,
+			competitors: [...input.competitors, { name: "Globex", domain: "globex.example" }],
+		});
+		expect(landscape.companies.map((c) => c.name)).toEqual(["Acme", "Globex", "Initech"]);
+		expect(landscape.companies[1].domain).toBe("globex.com");
+	});
+
 	it("measures each company per model against that model's own runs", () => {
 		const landscape = buildLandscape(input);
 		expect(landscape.models).toEqual(["chatgpt", "claude"]);
