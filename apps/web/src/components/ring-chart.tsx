@@ -2,8 +2,7 @@ import { ChartContainer } from "@workspace/ui/components/chart";
 import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
-
-const percent = (value: number, total: number) => `${Math.round((value / total) * 100)}%`;
+import { formatPercent } from "@/lib/utils";
 
 export interface RingSlice {
 	name: string;
@@ -47,7 +46,7 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 									<div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs shadow-md">
 										{s.icon}
 										<span>
-											{s.name}: {percent(s.value, total)}
+											{s.name}: {formatPercent(s.value, total)}
 										</span>
 									</div>
 								);
@@ -64,7 +63,7 @@ export function RingChart({ slices, center }: { slices: RingSlice[]; center: str
 					<div key={s.name} className="flex items-center gap-2 py-1.5">
 						<span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: s.color }} />
 						<span className={cn("truncate", s.emphasis && "font-semibold")}>{s.name}</span>
-						<span className="ml-auto tabular-nums text-muted-foreground">{percent(s.value, total)}</span>
+						<span className="ml-auto tabular-nums text-muted-foreground">{formatPercent(s.value, total)}</span>
 					</div>
 				))}
 			</div>
