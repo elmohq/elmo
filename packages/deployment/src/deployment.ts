@@ -22,7 +22,8 @@ export const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 		selfServeSignup: false,
 		billing: false,
 		reportGeneration: true,
-		teamInvites: false,
+		// PW self-hosted: team invites enabled (upstream gates this to cloud only).
+		teamInvites: true,
 	},
 	demo: {
 		promotesCloud: true,
