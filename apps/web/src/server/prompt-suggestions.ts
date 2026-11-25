@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { z } from "zod";
-import { requireBrandSession } from "@/lib/auth/helpers";
+import { requireBrandAdminSession, requireBrandSession } from "@/lib/auth/helpers";
 import {
 	cancelPromptSuggestions,
 	enqueuePromptSuggestions,
@@ -20,7 +20,7 @@ export const startPromptSuggestionsFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 		return enqueuePromptSuggestions(data);
 	});
 
@@ -34,7 +34,7 @@ export const getPromptSuggestionsStatusFn = createServerFn({ method: "POST" })
 export const cancelPromptSuggestionsFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 		await cancelPromptSuggestions(data.brandId);
 		return { ok: true };
 	});

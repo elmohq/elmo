@@ -1,5 +1,6 @@
 import { IconBriefcase, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { buttonVariants } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { OrganizationRowIcon } from "@/components/organization-row-icon";
@@ -29,6 +30,33 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 
 function OrganizationBlock({ organization }: { organization: OrganizationSummary }) {
 	const { heading, children } = organizationTree(organization);
+	const isAdmin = isOrgAdminRole(organization.role);
+	const visibleChildren = organization.pinnedBrandId
+		? children.filter((row) => row.kind !== "brand" || row.id === organization.pinnedBrandId)
+		: children;
+	const rows = (
+		<div className="ml-4 border-l pl-1">
+			{visibleChildren.map((row) => (
+				<Link key={row.key} {...row.link} className={row.kind === "brand" ? ROW : `${ROW} text-muted-foreground`}>
+					<OrganizationRowIcon row={row} size="xs" />
+					<span className="truncate">{row.label}</span>
+				</Link>
+			))}
+		</div>
+	);
+	if (!isAdmin) {
+		return (
+			<div>
+				<div className={`${ROW} justify-between`}>
+					<span className="flex min-w-0 items-center gap-2">
+						<IconBriefcase className="size-4 shrink-0 text-muted-foreground" />
+						<span className="truncate font-medium">{heading.label}</span>
+					</span>
+				</div>
+				{visibleChildren.length > 0 && rows}
+			</div>
+		);
+	}
 
 	return (
 		<div>

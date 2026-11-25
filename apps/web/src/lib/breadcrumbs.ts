@@ -1,4 +1,5 @@
 import { useMatches } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { BRAND_ROUTE_ID, ORG_ROUTE_ID, routeSubjects } from "@/lib/route-subject";
 
 declare module "@tanstack/react-router" {
@@ -11,6 +12,7 @@ export interface Crumb {
 	label: string;
 	href: string;
 	kind?: "Organization" | "Brand";
+	plain?: boolean;
 }
 
 export function useBreadcrumbs(): Crumb[] {
@@ -19,8 +21,9 @@ export function useBreadcrumbs(): Crumb[] {
 
 	return matches.flatMap((match): Crumb[] => {
 		if (match.routeId === ORG_ROUTE_ID) {
-			const label = subjects.organization?.name;
-			return label ? [{ label, href: match.pathname, kind: "Organization" }] : [];
+			const org = subjects.organization;
+			if (!org?.name) return [];
+			return [{ label: org.name, href: match.pathname, kind: "Organization", plain: !isOrgAdminRole(org.role) }];
 		}
 		if (match.routeId === BRAND_ROUTE_ID) {
 			const label = subjects.brand?.name;

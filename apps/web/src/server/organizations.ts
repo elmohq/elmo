@@ -19,7 +19,10 @@ export type { OrganizationsView } from "@/lib/organizations/types";
 export const listOrganizationsFn = createServerFn({ method: "GET" }).handler(async (): Promise<OrganizationsView> => {
 	const session = await getAuthSession();
 	if (!session) return { signedIn: false, organizations: [] };
-	return { signedIn: true, organizations: await summarizeOrganizations(await listUserOrganizations(session.user.id)) };
+	return {
+		signedIn: true,
+		organizations: await summarizeOrganizations(session.user.id, await listUserOrganizations(session.user.id)),
+	};
 });
 
 export const syncOrganizationMembershipsFn = createServerFn({ method: "GET" }).handler(async (): Promise<boolean> => {

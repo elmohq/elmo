@@ -16,7 +16,9 @@
 		"./optimize-button": "./src/optimize-button.tsx",
 		"./billing": "./src/billing/index.ts",
 		"./auth-hooks/cloud": "./src/auth-hooks/cloud.ts",
-		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts"
+		"./auth-hooks/whitelabel": "./src/auth-hooks/whitelabel.ts",
+		"./email": "./src/email.ts",
+		"./email-templates": "./src/email-templates.ts"
 	},
 	"dependencies": {
 		"@better-auth/stripe": "catalog:",

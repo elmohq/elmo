@@ -20,6 +20,7 @@ import {
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
 import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { Brand } from "@workspace/lib/db/schema";
@@ -108,7 +109,7 @@ function brandGroups(organization: OrganizationSummary, brand: Brand): NavGroup[
 
 	const groups: NavGroup[] = [{ label: "Dashboard", items: dashboard }];
 
-	if (brand.onboarded) {
+	if (brand.onboarded && isOrgAdminRole(organization.role)) {
 		groups.push({
 			label: "Settings",
 			items: [
@@ -133,6 +134,7 @@ function brandGroups(organization: OrganizationSummary, brand: Brand): NavGroup[
 
 export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
+	const isOrgAdmin = !organization || isOrgAdminRole(organization.role);
 	const { isAdmin, hasReportAccess } = useViewer();
 	const features = useDeploymentFeatures();
 	const mode = useLooseRouteContext().clientConfig?.mode;
@@ -164,7 +166,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 					<SidebarMenuItem>
 						{/* On a gate page the mark still says whose product this is, but it
 						    leads nowhere — /app would redirect right back here. */}
-						{section === "account" ? (
+						{section === "account" || !isOrgAdmin ? (
 							<div className="flex items-center gap-2 p-2">{brandmark}</div>
 						) : (
 							<SidebarMenuButton size="lg" render={<Link to="/app" onClick={() => setOpenMobile(false)} />}>
@@ -179,7 +181,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser showOrganizations={section !== "account"} adminItems={section === "admin" ? [] : adminItems} />
-				<NavAppInfo />
+				<NavAppInfo showExternalLinks={isOrgAdmin} />
 			</SidebarFooter>
 		</Sidebar>
 	);

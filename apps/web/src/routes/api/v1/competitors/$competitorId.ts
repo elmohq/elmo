@@ -15,7 +15,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { competitorSchema } from "@/lib/api/schemas/competitors";
-import { isBrandInScope } from "@/lib/api/scope";
+import { isBrandInScope, requireBrandInScope, requireBrandWriteAccess } from "@/lib/api/scope";
 import { toCompetitorSummary } from "@/server/competitors-core";
 
 const competitorParams = z.object({ competitorId: z.uuid("Invalid competitor ID format") });
@@ -58,7 +58,8 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				body: updateCompetitorBody,
 				scopes: ["write"],
 				handle: async ({ params, body, auth }) => {
-					await loadInScope(auth, params.competitorId);
+					const scoped = await loadInScope(auth, params.competitorId);
+					await requireBrandWriteAccess(auth, await requireBrandInScope(auth, scoped.brandId));
 					const { competitorId } = params;
 
 					const update: Partial<typeof competitors.$inferInsert> = {};
@@ -91,7 +92,8 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				params: competitorParams,
 				scopes: ["write"],
 				handle: async ({ params, auth }) => {
-					await loadInScope(auth, params.competitorId);
+					const doomed = await loadInScope(auth, params.competitorId);
+					await requireBrandWriteAccess(auth, await requireBrandInScope(auth, doomed.brandId));
 					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();
 					if (!deleted) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);

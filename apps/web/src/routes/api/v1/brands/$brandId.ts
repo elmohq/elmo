@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { brandSchema } from "@/lib/api/schemas/brands";
-import { requireBrandInScope } from "@/lib/api/scope";
+import { requireBrandInScope, requireBrandWriteAccess } from "@/lib/api/scope";
 import {
 	apiUpdateInputToInternal,
 	BrandNotFoundError,
@@ -56,7 +56,8 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 					}
 					// Out of scope reads as not-found, so a key can't discover another
 					// tenant's brand by trying to write to it.
-					await requireBrandInScope(auth, params.brandId);
+					const brand = await requireBrandInScope(auth, params.brandId);
+					await requireBrandWriteAccess(auth, brand);
 					const internal = apiUpdateInputToInternal(params.brandId, body);
 					return await updateBrand(internal);
 				},

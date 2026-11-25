@@ -1,9 +1,9 @@
 /**
  * /auth/forgot-password - Request a password reset email
  *
- * Cloud only: it is the only mode that wires a sendResetPassword mailer, so
- * anywhere else the confirmation below would promise an email that never
- * arrives. Demo and whitelabel have no password to reset either way.
+ * Cloud wires a sendResetPassword mailer; local does too when Resend is
+ * configured (see getLocalAuthOptions). Demo and whitelabel have no password
+ * to reset either way.
  *
  * Always renders the same neutral confirmation whether or not the account
  * exists, to avoid account enumeration.
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/auth/forgot-password")({
 function ForgotPasswordPage() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 
-	if (context.clientConfig?.mode !== "cloud") {
+	if (context.clientConfig?.mode !== "cloud" && context.clientConfig?.mode !== "local") {
 		window.location.href = "/auth/login";
 		return null;
 	}

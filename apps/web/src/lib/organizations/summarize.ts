@@ -6,9 +6,9 @@
 
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
+import { brands, member, memberBrandPin } from "@workspace/lib/db/schema";
 import { checkBrandCreate } from "@workspace/lib/entitlements";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { UserOrganization } from "@/lib/auth/helpers";
 import type { BrandCreation, OrganizationSummary } from "@/lib/organizations/types";
 
@@ -28,9 +28,15 @@ async function resolveBrandCreation(orgIds: string[]): Promise<Map<string, Brand
 	);
 }
 
-export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<OrganizationSummary[]> {
+export async function summarizeOrganizations(userId: string, orgs: UserOrganization[]): Promise<OrganizationSummary[]> {
 	if (orgs.length === 0) return [];
 	const orgIds = orgs.map((org) => org.id);
+	const pinRows = await db
+		.select({ organizationId: member.organizationId, brandId: memberBrandPin.brandId })
+		.from(member)
+		.innerJoin(memberBrandPin, eq(memberBrandPin.memberId, member.id))
+		.where(and(eq(member.userId, userId), inArray(member.organizationId, orgIds)));
+	const pins = new Map(pinRows.map((row) => [row.organizationId, row.brandId]));
 
 	const [rows, creation] = await Promise.all([
 		db
@@ -51,9 +57,11 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		id: org.id,
 		slug: org.slug,
 		name: org.name,
+		role: org.role,
 		// Sorted here rather than in SQL so it doesn't depend on the deployment's
 		// collation — `ORDER BY name` under LC_COLLATE=C is byte order, which puts
 		// every capitalized name ahead of every lowercase one.
+		pinnedBrandId: pins.get(org.id) ?? null,
 		brands: rows
 			.filter((brand) => brand.organizationId === org.id)
 			.map(({ id, slug, name, website, onboarded }) => ({ id, slug, name, website, onboarded }))

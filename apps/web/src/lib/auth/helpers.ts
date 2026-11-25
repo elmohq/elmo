@@ -1,7 +1,8 @@
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
-import { brands, member, organization } from "@workspace/lib/db/schema";
+import { brands, member, memberBrandPin, organization } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { auth } from "./server";
 import { AuthenticationRequiredError } from "./session-errors";
@@ -11,6 +12,27 @@ type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unk
 export async function getAuthSession() {
 	const headers = getRequestHeaders();
 	return auth.api.getSession({ headers });
+}
+
+/** Session plus org, requiring an org-admin role. Reads stay open to every member. */
+export async function requireOrganizationAdmin(userId: string, organizationId: string): Promise<UserOrganization> {
+	const org = await requireOrganization(userId, organizationId);
+	if (!isOrgAdminRole(org.role)) throw new Error("Sorry, admin access is required to make changes.");
+	return org;
+}
+
+/** Brand access plus org-admin role. Use in POST handlers; GET handlers keep requireBrandSession. */
+export async function requireBrandAdminSession(brandId: string) {
+	const session = await requireAuthSession();
+	const org = await requireBrandAdminOrganization(session.user.id, brandId);
+	return { session, org };
+}
+
+/** Brand's org, requiring an org-admin role. */
+export async function requireBrandAdminOrganization(userId: string, brandId: string): Promise<UserOrganization> {
+	const org = await requireBrandOrganization(userId, brandId);
+	if (!isOrgAdminRole(org.role)) throw new Error("Sorry, admin access is required to make changes.");
+	return org;
 }
 
 export async function requireAuthSession() {
@@ -53,15 +75,19 @@ export async function requireOrgAccess(userId: string, orgId: string): Promise<v
 	}
 }
 
-/** Access to a brand is membership of the organization that owns it. */
+/** Access to a brand is membership of the organization that owns it. A pinned
+member additionally reaches only their pinned brand. */
 async function checkBrandAccess(userId: string, brandId: string): Promise<boolean> {
 	const [row] = await db
-		.select({ id: member.id })
+		.select({ id: member.id, pinnedBrandId: memberBrandPin.brandId })
 		.from(brands)
 		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
+		.leftJoin(memberBrandPin, eq(memberBrandPin.memberId, member.id))
 		.where(eq(brands.id, brandId))
 		.limit(1);
-	return !!row;
+	if (!row) return false;
+	if (row.pinnedBrandId && row.pinnedBrandId !== brandId) return false;
+	return true;
 }
 
 export async function requireBrandAccess(userId: string, brandId: string): Promise<void> {
@@ -79,13 +105,21 @@ export async function requireBrandSession(brandId: string) {
 /** A missing brand and one in someone else's org are deliberately the same error. */
 export async function requireBrandOrganization(userId: string, brandId: string): Promise<UserOrganization> {
 	const [row] = await db
-		.select({ id: organization.id, slug: organization.slug, name: organization.name, role: member.role })
+		.select({
+			id: organization.id,
+			slug: organization.slug,
+			name: organization.name,
+			role: member.role,
+			pinnedBrandId: memberBrandPin.brandId,
+		})
 		.from(brands)
 		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
+		.leftJoin(memberBrandPin, eq(memberBrandPin.memberId, member.id))
 		.innerJoin(organization, eq(organization.id, brands.organizationId))
 		.where(eq(brands.id, brandId))
 		.limit(1);
 	if (!row) throw new Error("Forbidden: No access to this brand");
+	if (row.pinnedBrandId && row.pinnedBrandId !== brandId) throw new Error("Forbidden: No access to this brand");
 	return row;
 }
 

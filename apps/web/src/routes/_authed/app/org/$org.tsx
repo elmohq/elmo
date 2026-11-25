@@ -14,6 +14,16 @@ export const Route = createFileRoute("/_authed/app/org/$org")({
 			throw redirect({ href: canonicalOrgHref(location, canonical), replace: true });
 		}
 
+		const pinned = organization.brands.find((brand) => brand.id === organization.pinnedBrandId);
+		if (pinned) {
+			const segment = pinned.slug ?? pinned.id;
+			const prefix = `/app/org/${canonical}/brand/${segment}`;
+			const here = location.pathname;
+			if (here !== prefix && !here.startsWith(`${prefix}/`)) {
+				throw redirect({ to: "/app/org/$org/brand/$brand", params: { org: canonical, brand: segment } });
+			}
+		}
+
 		return { organization };
 	},
 	loader: ({ context }): { organization: OrganizationSummary } => ({ organization: context.organization }),

@@ -28,6 +28,8 @@ const organization = {
 	id: "org-1",
 	slug: "mock-organization",
 	name: "Acme",
+	role: "admin",
+	pinnedBrandId: null,
 	brandCreation: { kind: "allowed" as const },
 	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
 };
@@ -422,6 +424,7 @@ export const ManyOrganizations: StoryObj = {
 				id: `org-${index + 1}`,
 				slug: `org-${index + 1}`,
 				name: `Organization ${index + 1}`,
+				pinnedBrandId: null,
 				brandCreation: { kind: "allowed" as const },
 				brands: [],
 			})),

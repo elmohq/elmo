@@ -8,7 +8,7 @@ import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
 import { clampedCount, DEFAULT_LIMIT, offsetOf, page, paginationOf } from "@/lib/api/query";
 import { promptListSchema, promptSchema } from "@/lib/api/schemas/prompts";
-import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
+import { brandScopeCondition, requireBrandInScope, requireBrandWriteAccess } from "@/lib/api/scope";
 import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-core";
 
 const listPromptsQuery = z.object({
@@ -62,6 +62,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				scopes: ["write"],
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
+					await requireBrandWriteAccess(auth, brand);
 					const [created] = await createPrompts(brand, {
 						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
 					});

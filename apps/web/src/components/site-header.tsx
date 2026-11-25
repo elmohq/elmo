@@ -48,7 +48,7 @@ export function SiteHeader() {
 								<Fragment key={crumb.href}>
 									{index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
 									<BreadcrumbItem className={isLast ? undefined : "hidden md:block"}>
-										{isLast ? (
+										{isLast || crumb.plain ? (
 											<BreadcrumbPage className={CRUMB}>
 												<CrumbLabel crumb={crumb} />
 											</BreadcrumbPage>

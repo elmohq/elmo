@@ -10,7 +10,7 @@ import {
 	enqueueAnalyzeBrand,
 	getAnalyzeBrandStatus,
 } from "@/lib/analyze-brand-job";
-import { requireBrandSession } from "@/lib/auth/helpers";
+import { requireBrandAdminSession, requireBrandSession } from "@/lib/auth/helpers";
 import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onboarding-core";
 
 /**
@@ -26,7 +26,7 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 		await enqueueAnalyzeBrand(data);
 		return { ok: true };
 	});
@@ -42,7 +42,7 @@ export const getAnalyzeBrandStatusFn = createServerFn({ method: "POST" })
 export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 		await cancelAnalyzeBrand(data.brandId);
 		return { ok: true };
 	});
@@ -50,6 +50,6 @@ export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 	.validator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 		return saveWizardOnboarding(data);
 	});

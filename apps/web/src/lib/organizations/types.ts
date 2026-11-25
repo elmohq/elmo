@@ -17,6 +17,8 @@ export interface OrganizationSummary {
 	id: string;
 	slug: string;
 	name: string;
+	role: string;
+	pinnedBrandId: string | null;
 	brands: OrganizationBrand[];
 	brandCreation: BrandCreation;
 }

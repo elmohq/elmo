@@ -4,7 +4,12 @@
  */
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
-import { brandScopeCondition, requireBrandInScope, requirePromptInScope } from "@/lib/api/scope";
+import {
+	brandScopeCondition,
+	requireBrandInScope,
+	requireBrandWriteAccess,
+	requirePromptWriteAccess,
+} from "@/lib/api/scope";
 import {
 	bulkPromptInputSchema,
 	createPrompts,
@@ -72,6 +77,7 @@ export const createPromptsTool = defineTool({
 	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");
+		await requireBrandWriteAccess(auth, brand);
 		return { data: await createPrompts(brand, { prompts: args.prompts }) };
 	},
 });
@@ -92,7 +98,7 @@ export const updatePromptTool = defineTool({
 		tags: promptUpdateFields.tags,
 	},
 	run: async ({ auth }, args) => {
-		const { brand } = await requirePromptInScope(auth, args.promptId);
+		const { brand } = await requirePromptWriteAccess(auth, args.promptId);
 		const { promptId, ...changes } = args;
 		return updatePrompt(brand, promptId, changes);
 	},

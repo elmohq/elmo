@@ -32,9 +32,10 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	requireAuthSession,
-	requireBrandOrganization,
+	requireBrandAdminOrganization,
+	requireBrandAdminSession,
 	requireBrandSession,
-	requireOrgAccess,
+	requireOrganizationAdmin,
 	requirePlatformPicksEditable,
 } from "@/lib/auth/helpers";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
@@ -181,7 +182,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireOrganizationAdmin(session.user.id, data.brandId);
 		// This legacy path fills an empty org's first brand (brandId here IS the
 		// org id), so the brand count gate applies to that org.
 		await assertCanCreateBrand(data.brandId);
@@ -261,7 +262,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		}
 
 		const orgId = data.organizationId;
-		await requireOrgAccess(session.user.id, orgId);
+		await requireOrganizationAdmin(session.user.id, orgId);
 		await assertCanCreateBrand(orgId);
 
 		const baseSlug = slugify(trimmedName, "brand");
@@ -302,7 +303,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireBrandAdminOrganization(session.user.id, data.brandId);
 
 		if (data.slug !== undefined && !isValidSlug(data.slug)) throw new Error(INVALID_SLUG);
 
@@ -366,7 +367,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 
 		// A bulk replace, so the list submitted is the list the brand ends up with.
 		assertAllowed(decideCompetitorCap(data.competitors.length));
@@ -412,7 +413,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -444,7 +445,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireBrandSession(data.brandId);
+		await requireBrandAdminSession(data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -475,7 +476,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		const org = await requireBrandOrganization(session.user.id, data.brandId);
+		const org = await requireBrandAdminOrganization(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
