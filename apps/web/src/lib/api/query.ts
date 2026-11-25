@@ -13,7 +13,6 @@ const INSTANT_EXAMPLE = "an ISO 8601 timestamp with an offset, e.g. 2026-01-01T0
  * offset, so a client paging past it would skip rows without knowing.
  */
 export function boundedCount(max: number, fallback: number) {
-	const range = max === Number.MAX_SAFE_INTEGER ? "a whole number of at least 1" : `a whole number from 1 to ${max}`;
 	return z
 		.string()
 		.optional()
@@ -21,7 +20,7 @@ export function boundedCount(max: number, fallback: number) {
 			if (raw === undefined) return fallback;
 			const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
 			if (value >= 1 && value <= max) return value;
-			ctx.addIssue({ code: "custom", message: `must be ${range}` });
+			ctx.addIssue({ code: "custom", message: `must be a whole number from 1 to ${max}` });
 			return z.NEVER;
 		});
 }

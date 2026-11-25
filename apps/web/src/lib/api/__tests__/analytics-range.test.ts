@@ -24,9 +24,10 @@ describe("analytics API query parsing", () => {
 		expect(read("page=2&limit=100")).toEqual({ page: 2, limit: 100 });
 		expect(() => read("limit=101")).toThrow("must be a whole number from 1 to 100");
 		expect(() => read("limit=0")).toThrow("must be a whole number from 1 to 100");
-		expect(() => read("page=0")).toThrow("must be a whole number of at least 1");
-		expect(() => read("page=-1")).toThrow("must be a whole number of at least 1");
-		expect(() => read("page=abc")).toThrow("must be a whole number of at least 1");
+		expect(() => read("page=0")).toThrow("must be a whole number from 1 to 9007199254740991");
+		expect(() => read("page=-1")).toThrow("must be a whole number from 1 to 9007199254740991");
+		expect(() => read("page=9007199254740992")).toThrow("must be a whole number from 1 to 9007199254740991");
+		expect(() => read("page=abc")).toThrow("must be a whole number from 1 to 9007199254740991");
 		expect(() => read("limit=20.5")).toThrow("must be a whole number from 1 to 100");
 		expect(() => read("limit=")).toThrow("must be a whole number from 1 to 100");
 	});
