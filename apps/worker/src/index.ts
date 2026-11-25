@@ -8,9 +8,12 @@ import { PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS } from "@workspace/lib/queues/
 import { GENERATE_REPORT_QUEUE, REPORT_JOB_OPTIONS } from "@workspace/lib/queues/report-jobs";
 import { REFRESH_ROLLUPS_QUEUE, ROLLUP_CATCH_UP_QUEUE } from "@workspace/lib/rollups/constants";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { sql } from "drizzle-orm";
 import type { PgBoss } from "pg-boss";
 import { startBackfills } from "./backfills";
 import { getBoss } from "./boss";
+import { startDbWatchdog } from "./db-watchdog";
+import { createErrorThrottle } from "./error-throttle";
 import { registerHandlers } from "./handlers";
 import { DERIVE_RUNS_QUEUE, DERIVE_RUNS_QUEUE_OPTIONS, reprocessDays, requestUnjudgedRuns } from "./jobs/derive-runs";
 import {
@@ -34,6 +37,8 @@ async function createOrUpdateQueue(
 	await boss.updateQueue(name, options);
 }
 
+let stopDbWatchdog: (() => void) | undefined;
+
 async function main() {
 	console.log("Starting pg-boss worker...");
 	assertRequiredEnv();
@@ -52,16 +57,31 @@ async function main() {
 	const { judgeVersion } = configureMentionAnalyzer();
 	console.log(`Judging mentions with ${judgeVersion}`);
 
+	const throttleBossError = createErrorThrottle();
 	boss.on("error", (error) => {
-		console.error("pg-boss error:", error);
+		const report = throttleBossError(error);
+		if (!report) return;
+		console.error(
+			report.suppressed > 0 ? `pg-boss error (${report.suppressed} repeats suppressed):` : "pg-boss error:",
+			error,
+		);
 		Sentry.withScope((scope) => {
 			scope.setTag("source", "pg-boss-internal");
+			scope.setExtra("suppressed", report.suppressed);
 			Sentry.captureException(error);
 		});
 	});
 
 	await boss.start();
 	console.log("pg-boss started");
+
+	stopDbWatchdog = startDbWatchdog({
+		probes: {
+			boss: () => boss.getDb().executeSql("select 1"),
+			app: () => db.execute(sql`select 1`),
+		},
+		onUnhealthy: exitOnUnhealthyDatabase,
+	});
 
 	// Queue defaults too, so a job sent without them is never retried into a second fan-out.
 	await createOrUpdateQueue(boss, PROCESS_PROMPT_QUEUE, PROMPT_JOB_OPTIONS);
@@ -173,8 +193,25 @@ main().catch(async (error) => {
 	process.exit(1);
 });
 
+// Exits rather than stopping pg-boss gracefully, which needs the database this
+// pool can no longer reach. Jobs it held are retried once they expire.
+async function exitOnUnhealthyDatabase(pool: string, lastError: unknown): Promise<void> {
+	console.error(
+		`The ${pool} database pool has been unreachable for too long, exiting so the worker restarts:`,
+		lastError,
+	);
+	Sentry.withScope((scope) => {
+		scope.setTag("source", "db-watchdog");
+		scope.setTag("pool", pool);
+		Sentry.captureException(lastError);
+	});
+	await Sentry.flush(2000);
+	process.exit(1);
+}
+
 async function shutDownGracefully(signal: NodeJS.Signals): Promise<void> {
 	console.log(`Received ${signal}, shutting down gracefully...`);
+	stopDbWatchdog?.();
 	await getBoss().stop({ graceful: true, timeout: 30000 });
 	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
