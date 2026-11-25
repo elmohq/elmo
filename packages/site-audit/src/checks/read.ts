@@ -8,7 +8,7 @@ import {
 	parsedPages,
 	type SiteArtifacts,
 } from "../gather";
-import { codeFencesBalanced, estimateTokens, hasFrontmatter, llmsTxtShape, looksLikeHtml } from "../parse/markdown";
+import { codeFencesBalanced, estimateTokens, hasFrontmatter, llmsTxtShape } from "../parse/markdown";
 import type { CheckResult } from "../types";
 import { type CheckDefinition, count, notFetched, result, share, wasNotFetched } from "./result";
 

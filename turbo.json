@@ -3,6 +3,7 @@
   "agentGuidance": false,
   "globalEnv": [
     "DATABASE_URL",
+    "DATABASE_POOL_MAX",
     "APP_URL",
     "BETTER_AUTH_SECRET",
     "AUTH0_DOMAIN",

@@ -52,7 +52,7 @@ function SkillPage() {
 			</section>
 
 			<section className="space-y-3">
-				<h2 className="text-lg font-semibold">Connect it to your data</h2>
+				<h2 className="text-lg font-semibold">Connect It to Your Data</h2>
 				<p className="text-sm text-muted-foreground">
 					With this deployment connected over{" "}
 					<Link to="/app/org/$org/settings/mcp" params={linkParams} className="underline underline-offset-4">
@@ -64,7 +64,7 @@ function SkillPage() {
 			</section>
 
 			<section className="space-y-3">
-				<h2 className="text-lg font-semibold">Try asking</h2>
+				<h2 className="text-lg font-semibold">Try Asking</h2>
 				<ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
 					{EXAMPLE_ASKS.map((ask) => (
 						<li key={ask}>{ask}</li>
