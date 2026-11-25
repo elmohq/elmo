@@ -181,7 +181,7 @@ export function AppSidebar({ section, organization, brand }: AppSidebarProps) {
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser showOrganizations={section !== "account"} adminItems={section === "admin" ? [] : adminItems} />
-				<NavAppInfo />
+				<NavAppInfo showExternalLinks={isOrgAdmin} />
 			</SidebarFooter>
 		</Sidebar>
 	);
