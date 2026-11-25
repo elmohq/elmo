@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { type ChartConfig, ChartContainer, ChartTooltip } from "@workspace/ui/components/chart";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { formatLongDate, formatShortDate } from "@/lib/chart-utils";
 
 export function TrendAreaChart({
 	title,
@@ -51,11 +52,7 @@ export function TrendAreaChart({
 							tickMargin={8}
 							minTickGap={50}
 							tick={{ fontSize: 11 }}
-							tickFormatter={(value) => {
-								const [year, month, day] = String(value).split("-").map(Number);
-								const date = new Date(year, month - 1, day);
-								return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-							}}
+							tickFormatter={(value) => formatShortDate(String(value))}
 						/>
 						<YAxis
 							tickLine={false}
@@ -72,13 +69,7 @@ export function TrendAreaChart({
 							content={({ active, payload, label }) => {
 								if (!active || !payload?.length) return null;
 								const dp = payload[0]?.payload as Record<string, number | string> | undefined;
-								const [year, month, day] = String(label).split("-").map(Number);
-								const date = new Date(year, month - 1, day);
-								const formattedDate = date.toLocaleDateString("en-US", {
-									month: "long",
-									day: "numeric",
-									year: "numeric",
-								});
+								const formattedDate = formatLongDate(String(label));
 								const rows = ordered
 									.map((k) => ({ k, value: (dp?.[k] as number | undefined) ?? 0 }))
 									.filter((r) => r.value > 0);
