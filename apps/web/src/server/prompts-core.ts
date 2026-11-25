@@ -3,17 +3,26 @@
  * its own vocabulary. Callers decide the brand is theirs before calling in.
  */
 
+import {
+	countrySchema,
+	languageSchema,
+	type Market,
+	parseCountryFilter,
+	parseLanguageFilter,
+	resolveMarket,
+} from "@workspace/config/markets";
 import { selectPremiumModels } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import type { DbConnection } from "@workspace/lib/db/db-connection";
-import { citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { assertPromptSaveAllowed, withQuotaLock } from "@workspace/lib/entitlements";
 import { lockBrandRollups, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL } from "drizzle-orm";
+import { and, arrayOverlaps, count, desc, eq, ilike, inArray, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 import { variantGroupOf } from "@/lib/prompt-variants";
+import { promptLanguageDetector } from "@/server/prompt-language";
 import { settleVariantParents } from "@/server/prompt-parents";
 
 export const MAX_PROMPT_BATCH = 100;
@@ -45,6 +54,18 @@ const promptTagsSchema = z.array(z.string()).describe("Free-form labels used for
 
 const VARIANT_COST = "A variant is tracked and billed as its own prompt.";
 
+const promptCountrySchema = countrySchema
+	.nullable()
+	.describe(
+		"ISO 3166-1 alpha-2 country to ask the prompt from, e.g. `DE`. Null follows the brand's country. Each model uses it where its provider accepts a country.",
+	);
+
+const promptLanguageSchema = languageSchema
+	.nullable()
+	.describe(
+		"ISO 639-1 language the prompt is written in, e.g. `de`. Omitted, it is detected from the text when that is clearly not the brand's language. Null follows the brand's language. The text is sent as written: Elmo does not translate it.",
+	);
+
 export const bulkPromptInputSchema = z.object({
 	brandId: brandIdSchema,
 	prompts: z
@@ -60,6 +81,8 @@ export const bulkPromptInputSchema = z.object({
 					.describe(
 						`The id of an existing prompt in this brand, to add this one as a variant: another wording of the same question. ${VARIANT_COST} Naming a variant adds this one beside it, under the same parent.`,
 					),
+				country: promptCountrySchema.optional(),
+				language: promptLanguageSchema.optional(),
 			}),
 		)
 		.min(1, "prompts must contain at least one entry")
@@ -79,13 +102,15 @@ export const promptUpdateFields = {
 		.describe(
 			"Makes the prompt a variant of another prompt in the same brand, taking its own variants with it. Naming one of its own variants swaps the two. Null makes a variant stand on its own; on a parent it changes nothing.",
 		),
+	country: promptCountrySchema.optional(),
+	language: promptLanguageSchema.optional(),
 };
 
 export const updatePromptInputSchema = z
 	.object(promptUpdateFields)
 	.refine(
 		(body) => Object.keys(body).length > 0,
-		"At least one of value, enabled, tags, premiumModels, or parentId must be provided",
+		"At least one of value, enabled, tags, premiumModels, parentId, country, or language must be provided",
 	);
 
 export type BulkPromptInput = z.infer<typeof bulkPromptInputSchema>;
@@ -105,6 +130,8 @@ const PROMPT_COLUMNS = {
 	brandId: prompts.brandId,
 	value: prompts.value,
 	parentId: prompts.parentId,
+	country: prompts.country,
+	language: prompts.language,
 	enabled: prompts.enabled,
 	tags: prompts.tags,
 	systemTags: prompts.systemTags,
@@ -115,17 +142,28 @@ const PROMPT_COLUMNS = {
 
 export type PromptSummary = {
 	[K in keyof typeof PROMPT_COLUMNS]: Prompt[K];
+} & {
+	effectiveCountry: string;
+	effectiveLanguage: string;
 };
+
+function effectiveLocale(prompt: { country: string | null; language: string | null }, brand: Market) {
+	const market = resolveMarket(prompt, brand);
+	return { effectiveCountry: market.country, effectiveLanguage: market.language };
+}
 
 /** The public shape of a prompt. `listPrompts` selects these columns; a read
  *  that starts from the whole row projects onto them here, so every edge that
  *  hands a prompt to a client answers the same fields. */
-export function toPromptSummary(prompt: Prompt): PromptSummary {
+export function toPromptSummary(prompt: Prompt, brand: Market): PromptSummary {
 	return {
 		id: prompt.id,
 		brandId: prompt.brandId,
 		value: prompt.value,
 		parentId: prompt.parentId,
+		country: prompt.country,
+		language: prompt.language,
+		...effectiveLocale(prompt, brand),
 		enabled: prompt.enabled,
 		tags: prompt.tags,
 		systemTags: prompt.systemTags,
@@ -141,6 +179,8 @@ export interface ListPromptsFilters {
 	tags?: string[];
 	/** Only the variants of this prompt. */
 	parentId?: string;
+	countries?: string;
+	languages?: string;
 	q?: string;
 	limit: number;
 	offset: number;
@@ -154,18 +194,31 @@ export async function listPrompts(filters: ListPromptsFilters): Promise<{ data: 
 	const tags = (filters.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 	if (tags.length > 0) conditions.push(arrayOverlaps(prompts.tags, tags));
 	if (filters.parentId) conditions.push(eq(prompts.parentId, filters.parentId));
+	const countries = parseCountryFilter(filters.countries);
+	if (countries.length > 0) conditions.push(inArray(sql`coalesce(${prompts.country}, ${brands.country})`, countries));
+	const languages = parseLanguageFilter(filters.languages);
+	if (languages.length > 0) conditions.push(inArray(sql`coalesce(${prompts.language}, ${brands.language})`, languages));
 	if (filters.q?.trim()) conditions.push(ilike(prompts.value, `%${filters.q.trim()}%`));
 
 	const where = and(...conditions.filter(Boolean));
-	const [totals] = await db.select({ count: count() }).from(prompts).where(where);
-	const data = await db
-		.select(PROMPT_COLUMNS)
+	const [totals] = await db
+		.select({ count: count() })
 		.from(prompts)
+		.innerJoin(brands, eq(prompts.brandId, brands.id))
+		.where(where);
+	const rows = await db
+		.select({ ...PROMPT_COLUMNS, brandCountry: brands.country, brandLanguage: brands.language })
+		.from(prompts)
+		.innerJoin(brands, eq(prompts.brandId, brands.id))
 		.where(where)
 		.orderBy(desc(prompts.createdAt))
 		.limit(filters.limit)
 		.offset(filters.offset);
 
+	const data = rows.map(({ brandCountry, brandLanguage, ...prompt }) => ({
+		...prompt,
+		...effectiveLocale(prompt, { country: brandCountry, language: brandLanguage }),
+	}));
 	return { data, total: totals?.count ?? 0 };
 }
 
@@ -194,10 +247,17 @@ async function parentInBrand(conn: DbConnection, brandId: string, parentId: stri
  * overrun a limit creates nothing. */
 export async function createPrompts(brand: PromptBrand, input: Omit<BulkPromptInput, "brandId">): Promise<Prompt[]> {
 	const parsed = bulkPromptInputSchema.omit({ brandId: true }).parse(input);
-	const rows = parsed.prompts.map((prompt) => ({
+	const detectLanguage = await promptLanguageDetector(brand.id);
+	// An omitted language is detected; an explicit null is the caller choosing the brand's.
+	const languages = await Promise.all(
+		parsed.prompts.map((prompt) => (prompt.language === undefined ? detectLanguage(prompt.value) : prompt.language)),
+	);
+	const rows = parsed.prompts.map((prompt, index) => ({
 		brandId: brand.id,
 		value: prompt.value,
 		parentId: prompt.parentId ?? null,
+		country: prompt.country ?? null,
+		language: languages[index],
 		enabled: prompt.enabled ?? true,
 		tags: sanitizeUserTags(prompt.tags ?? []),
 		systemTags: computeSystemTags(prompt.value, brand.name, brand.website),
@@ -255,6 +315,8 @@ function promptUpdateData(
 	if (input.enabled !== undefined) update.enabled = input.enabled;
 	if (input.tags !== undefined) update.tags = sanitizeUserTags(input.tags);
 	if (input.premiumModels !== undefined) update.premiumModels = nextPremium;
+	if (input.country !== undefined) update.country = input.country;
+	if (input.language !== undefined) update.language = input.language;
 	return update;
 }
 

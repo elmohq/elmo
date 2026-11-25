@@ -9,6 +9,7 @@
 		"test": "vitest run --project=unit",
 		"test:integration": "vitest run --project=integration",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
+		"docs:markets": "tsx scripts/write-market-docs.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh",
 		"verify:membership-dedupe": "tsx scripts/verify-membership-dedupe.ts"
 	},
@@ -57,7 +58,9 @@
 		"./rollups/dirty": "./src/rollups/dirty.ts",
 		"./rollups/citation-pages": "./src/rollups/citation-pages.ts",
 		"./rollups/fanout": "./src/rollups/fanout.ts",
-		"./mention-judge": "./src/mention-judge/index.ts"
+		"./mention-judge": "./src/mention-judge/index.ts",
+		"./markets/translate": "./src/markets/translate.ts",
+		"./markets/detect-language": "./src/markets/detect-language.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "catalog:",
@@ -77,6 +80,7 @@
 		"better-auth": "catalog:",
 		"dataforseo-client": "catalog:",
 		"drizzle-orm": "catalog:",
+		"eld": "^2.1.1",
 		"jose": "6.2.15",
 		"linkedom": "catalog:",
 		"olostep": "catalog:",

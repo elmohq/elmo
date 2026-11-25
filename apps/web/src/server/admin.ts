@@ -668,7 +668,7 @@ function resolveRunPlansForBrands(input: {
 				defaultDelayHours: input.defaultDelayHours,
 				entitlements,
 				orgPrompts: enabledByOrg.get(brand.organizationId) ?? [],
-				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				brand,
 				prompts: brandPrompts,
 			})) {
 				plans.set(promptId, plan);

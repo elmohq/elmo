@@ -1,3 +1,4 @@
+import { googleLanguageCode, type Market } from "@workspace/config/markets";
 import { getCredential } from "../../secrets";
 import { type Citation, extractCitationsFromSearchapi, searchapiText } from "../../text-extraction";
 import { configuredWhen, reportedWebQueries } from "../config";
@@ -14,7 +15,7 @@ import {
 
 const SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search";
 
-// SearchApi localizes every surface it can; default to a US audience.
+// What the Google engines are sent for a run with no market.
 const GOOGLE_LOCALE = { gl: "us", hl: "en" } as const;
 
 const SEARCHAPI_TIMEOUT_MS = 3 * 60 * 1000;
@@ -23,19 +24,32 @@ type SearchapiTarget = {
 	engine: string;
 	params?: Record<string, string>;
 	nested?: "ai_overview";
+	/** The parameter the engine reads a country from. Bing's Copilot engine has none Elmo can fill. */
+	countryParam?: "gl" | "country";
 };
 
 // AI Overview rides on the SERP engine: Google inlines the overview on some
 // result pages, and on the rest hands back an ai_overview.page_token that only
 // the dedicated engine can redeem.
 const SEARCHAPI_TARGETS: Record<string, SearchapiTarget> = {
-	chatgpt: { engine: "chatgpt" },
+	chatgpt: { engine: "chatgpt", countryParam: "country" },
 	// SearchApi's name for bing.com/copilotsearch, which Bing now titles AI Mode.
 	"bing-ai-mode": { engine: "bing_copilot" },
-	gemini: { engine: "gemini" },
-	"google-ai-mode": { engine: "google_ai_mode", params: { ...GOOGLE_LOCALE } },
-	"google-ai-overview": { engine: "google", params: { ...GOOGLE_LOCALE, link: "resolved" }, nested: "ai_overview" },
+	gemini: { engine: "gemini", countryParam: "gl" },
+	"google-ai-mode": { engine: "google_ai_mode", params: { ...GOOGLE_LOCALE }, countryParam: "gl" },
+	"google-ai-overview": {
+		engine: "google",
+		params: { ...GOOGLE_LOCALE, link: "resolved" },
+		nested: "ai_overview",
+		countryParam: "gl",
+	},
 };
+
+function applyMarket(params: URLSearchParams, target: SearchapiTarget, market: Market | undefined): void {
+	if (!market || !target.countryParam) return;
+	params.set(target.countryParam, market.country.toLowerCase());
+	if (target.params?.hl) params.set("hl", googleLanguageCode(market));
+}
 
 const AI_OVERVIEW_ENGINE = "google_ai_overview";
 
@@ -135,6 +149,14 @@ export const searchapi: Provider = {
 		return null;
 	},
 
+	localizes(config: ModelConfig) {
+		return SEARCHAPI_TARGETS[config.model]?.countryParam !== undefined;
+	},
+
+	sendsLanguage(config: ModelConfig) {
+		return SEARCHAPI_TARGETS[config.model]?.params?.hl !== undefined;
+	},
+
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const target = SEARCHAPI_TARGETS[model];
 		if (!target) {
@@ -145,6 +167,7 @@ export const searchapi: Provider = {
 
 		const params = new URLSearchParams({ engine: target.engine, q: prompt, ...target.params });
 		if (hasWebSearchToggle(model)) params.set("web_search", String(options?.webSearch ?? false));
+		applyMarket(params, target, options?.market);
 
 		const serp = await search(params);
 		const payload = target.nested === "ai_overview" ? await redeemAiOverviewToken(serp) : serp;

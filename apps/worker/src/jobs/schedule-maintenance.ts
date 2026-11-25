@@ -150,7 +150,7 @@ function resolveRunPlans(args: {
 				defaultDelayHours,
 				entitlements,
 				orgPrompts: args.promptsByOrg.get(brand.organizationId) ?? [],
-				brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+				brand,
 				prompts: brandPrompts,
 			});
 			for (const [promptId, plan] of plans) planByPromptId.set(promptId, plan);

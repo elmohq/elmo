@@ -2,6 +2,7 @@
  * No delete tool: deleting takes a prompt's runs and citations with it.
  * Disabling is the reversible way to stop a prompt costing runs.
  */
+import { countryFilterSchema, languageFilterSchema } from "@workspace/config/markets";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { withPromptWriteErrors } from "@/lib/api/prompt-errors";
@@ -12,6 +13,7 @@ import {
 	listPrompts,
 	MAX_PROMPT_BATCH,
 	promptUpdateFields,
+	toPromptSummary,
 	updatePrompt,
 } from "@/server/prompts-core";
 import { listBrandTags } from "@/server/tags-core";
@@ -21,7 +23,7 @@ export const listPromptsTool = defineTool({
 	name: "list_prompts",
 	title: "List prompts",
 	description:
-		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. A prompt with a `parentId` is a variant: another wording of that prompt's question, sampled on its own. This is the one list that can get long, so it pages.",
+		"The prompts asked of the models on a brand's behalf. `enabled` is what decides whether a prompt is still being sampled. A prompt with a `parentId` is a variant: another wording of that prompt's question, sampled on its own. `country` and `language` are a prompt's own settings, null where it follows the brand; `effectiveCountry` and `effectiveLanguage` are what it is actually asked from and in. This is the one list that can get long, so it pages.",
 	scopes: ["read"],
 	readOnly: true,
 	input: {
@@ -29,6 +31,12 @@ export const listPromptsTool = defineTool({
 		enabled: z.boolean().optional().describe("Restrict to prompts that are or aren't being sampled."),
 		tags: z.string().optional().describe("Comma-separated tags; a prompt carrying any of them matches."),
 		parentId: z.uuid().optional().describe("Restrict to the variants of this prompt."),
+		countries: countryFilterSchema
+			.optional()
+			.describe("Comma-separated ISO country codes, e.g. `DE,CH`; a prompt asked from any of them matches."),
+		languages: languageFilterSchema
+			.optional()
+			.describe("Comma-separated ISO language codes, e.g. `de,fr`; a prompt written in any of them matches."),
 		q: z.string().optional().describe("Substring match on the prompt text."),
 		page: z.number().int().min(1).optional().describe("1-based page number. Defaults to 1."),
 		limit: z.number().int().min(1).max(1000).optional().describe("Prompts per page. Defaults to 100."),
@@ -43,6 +51,8 @@ export const listPromptsTool = defineTool({
 			enabled: args.enabled,
 			tags: (args.tags ?? "").split(","),
 			parentId: args.parentId,
+			countries: args.countries,
+			languages: args.languages,
 			q: args.q,
 			limit,
 			offset: (page - 1) * limit,
@@ -75,7 +85,8 @@ export const createPromptsTool = defineTool({
 	input: { brandId: brandIdArg, prompts: bulkPromptInputSchema.shape.prompts },
 	run: async ({ auth }, args) => {
 		const brand = await requireBrandInScope(auth, args.brandId, "body");
-		return { data: await withPromptWriteErrors(() => createPrompts(brand, { prompts: args.prompts })) };
+		const created = await withPromptWriteErrors(() => createPrompts(brand, { prompts: args.prompts }));
+		return { data: created.map((prompt) => toPromptSummary(prompt, brand)) };
 	},
 });
 
@@ -83,7 +94,7 @@ export const updatePromptTool = defineTool({
 	name: "update_prompt",
 	title: "Update a prompt",
 	description:
-		"Change a prompt's text, tags, parent, or whether it is being sampled. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
+		"Change a prompt's text, tags, parent, country, language, or whether it is being sampled. Changing `country` or `language` does not translate the text. Setting `enabled: false` is how you stop a prompt costing runs — it keeps every answer already recorded.",
 	scopes: ["write"],
 	readOnly: false,
 	// No `premiumModels`: pairing a prompt with one spends a metered pool, which
@@ -94,10 +105,12 @@ export const updatePromptTool = defineTool({
 		enabled: promptUpdateFields.enabled,
 		tags: promptUpdateFields.tags,
 		parentId: promptUpdateFields.parentId,
+		country: promptUpdateFields.country,
+		language: promptUpdateFields.language,
 	},
 	run: async ({ auth }, args) => {
 		const { brand } = await requirePromptInScope(auth, args.promptId);
 		const { promptId, ...changes } = args;
-		return withPromptWriteErrors(() => updatePrompt(brand, promptId, changes));
+		return toPromptSummary(await withPromptWriteErrors(() => updatePrompt(brand, promptId, changes)), brand);
 	},
 });

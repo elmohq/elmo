@@ -1,5 +1,6 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { countryName } from "@workspace/config/markets";
 import { getModelMeta } from "@workspace/config/models";
 import {
 	PREMIUM_MODELS,
@@ -28,9 +29,12 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { CornerDownRight, Inbox, ListPlus, MoreHorizontal, Plus, Sparkles, X } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { useOrganizationParams } from "@/hooks/use-route-params";
+import { CountrySelect, describePromptCost, LanguageSelect } from "@/components/country-picker";
+import { type TranslatedDraft, type TranslateFn, TranslatePromptsDialog } from "@/components/translate-prompts-dialog";
+import { useBrandParams, useOrganizationParams } from "@/hooks/use-route-params";
+import type { MarketSupport } from "@/lib/market-support";
 import { countVariants, groupLeads, insertIntoGroup } from "@/lib/prompt-variants";
 
 export interface EditablePrompt {
@@ -43,7 +47,20 @@ export interface EditablePrompt {
 	tags: string[];
 	systemTags: string[];
 	premiumModels: string[];
+	/** Null follows the brand. */
+	country: string | null;
+	language: string | null;
+	/** Set once someone picks the language, which stops it following the wording. */
+	languageChosen?: boolean;
 	suggested?: boolean;
+}
+
+/** What the editor needs to offer countries and languages. Omitted where prompts are only being drafted, like onboarding. */
+export interface PromptLocales {
+	support: MarketSupport;
+	translate: TranslateFn;
+	/** The language a new prompt's wording is in; null when it is the brand's or too unclear to say. */
+	detectLanguage: (text: string) => Promise<string | null>;
 }
 
 export interface PremiumAllowance {
@@ -60,7 +77,10 @@ export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePromp
 		tags: partial?.tags ?? [],
 		systemTags: partial?.systemTags ?? [],
 		premiumModels: partial?.premiumModels ?? [],
+		country: partial?.country ?? null,
+		language: partial?.language ?? null,
 		...(partial?.id ? { id: partial.id } : {}),
+		...(partial?.languageChosen ? { languageChosen: true } : {}),
 		...(partial?.suggested ? { suggested: true } : {}),
 	};
 }
@@ -164,7 +184,17 @@ const GRID_COLS: Record<string, string> = {
 	"system-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_5.5rem_2.75rem]",
 	"plain-basic": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]",
 	"plain-premium": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_5.5rem_2.75rem]",
+	"system-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_11rem_8rem_2.75rem]",
+	"system-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(10rem,1fr)_11rem_8rem_5.5rem_2.75rem]",
+	"plain-basic-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_11rem_8rem_2.75rem]",
+	"plain-premium-country": "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(10rem,1fr)_11rem_8rem_5.5rem_2.75rem]",
 };
+
+/** Columns: [select] [text] [system?] [tags] [country and language?] [premium?] [switch]. */
+function gridColsFor(columns: { system: boolean; premium: boolean; country: boolean }): string {
+	const key = `${columns.system ? "system" : "plain"}-${columns.premium ? "premium" : "basic"}`;
+	return GRID_COLS[columns.country ? `${key}-country` : key];
+}
 
 interface PromptsListEditorProps {
 	prompts: EditablePrompt[];
@@ -177,6 +207,7 @@ interface PromptsListEditorProps {
 	premium?: PremiumAllowance;
 	/** Lets a prompt gain variants. Off where prompts are only being drafted, like onboarding. */
 	variants?: boolean;
+	locales?: PromptLocales;
 	leading?: ReactNode;
 	pendingRows?: number;
 }
@@ -244,6 +275,7 @@ function ColumnHeader({
 	gridCols,
 	showSystemTags,
 	premium,
+	showCountry,
 	allSelected,
 	onToggleSelectAll,
 	disabled,
@@ -251,6 +283,7 @@ function ColumnHeader({
 	gridCols: string;
 	showSystemTags: boolean;
 	premium?: PremiumAllowance;
+	showCountry: boolean;
 	allSelected: boolean;
 	onToggleSelectAll: () => void;
 	disabled: boolean;
@@ -296,6 +329,7 @@ function ColumnHeader({
 					</TooltipContent>
 				</Tooltip>
 			</div>
+			{showCountry && <LocaleHeaders />}
 			{premium && (
 				<div className="flex items-center justify-center gap-1">
 					Premium
@@ -324,12 +358,46 @@ const ACTIONS_PADDING = ["", "pr-8", "pr-14"];
 const FIELD_ACTION_CLASS =
 	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
 
+function RowMenu({
+	prompt,
+	onAddVariant,
+	onTranslate,
+}: {
+	prompt: EditablePrompt;
+	onAddVariant?: () => void;
+	onTranslate?: () => void;
+}) {
+	if (!onAddVariant && !onTranslate) return null;
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={<button type="button" aria-label={`Actions for "${prompt.value}"`} className={FIELD_ACTION_CLASS} />}
+			>
+				<MoreHorizontal className="size-4" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				{onAddVariant && (
+					<DropdownMenuItem onClick={onAddVariant} className="cursor-pointer">
+						Add Variant
+					</DropdownMenuItem>
+				)}
+				{onTranslate && (
+					<DropdownMenuItem onClick={onTranslate} className="cursor-pointer">
+						Translate
+					</DropdownMenuItem>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 function PromptTextField({
 	prompt,
 	lead,
 	onValueChange,
 	onRemove,
 	onAddVariant,
+	onTranslate,
 	className,
 }: {
 	prompt: EditablePrompt;
@@ -338,10 +406,11 @@ function PromptTextField({
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
 	onAddVariant?: () => void;
+	onTranslate?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
-	const actions = Number(removable) + Number(Boolean(onAddVariant));
+	const actions = Number(removable) + Number(Boolean(onAddVariant || onTranslate));
 	return (
 		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
 			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
@@ -366,22 +435,7 @@ function PromptTextField({
 					className={cn("min-w-0", prompt.suggested && "pl-8", ACTIONS_PADDING[actions])}
 				/>
 				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
-					{onAddVariant && (
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={
-									<button type="button" aria-label={`Actions for "${prompt.value}"`} className={FIELD_ACTION_CLASS} />
-								}
-							>
-								<MoreHorizontal className="size-4" />
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem onClick={onAddVariant} className="cursor-pointer">
-									Add Variant
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					)}
+					<RowMenu prompt={prompt} onAddVariant={onAddVariant} onTranslate={onTranslate} />
 					{removable && (
 						<button
 							type="button"
@@ -396,6 +450,98 @@ function PromptTextField({
 			</div>
 		</div>
 	);
+}
+
+function LocaleHeaders() {
+	const params = useBrandParams();
+	return (
+		<>
+			<div className="flex items-center gap-1">
+				Country
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">
+							Where the prompt is asked from. Each model uses it where its provider can.{" "}
+							<Link to="/app/org/$org/brand/$brand/settings/llms" params={params} className="underline">
+								See what each model does
+							</Link>
+						</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+			<div className="flex items-center gap-1">
+				Language
+				<Tooltip>
+					<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
+					<TooltipContent>
+						<p className="max-w-xs">
+							The language the prompt is written in. It is detected when you save; change it here if it is wrong.
+						</p>
+					</TooltipContent>
+				</Tooltip>
+			</div>
+		</>
+	);
+}
+
+function PromptLocaleFields({
+	prompt,
+	support,
+	onChange,
+}: {
+	prompt: EditablePrompt;
+	support: MarketSupport;
+	onChange: (patch: Partial<Pick<EditablePrompt, "country" | "language" | "languageChosen">>) => void;
+}) {
+	return (
+		<>
+			<CountrySelect
+				value={prompt.country}
+				onChange={(country) => onChange({ country })}
+				defaultCountry={support.brandMarket.country}
+				disabled={!prompt.enabled}
+			/>
+			<LanguageSelect
+				value={prompt.language ?? support.brandMarket.language}
+				onChange={(language) => onChange({ language, languageChosen: true })}
+				disabled={!prompt.enabled}
+			/>
+		</>
+	);
+}
+
+const DETECT_DELAY_MS = 400;
+
+/**
+ * Fills in a new prompt's language from its wording as it is typed. A saved
+ * prompt, or one whose language someone picked, is left alone.
+ */
+function useLanguageAutofill(
+	prompt: EditablePrompt,
+	detect: PromptLocales["detectLanguage"] | undefined,
+	onDetected: (language: string | null) => void,
+) {
+	const follows = Boolean(detect) && !prompt.id && !prompt.languageChosen;
+	const text = prompt.value.trim();
+	const latest = useRef({ language: prompt.language, onDetected });
+	latest.current = { language: prompt.language, onDetected };
+
+	useEffect(() => {
+		if (!follows || !detect || text.length === 0) return;
+		let stale = false;
+		const timer = setTimeout(() => {
+			detect(text)
+				.then((language) => {
+					if (!stale && language !== latest.current.language) latest.current.onDetected(language);
+				})
+				.catch(() => {});
+		}, DETECT_DELAY_MS);
+		return () => {
+			stale = true;
+			clearTimeout(timer);
+		};
+	}, [follows, detect, text]);
 }
 
 const PENDING_WIDTHS = ["70%", "52%", "63%", "46%", "58%"];
@@ -429,6 +575,9 @@ function PromptRow({
 	onToggleSelect,
 	lead,
 	onAddVariant,
+	onTranslate,
+	support,
+	detectLanguage,
 }: {
 	prompt: EditablePrompt;
 	index: number;
@@ -445,7 +594,11 @@ function PromptRow({
 	onToggleSelect: () => void;
 	lead?: EditablePrompt;
 	onAddVariant?: () => void;
+	onTranslate?: () => void;
+	support?: MarketSupport;
+	detectLanguage?: PromptLocales["detectLanguage"];
 }) {
+	useLanguageAutofill(prompt, detectLanguage, (language) => update(index, { language }));
 	return (
 		<div
 			className={cn(
@@ -463,6 +616,7 @@ function PromptRow({
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
 						onAddVariant={onAddVariant}
+						onTranslate={onTranslate}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -481,6 +635,11 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
+				{support && (
+					<div className="grid grid-cols-2 gap-2">
+						<PromptLocaleFields prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
+					</div>
+				)}
 				{premium && (
 					<PremiumModelsField
 						selected={prompt.premiumModels}
@@ -502,6 +661,7 @@ function PromptRow({
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
 					onAddVariant={onAddVariant}
+					onTranslate={onTranslate}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -512,6 +672,11 @@ function PromptRow({
 					searchPlaceholder="Search or create tag..."
 					normalizeValue={(raw) => raw.toLowerCase().trim()}
 				/>
+				{support && (
+					<div className="col-span-2 grid grid-cols-subgrid pt-0.5">
+						<PromptLocaleFields prompt={prompt} support={support} onChange={(patch) => update(index, patch)} />
+					</div>
+				)}
 				{premium && (
 					<div className="flex justify-center pt-1">
 						<PremiumModelsField
@@ -568,6 +733,53 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	);
 }
 
+function AddControls({
+	atCapacity,
+	canAddRow,
+	onAdd,
+	bulk,
+}: {
+	atCapacity: boolean;
+	canAddRow: boolean;
+	onAdd: () => void;
+	bulk: ReturnType<typeof useBulkPaste>;
+}) {
+	if (atCapacity) {
+		return (
+			<p className="text-xs text-muted-foreground">
+				Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+			</p>
+		);
+	}
+	return (
+		<>
+			<div className="flex flex-wrap items-center gap-2">
+				{canAddRow && (
+					<Button
+						variant="outline"
+						size="sm"
+						type="button"
+						onClick={onAdd}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						<Plus className="h-4 w-4" /> Add Prompt
+					</Button>
+				)}
+				<Button
+					variant="outline"
+					size="sm"
+					type="button"
+					onClick={() => bulk.setBulkOpen((open) => !open)}
+					className="flex items-center gap-2 cursor-pointer"
+				>
+					<ListPlus className="h-4 w-4" /> Add Multiple
+				</Button>
+			</div>
+			{bulk.bulkOpen && <BulkPasteBox bulk={bulk} />}
+		</>
+	);
+}
+
 function SelectionBar({
 	count,
 	onSetEnabled,
@@ -618,6 +830,27 @@ function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
 	);
 }
 
+/** Shown while a new prompt is being written, beside the country it will be asked from. */
+function NewPromptNote({ support }: { support: MarketSupport }) {
+	return (
+		<p className="text-xs text-muted-foreground">
+			New prompts are asked from {countryName(support.brandMarket.country)} unless you choose another country.{" "}
+			{describePromptCost(support)}
+		</p>
+	);
+}
+
+function toDraftRow(draft: TranslatedDraft, lead: EditablePrompt | undefined): EditablePrompt {
+	return newPromptEntry({
+		groupId: draft.source.groupId,
+		value: draft.value,
+		tags: lead?.tags ?? [],
+		country: draft.source.country,
+		language: draft.language,
+		languageChosen: true,
+	});
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
@@ -625,9 +858,16 @@ export function PromptsListEditor({
 	changedKeys,
 	premium,
 	variants = false,
+	locales,
 	leading,
 	pendingRows = 0,
 }: PromptsListEditorProps) {
+	// The sources outlive `open`, so the dialog still names them while it animates shut.
+	const [translation, setTranslation] = useState<{ open: boolean; source: EditablePrompt | null }>({
+		open: false,
+		source: null,
+	});
+	const translate = (source: EditablePrompt) => setTranslation({ open: true, source });
 	const allTagOptions = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of prompts) for (const t of p.tags) set.add(t);
@@ -664,19 +904,31 @@ export function PromptsListEditor({
 	const leads = useMemo(() => groupLeads(prompts), [prompts]);
 	const addVariant = (row: EditablePrompt) => {
 		const lead = leads.get(row.groupId) ?? row;
-		onChange(insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags })));
+		onChange(
+			insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags, country: lead.country })),
+		);
+	};
+	const addTranslations = (drafts: TranslatedDraft[]) =>
+		onChange(
+			drafts.reduce(
+				(rows, draft) => insertIntoGroup(rows, toDraftRow(draft, leads.get(draft.source.groupId))),
+				prompts,
+			),
+		);
+	const leadOf = (prompt: EditablePrompt) => {
+		const lead = leads.get(prompt.groupId);
+		return lead === prompt ? undefined : lead;
 	};
 	/** Only a prompt that isn't itself a variant gains them. A blank one has nothing to reword yet, and a full list has no room. */
-	const canAddVariant = (prompt: EditablePrompt) =>
-		variants && !atCapacity && leads.get(prompt.groupId) === prompt && prompt.value.trim().length > 0;
+	const canGrow = (prompt: EditablePrompt) => !atCapacity && !leadOf(prompt) && prompt.value.trim().length > 0;
+	const hasNewPrompt = prompts.some((prompt) => !prompt.id);
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
 	const premiumUsed = premium ? premium.assignedElsewhere + premiumSlotsUsed(prompts) : 0;
 	const premiumAtCapacity = premium ? premiumUsed >= premium.total : false;
 
-	// Columns: [select] [text] [system?] [tags] [premium?] [switch].
-	const gridCols = GRID_COLS[`${showSystemTags ? "system" : "plain"}-${premium ? "premium" : "basic"}`];
+	const gridCols = gridColsFor({ system: showSystemTags, premium: Boolean(premium), country: Boolean(locales) });
 
 	return (
 		<div className="space-y-4">
@@ -704,6 +956,7 @@ export function PromptsListEditor({
 				gridCols={gridCols}
 				showSystemTags={showSystemTags}
 				premium={premium}
+				showCountry={Boolean(locales)}
 				allSelected={allSelected}
 				onToggleSelectAll={toggleSelectAll}
 				disabled={prompts.length === 0}
@@ -738,47 +991,34 @@ export function PromptsListEditor({
 							gridCols={gridCols}
 							selected={selectedKeys.has(prompt._key)}
 							onToggleSelect={() => toggleSelect(prompt._key)}
-							lead={leads.get(prompt.groupId) === prompt ? undefined : leads.get(prompt.groupId)}
-							onAddVariant={canAddVariant(prompt) ? () => addVariant(prompt) : undefined}
+							lead={leadOf(prompt)}
+							onAddVariant={variants && canGrow(prompt) ? () => addVariant(prompt) : undefined}
+							onTranslate={locales && canGrow(prompt) ? () => translate(prompt) : undefined}
+							support={locales?.support}
+							detectLanguage={locales?.detectLanguage}
 						/>
 					))}
 				</div>
 			)}
 
-			{!atCapacity && (
-				<div className="flex flex-wrap items-center gap-2">
-					{prompts.length < MAX_PROMPTS && (
-						<Button
-							variant="outline"
-							size="sm"
-							type="button"
-							onClick={add}
-							className="flex items-center gap-2 cursor-pointer"
-						>
-							<Plus className="h-4 w-4" /> Add Prompt
-						</Button>
-					)}
-					<Button
-						variant="outline"
-						size="sm"
-						type="button"
-						onClick={() => bulk.setBulkOpen((open) => !open)}
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						<ListPlus className="h-4 w-4" /> Add Multiple
-					</Button>
-				</div>
-			)}
+			{locales && hasNewPrompt && <NewPromptNote support={locales.support} />}
 
-			{bulk.bulkOpen && !atCapacity && <BulkPasteBox bulk={bulk} />}
-
-			{atCapacity && (
-				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
-				</p>
-			)}
+			<AddControls atCapacity={atCapacity} canAddRow={prompts.length < MAX_PROMPTS} onAdd={add} bulk={bulk} />
 
 			<PromptCount prompts={prompts} />
+
+			{locales && (
+				<TranslatePromptsDialog
+					open={translation.open && translation.source !== null}
+					onOpenChange={(open) => setTranslation((current) => ({ ...current, open }))}
+					source={translation.source}
+					existing={prompts}
+					support={locales.support}
+					room={MAX_PROMPTS - filledValues.length}
+					translate={locales.translate}
+					onTranslated={addTranslations}
+				/>
+			)}
 		</div>
 	);
 }

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { expect, userEvent, within } from "storybook/test";
 import { PromptsEditor } from "@/components/prompts-editor";
+import { selfHostedMarketSupport } from "./_mocks/market-support";
 import {
 	setMockPromptSuggestions,
 	setMockPromptSuggestionsDelay,
@@ -13,6 +14,8 @@ const prompts = Array.from({ length: 24 }, (_, i) => ({
 	id: `prompt-${i}`,
 	parentId: null,
 	createdAt: new Date(2026, 0, 1 + i),
+	country: null,
+	language: null,
 	value: `What are the best AI visibility tools for ${["agencies", "startups", "enterprises", "ecommerce"][i % 4]}? (${i + 1})`,
 	enabled: i % 5 !== 0,
 	tags: i % 3 === 0 ? ["comparison"] : [],
@@ -53,6 +56,7 @@ export const Default: Story = {
 		brandId: "mock-brand-id",
 		pageTitle: "Prompts",
 		pageDescription: "Add, edit, or remove your brand tracking keywords and prompts",
+		marketSupport: selfHostedMarketSupport,
 	},
 };
 

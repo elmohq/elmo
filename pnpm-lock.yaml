@@ -520,6 +520,9 @@ importers:
       auth0:
         specifier: 'catalog:'
         version: 7.7.0
+      country-flag-icons:
+        specifier: ^1.6.20
+        version: 1.6.20
       d3-shape:
         specifier: 3.2.0
         version: 3.2.0
@@ -1043,6 +1046,9 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.4(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0)(@types/pg@8.23.1)(@upstash/redis@1.41.0)(better-sqlite3@12.11.1)(kysely@0.28.17)(pg@8.23.1)
+      eld:
+        specifier: ^2.1.1
+        version: 2.1.1
       jose:
         specifier: 6.2.15
         version: 6.2.15
@@ -6427,6 +6433,9 @@ packages:
     resolution: {integrity: sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==}
     engines: {node: '>= 0.10'}
 
+  country-flag-icons@1.6.20:
+    resolution: {integrity: sha512-py8JiEKzjhYw6HPJ0L7SxLgCYim36UPRTZX43/kqGueUCZLSvnrqAiwW8HtQibur7mdkFQUkjOgdK+o/9FBtaw==}
+
   crc-32@1.2.2:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
     engines: {node: '>=0.8'}
@@ -6913,6 +6922,10 @@ packages:
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
+
+  eld@2.1.1:
+    resolution: {integrity: sha512-+WPgDcsV5rAuZR3BTW3rnnv03YvlP2JoHnFGDMLAp13XrDt7n58TBIL9hTmFs4VBVcozGxG/GC5WQILqRqd1pw==}
+    engines: {node: '>=14.17.0'}
 
   electron-to-chromium@1.5.422:
     resolution: {integrity: sha512-UvA/32XqrLDdZSn7Jllo1AYNcWji/G0d5M0GTViE7KoGBiMunw3a34Sb2KO4ZZyrSEhqsxFoVhWWJshdyfKqJA==}
@@ -16444,6 +16457,8 @@ snapshots:
       object-assign: 4.1.1
       vary: 1.1.2
 
+  country-flag-icons@1.6.20: {}
+
   crc-32@1.2.2: {}
 
   crc32-stream@7.0.1:
@@ -16807,6 +16822,8 @@ snapshots:
       safe-buffer: 5.2.1
 
   ee-first@1.1.1: {}
+
+  eld@2.1.1: {}
 
   electron-to-chromium@1.5.422: {}
 

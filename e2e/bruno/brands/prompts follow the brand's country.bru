@@ -1,0 +1,17 @@
+meta {
+  name: prompts follow the brand's country
+  type: http
+  seq: 37
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts/{{promptId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.country: isNull
+  res.body.effectiveCountry: eq GB
+}

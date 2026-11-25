@@ -14,6 +14,8 @@ export function useBrandSentiment(brandId?: string, filters?: ShareOfVoiceFilter
 					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					countries: filters?.countries?.join(","),
+					languages: filters?.languages?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

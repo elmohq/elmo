@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { languageName, type Market, marketId } from "@workspace/config/markets";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { cn } from "@workspace/ui/lib/utils";
 import { List } from "lucide-react";
+import { CountryFlag } from "@/components/country-flag";
 import { FilterTriggerButton } from "@/components/filter-bar";
 import { useBrandParams } from "@/hooks/use-route-params";
 import type { PromptDetailTab } from "@/lib/prompt-detail-tabs";
@@ -18,6 +20,7 @@ export interface PromptVariant {
 	id: string;
 	value: string;
 	enabled: boolean;
+	market: Market;
 }
 
 /** Switches between the wordings of one question, each a prompt with results of its own. Absent for a prompt with no variants. */
@@ -35,6 +38,8 @@ export function PromptVariantsMenu({
 	const navigate = useNavigate();
 	if (variants.length <= 1) return null;
 
+	// Variants all asked from one country in one language are told apart by their wording alone.
+	const showLocales = new Set(variants.map((variant) => marketId(variant.market))).size > 1;
 	const open = (id: string) =>
 		navigate({
 			to: "/app/org/$org/brand/$brand/prompts/$promptId",
@@ -60,6 +65,12 @@ export function PromptVariantsMenu({
 								className={cn("cursor-pointer gap-2", !variant.enabled && "opacity-50")}
 							>
 								<span className="min-w-0 flex-1 truncate">{variant.value}</span>
+								{showLocales && (
+									<span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+										<CountryFlag country={variant.market.country} />
+										{languageName(variant.market.language)}
+									</span>
+								)}
 								{!variant.enabled && <span className="sr-only">Disabled</span>}
 							</DropdownMenuRadioItem>
 						))}

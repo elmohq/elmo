@@ -15,6 +15,8 @@ const MOCK_BRAND = {
 	website: "https://acme.com",
 	additionalDomains: ["acme.co.uk", "acme.de"],
 	aliases: ["Acme Inc", "Acme Corporation"],
+	country: "US",
+	language: "en",
 	updatedAt: new Date("2026-09-01T00:00:00Z"),
 };
 
@@ -114,5 +116,22 @@ export const PasteSkipsCoveredDomains: Story = {
 		expect(canvas.getByText("notacme.com")).toBeVisible();
 		expect(canvas.queryByText("blog.acme.com")).toBeNull();
 		expect(canvas.queryByText("shop.acme.io")).toBeNull();
+	},
+};
+
+/** The default country is one plain choice, starting on the brand's. */
+export const ChangeDefaultCountry: Story = {
+	render: () => {
+		setMockBrand(MOCK_BRAND);
+		return <BrandSettingsPage />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		const page = within(canvasElement.ownerDocument.body);
+		const field = await canvas.findByRole("combobox", { name: /Default Country/ });
+		await expect(field).toHaveTextContent("United States");
+		await userEvent.click(field);
+		await userEvent.click(await page.findByRole("option", { name: /France/ }));
+		await expect(field).toHaveTextContent("France");
 	},
 };

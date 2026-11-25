@@ -45,6 +45,18 @@ describe("suggestPrompts", () => {
 		expect(prompt).toContain("trail");
 	});
 
+	it("asks for suggestions in the brand's market language, and leaves the default market's request alone", async () => {
+		vi.mocked(runStructuredResearchPrompt).mockResolvedValue({ suggestedPrompts: [] });
+		const base = { website: "acme.com", brandName: "Acme", existingPrompts: [] };
+
+		await suggestPrompts({ ...base, market: { country: "BR", language: "pt" } });
+		await suggestPrompts(base);
+		const [brazil, unset] = vi.mocked(runStructuredResearchPrompt).mock.calls.map((call) => call[0]);
+
+		expect(brazil).toContain("Portuguese as written in Brazil");
+		expect(unset).not.toContain("as written in");
+	});
+
 	it("returns at most the requested number of prompts", async () => {
 		vi.mocked(runStructuredResearchPrompt).mockResolvedValueOnce({
 			suggestedPrompts: ["a", "b", "c", "d"].map((p) => ({ prompt: `prompt ${p}`, tags: [] })),

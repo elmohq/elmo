@@ -7,6 +7,8 @@ export interface DashboardFilters {
 	lookback: LookbackPeriod;
 	model?: string;
 	tags?: string[];
+	countries?: string[];
+	languages?: string[];
 }
 
 export const dashboardKeys = {
@@ -26,6 +28,8 @@ export function useDashboardSummary(brandId?: string, filters: DashboardFilters 
 					lookback: filters.lookback,
 					model: filters.model,
 					tags: filters.tags?.join(","),
+					countries: filters.countries?.join(","),
+					languages: filters.languages?.join(","),
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),

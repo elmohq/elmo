@@ -220,48 +220,51 @@ describe("dataforseo provider", () => {
 		});
 	});
 
-	it("does not send country localization for DataForSEO LLM Responses targets", async () => {
-		dataforseoClient.chatgptLlmResponsesLive.mockResolvedValueOnce({
+	describe("markets", () => {
+		const LLM_OK = {
 			tasks: [
 				{
 					status_code: 20000,
 					status_message: "Ok.",
 					result: [
 						{
-							model_name: "gpt-4o",
-							fan_out_queries: ["current laptop reviews"],
-							items: [
-								{
-									type: "message",
-									sections: [
-										{
-											type: "text",
-											text: "A current well-reviewed laptop is the Framework Laptop 13, based on recent reviews.",
-											annotations: [{ url: "https://example.com/review", title: "Example review" }],
-										},
-									],
-								},
-							],
+							model_name: "gpt-5.5",
+							items: [{ type: "message", sections: [{ type: "text", text: "Framework Laptop 13." }] }],
 						},
 					],
 				},
 			],
+		};
+		const germany = { country: "DE", language: "de" };
+
+		it("asks the scraped surfaces from the market's country in its language", async () => {
+			dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce(AI_OVERVIEW_OK);
+
+			await dataforseo.run("google-ai-overview", "bester Lautsprecher", { webSearch: true, market: germany });
+
+			const [payload] = dataforseoClient.googleOrganicLiveAdvanced.mock.calls[0];
+			expect(payload[0]).toMatchObject({ location_code: 2276, language_code: "de" });
 		});
 
-		// country isn't a ProviderOptions field (intentionally not exposed); force it
-		// through to prove DataForSEO never forwards it as web_search_country_iso_code.
-		// The version pin is what selects the LLM Responses route.
-		const options = { webSearch: true, version: "gpt-5.5", country: "GB" } as unknown as Parameters<
-			typeof dataforseo.run
-		>[2];
-		await dataforseo.run("chatgpt", "What is a well-reviewed laptop this month?", options);
+		it("searches from the market's country on an LLM Responses model that takes one", async () => {
+			dataforseoClient.chatgptLlmResponsesLive.mockResolvedValueOnce(LLM_OK);
 
-		const [payload] = dataforseoClient.chatgptLlmResponsesLive.mock.calls[0];
-		expect(payload[0]).not.toHaveProperty("web_search_country_iso_code");
-		expect(payload[0]).toMatchObject({
-			user_prompt: "What is a well-reviewed laptop this month?",
-			model_name: "gpt-5.5",
-			web_search: true,
+			await dataforseo.run("chatgpt", "bester Laptop", { webSearch: true, version: "gpt-5.5", market: germany });
+
+			const [payload] = dataforseoClient.chatgptLlmResponsesLive.mock.calls[0];
+			expect(payload[0]).toMatchObject({ web_search: true, web_search_country_iso_code: "DE" });
+		});
+
+		it("sends no country to an LLM Responses model that would ignore it", async () => {
+			dataforseoClient.chatgptLlmResponsesLive.mockResolvedValueOnce(LLM_OK);
+
+			await dataforseo.run("chatgpt", "bester Laptop", { webSearch: true, version: "o3-mini", market: germany });
+
+			const [payload] = dataforseoClient.chatgptLlmResponsesLive.mock.calls[0];
+			expect(payload[0]).not.toHaveProperty("web_search_country_iso_code");
+			expect(
+				dataforseo.localizes?.({ model: "chatgpt", provider: "dataforseo", version: "o3-mini", webSearch: true }, "DE"),
+			).toBe(false);
 		});
 	});
 

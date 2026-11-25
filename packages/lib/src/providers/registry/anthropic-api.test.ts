@@ -119,3 +119,15 @@ describe("anthropic-api web search handling", () => {
 		vi.useRealTimers();
 	});
 });
+
+describe("anthropic-api markets", () => {
+	it("tells the search tool which country the prompt is asked from", async () => {
+		await anthropicApi.run("claude", "prompt", {
+			webSearch: true,
+			version: "claude-sonnet-5",
+			market: { country: "FR", language: "fr" },
+		});
+
+		expect(sentArgs().tools[0].user_location).toEqual({ type: "approximate", country: "FR" });
+	});
+});

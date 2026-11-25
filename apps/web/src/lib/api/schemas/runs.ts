@@ -25,6 +25,8 @@ export const runSummarySchema = z.object({
 	model: z.string(),
 	provider: z.string().nullable(),
 	webSearchEnabled: z.boolean(),
+	country: z.string().nullable(),
+	language: z.string().nullable(),
 	brandMentioned: z.boolean(),
 	competitorsMentioned: z.array(z.string()),
 	assessments: runAssessmentsSchema,

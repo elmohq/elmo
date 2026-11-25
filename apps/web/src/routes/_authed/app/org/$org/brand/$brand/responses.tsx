@@ -35,7 +35,7 @@ interface ResponsesSearch extends SentimentSearch {
 
 function ResponsesPage() {
 	const brandId = useBrandId();
-	const { model, lookback, tags, search: query } = useListFilters();
+	const { model, lookback, tags, countries, languages, search: query } = useListFilters();
 
 	const { data: brand } = useBrand(brandId);
 	const { launcher } = useCrispChat();
@@ -59,7 +59,17 @@ function ResponsesPage() {
 	const { sentiment, sort, setSentiment, setSort } = useSentimentSearch();
 
 	// A new search starts from its first page.
-	const filterKey = JSON.stringify([query, lookback, modelParam, tags, promptIds, sentiment, sort]);
+	const filterKey = JSON.stringify([
+		query,
+		lookback,
+		modelParam,
+		tags,
+		countries,
+		languages,
+		promptIds,
+		sentiment,
+		sort,
+	]);
 	const [paging, setPaging] = useState({ filterKey, page: 0 });
 	const page = paging.filterKey === filterKey ? paging.page : 0;
 	const setPage = (next: number) => {
@@ -68,7 +78,7 @@ function ResponsesPage() {
 	};
 
 	// Placeholder data is the previous page or search, still on screen while the next one loads.
-	const search = { query, lookback, model: modelParam, tags, promptIds };
+	const search = { query, lookback, model: modelParam, tags, countries, languages, promptIds };
 	const { data, isLoading, isPlaceholderData, error } = useResponseSearch(brandId, {
 		...search,
 		sentiment,
