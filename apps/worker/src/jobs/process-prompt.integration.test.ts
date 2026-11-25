@@ -35,7 +35,7 @@ async function queuedJobs(): Promise<{ consecutiveFailures: number }[]> {
 	return result.rows.map((row) => row.data);
 }
 
-/** A job as schedule-maintenance starts one, already picked up by a worker. */
+/** An earlier job for the prompt that holds a singleton slot, already picked up by a worker. */
 async function runningJob(): Promise<string> {
 	const id = await getBoss().send(
 		PROCESS_PROMPT_QUEUE,

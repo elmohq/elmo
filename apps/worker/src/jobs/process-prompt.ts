@@ -45,7 +45,7 @@ export async function scheduleNextRun(
 	delayHours: number,
 	consecutiveFailures: number,
 ): Promise<void> {
-	const runAt = new Date(Date.now() + Math.round(delayHours * 60 * 60) * 1000);
+	const delayMs = Math.round(delayHours * 60 * 60) * 1000;
 	const singletonKey = promptSingletonKey(promptId);
 
 	try {
@@ -55,6 +55,11 @@ export async function scheduleNextRun(
 		// the slot its own follow-up needs, and the send is dropped without an error.
 		const jobId = await db.transaction(async (tx) => {
 			await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-prompt-follow-up'), hashtext(${promptId}))`);
+			// Read under the lock and from the database, so whoever holds it later is never due earlier.
+			const clock = await tx.execute<{ now_ms: string }>(
+				sql`SELECT extract(epoch FROM clock_timestamp()) * 1000 AS now_ms`,
+			);
+			const runAt = new Date(Math.floor(Number(clock.rows[0].now_ms)) + delayMs);
 			const queued = await boss.findJobs(PROCESS_PROMPT_QUEUE, { key: singletonKey, queued: true });
 			// A job due later doesn't cover this one: a backoff retry still has to run before the cadence job.
 			if (queued.some((job) => job.startAfter <= runAt)) return null;
