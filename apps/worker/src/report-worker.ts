@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -176,7 +177,7 @@ async function judgeWithRetries(text: string, config: MentionConfig, question: s
 		} catch (error) {
 			if (attempt >= JUDGE_ATTEMPTS) throw error;
 			console.error(`Mention judge failed (attempt ${attempt} of ${JUDGE_ATTEMPTS}); retrying:`, error);
-			await new Promise((resolve) => setTimeout(resolve, JUDGE_RETRY_DELAY_MS * attempt));
+			await sleep(JUDGE_RETRY_DELAY_MS * attempt);
 		}
 	}
 }
@@ -282,8 +283,7 @@ async function testCandidates(args: {
 	for (let i = 0; i < candidatePrompts.length; i += CANDIDATE_BATCH_SIZE) {
 		results.push(...(await Promise.all(candidatePrompts.slice(i, i + CANDIDATE_BATCH_SIZE).map(testOne))));
 		// Avoid sending a new provider burst immediately after the previous batch.
-		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length)
-			await new Promise((resolve) => setTimeout(resolve, CANDIDATE_BATCH_PAUSE_MS));
+		if (i + CANDIDATE_BATCH_SIZE < candidatePrompts.length) await sleep(CANDIDATE_BATCH_PAUSE_MS);
 	}
 
 	// A report built from no answers would read as "never mentioned"; fail it instead.
