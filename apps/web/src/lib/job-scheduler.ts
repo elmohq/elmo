@@ -102,12 +102,17 @@ export async function createMultiplePromptJobSchedulers(
 
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI. Skips the singleton key so it runs even mid-cadence.
+ * Useful for manual retries from the admin UI. Has no singleton slot, so it runs even mid-cadence;
+ * the key is how the worker finds it when deciding whether a cycle still needs a follow-up.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		await boss.send(PROCESS_PROMPT_QUEUE, { promptId }, PROMPT_JOB_OPTIONS);
+		await boss.send(
+			PROCESS_PROMPT_QUEUE,
+			{ promptId },
+			{ singletonKey: promptSingletonKey(promptId), ...PROMPT_JOB_OPTIONS },
+		);
 		console.log(`Sent immediate job for prompt ${promptId}`);
 		return true;
 	} catch (error) {

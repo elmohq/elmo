@@ -40,20 +40,38 @@ interface PromptContext {
 	brand: Brand;
 }
 
-async function scheduleNextRun(promptId: string, delayHours: number, consecutiveFailures: number): Promise<void> {
-	const startAfterSeconds = Math.round(delayHours * 60 * 60);
+export async function scheduleNextRun(
+	promptId: string,
+	delayHours: number,
+	consecutiveFailures: number,
+): Promise<void> {
+	const delayMs = Math.round(delayHours * 60 * 60) * 1000;
+	const singletonKey = promptSingletonKey(promptId);
 
 	try {
-		await getBoss().send(
-			PROCESS_PROMPT_QUEUE,
-			{ promptId, consecutiveFailures },
-			{
-				singletonKey: promptSingletonKey(promptId),
-				singletonSeconds: startAfterSeconds, // Prevent duplicates until the next attempt is due
-				startAfter: startAfterSeconds,
-				...PROMPT_JOB_OPTIONS,
-			},
-		);
+		const boss = getBoss();
+		// A lock rather than singletonSeconds: pg-boss places that slot at send time, so the job
+		// running now can hold the slot its own follow-up needs, and the send is silently dropped.
+		const jobId = await db.transaction(async (tx) => {
+			await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('elmo-prompt-follow-up'), hashtext(${promptId}))`);
+			// Read under the lock and from the database, so whoever holds it later is never due earlier.
+			const clock = await tx.execute<{ now_ms: string }>(
+				sql`SELECT extract(epoch FROM clock_timestamp()) * 1000 AS now_ms`,
+			);
+			const runAt = new Date(Math.floor(Number(clock.rows[0].now_ms)) + delayMs);
+			const queued = await boss.findJobs(PROCESS_PROMPT_QUEUE, { key: singletonKey, queued: true });
+			// A job due later doesn't cover this one: a backoff retry still has to run before the cadence job.
+			if (queued.some((job) => job.startAfter <= runAt)) return null;
+			return boss.send(
+				PROCESS_PROMPT_QUEUE,
+				{ promptId, consecutiveFailures },
+				{ singletonKey, startAfter: runAt, ...PROMPT_JOB_OPTIONS },
+			);
+		});
+		if (!jobId) {
+			console.log(`A run for prompt ${promptId} is already queued within ${delayHours}h; not scheduling another`);
+			return;
+		}
 		const reason = consecutiveFailures > 0 ? ` (backing off after ${consecutiveFailures} failed cycle(s))` : "";
 		console.log(`Scheduled next run for prompt ${promptId} in ${delayHours}h${reason}`);
 	} catch (error) {
