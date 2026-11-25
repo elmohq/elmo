@@ -20,7 +20,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 import type { RunMentionAssessments } from "../mentions";
-import { organization } from "./schema-auth";
+import { member, organization } from "./schema-auth";
 
 // Re-exported so `import * as schema` sees the auth tables. That file is
 // generated: run `pnpm run generate:auth-schema` to refresh it.
@@ -296,6 +296,22 @@ export const organizationSettings = pgTable("organization_settings", {
 }).enableRLS();
 
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
+
+export const memberBrandPin = pgTable("member_brand_pin", {
+	memberId: text("member_id")
+		.primaryKey()
+		.references(() => member.id, { onDelete: "cascade" }),
+	brandId: text("brand_id")
+		.notNull()
+		.references(() => brands.id, { onDelete: "cascade" }),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+export type MemberBrandPin = typeof memberBrandPin.$inferSelect;
 
 /** One row per provider call, in every mode. Costs are estimates (src/usage/cost.ts), not ground truth. */
 export const usageEvents = pgTable(

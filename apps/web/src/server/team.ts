@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
-import { invitation, member, organization, user } from "@workspace/lib/db/schema";
+import { brands, invitation, member, memberBrandPin, organization, user } from "@workspace/lib/db/schema";
 import { and, eq, ilike } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
@@ -16,7 +16,16 @@ function requireTeamInvites(): void {
 }
 
 export type TeamData = {
-	members: { id: string; role: string; userId: string; name: string; email: string; createdAt: Date }[];
+	members: {
+		id: string;
+		role: string;
+		userId: string;
+		name: string;
+		email: string;
+		pinnedBrandId: string | null;
+		createdAt: Date;
+	}[];
+	brands: { id: string; name: string }[];
 	invitations: { id: string; email: string; role: string | null; expiresAt: Date }[];
 	currentUserId: string;
 	organization: { id: string; name: string };
@@ -29,7 +38,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		const org = await requireOrganization(session.user.id, data.organizationId);
 
-		const [members, invitations] = await Promise.all([
+		const [members, invitations, brandRows] = await Promise.all([
 			db
 				.select({
 					id: member.id,
@@ -38,9 +47,11 @@ export const listTeamFn = createServerFn({ method: "GET" })
 					name: user.name,
 					email: user.email,
 					createdAt: member.createdAt,
+					pinnedBrandId: memberBrandPin.brandId,
 				})
 				.from(member)
 				.innerJoin(user, eq(member.userId, user.id))
+				.leftJoin(memberBrandPin, eq(memberBrandPin.memberId, member.id))
 				.where(eq(member.organizationId, org.id)),
 
 			db
@@ -52,11 +63,18 @@ export const listTeamFn = createServerFn({ method: "GET" })
 				})
 				.from(invitation)
 				.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending"))),
+
+			db
+				.select({ id: brands.id, name: brands.name })
+				.from(brands)
+				.where(eq(brands.organizationId, org.id))
+				.orderBy(brands.name, brands.id),
 		]);
 
 		return {
 			members,
 			invitations,
+			brands: brandRows,
 			currentUserId: session.user.id,
 			organization: { id: org.id, name: org.name },
 		};
@@ -121,6 +139,39 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 			body: { email, role: data.role, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
+
+		return { success: true };
+	});
+
+export const setMemberBrandPinFn = createServerFn({ method: "POST" })
+	.validator(z.object({ organizationId: z.string(), memberId: z.string(), brandId: z.string().nullable() }))
+	.handler(async ({ data }) => {
+		requireTeamInvites();
+		const session = await requireAuthSession();
+		const org = await requireOrganizationAdmin(session.user.id, data.organizationId);
+
+		const [row] = await db
+			.select({ id: member.id, userId: member.userId })
+			.from(member)
+			.where(and(eq(member.id, data.memberId), eq(member.organizationId, org.id)))
+			.limit(1);
+		if (!row) throw new Error("Not found: no such member in this organization");
+		if (row.userId === session.user.id) throw new Error("You cannot pin your own account to a brand");
+
+		if (data.brandId) {
+			const [brand] = await db
+				.select({ id: brands.id })
+				.from(brands)
+				.where(and(eq(brands.id, data.brandId), eq(brands.organizationId, org.id)))
+				.limit(1);
+			if (!brand) throw new Error("Not found: no such brand in this organization");
+			await db
+				.insert(memberBrandPin)
+				.values({ memberId: row.id, brandId: brand.id })
+				.onConflictDoUpdate({ target: memberBrandPin.memberId, set: { brandId: brand.id } });
+		} else {
+			await db.delete(memberBrandPin).where(eq(memberBrandPin.memberId, row.id));
+		}
 
 		return { success: true };
 	});

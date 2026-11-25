@@ -31,9 +31,12 @@ export function OrganizationDirectory({ organizations }: { organizations: Organi
 function OrganizationBlock({ organization }: { organization: OrganizationSummary }) {
 	const { heading, children } = organizationTree(organization);
 	const isAdmin = isOrgAdminRole(organization.role);
+	const visibleChildren = organization.pinnedBrandId
+		? children.filter((row) => row.kind !== "brand" || row.id === organization.pinnedBrandId)
+		: children;
 	const rows = (
 		<div className="ml-4 border-l pl-1">
-			{children.map((row) => (
+			{visibleChildren.map((row) => (
 				<Link key={row.key} {...row.link} className={row.kind === "brand" ? ROW : `${ROW} text-muted-foreground`}>
 					<OrganizationRowIcon row={row} size="xs" />
 					<span className="truncate">{row.label}</span>
@@ -50,7 +53,7 @@ function OrganizationBlock({ organization }: { organization: OrganizationSummary
 						<span className="truncate font-medium">{heading.label}</span>
 					</span>
 				</div>
-				{children.length > 0 && rows}
+				{visibleChildren.length > 0 && rows}
 			</div>
 		);
 	}

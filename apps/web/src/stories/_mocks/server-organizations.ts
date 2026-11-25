@@ -6,6 +6,7 @@ let _organizations: OrganizationSummary[] = [
 		slug: "acme",
 		name: "Acme",
 		role: "admin",
+		pinnedBrandId: null,
 		brandCreation: { kind: "allowed" },
 		brands: [
 			{ id: "brand-1", slug: "acme", name: "Acme", website: "https://acme.com", onboarded: true },

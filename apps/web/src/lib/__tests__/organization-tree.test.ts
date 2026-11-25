@@ -8,6 +8,7 @@ function organization(brandCreation: BrandCreation, brandNames: string[] = [], r
 		slug: "acme",
 		name: "Acme",
 		role,
+		pinnedBrandId: null,
 		brandCreation,
 		brands: brandNames.map((name) => ({
 			id: name,

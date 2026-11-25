@@ -10,7 +10,14 @@ import { WriteErrorMessage } from "@/components/write-error-message";
 import { trackEvent } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { useWriteErrorMessage } from "@/lib/write-errors";
-import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
+import {
+	cancelInvitationFn,
+	inviteTeamMemberFn,
+	listTeamFn,
+	removeTeamMemberFn,
+	setMemberBrandPinFn,
+	type TeamData,
+} from "@/server/team";
 
 export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 	staticData: { crumb: "Team" },
@@ -25,13 +32,14 @@ export const Route = createFileRoute("/_authed/app/org/$org/settings/members")({
 });
 
 function TeamSettingsPage() {
-	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
+	const { members, invitations, brands, currentUserId, organization } = Route.useLoaderData();
 	const organizationId = organization.id;
 	const writeError = useWriteErrorMessage();
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
 	const [inviting, setInviting] = useState(false);
+	const [pinningId, setPinningId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	async function handleInvite(e: React.FormEvent) {
@@ -48,6 +56,22 @@ function TeamSettingsPage() {
 			setError(writeError(err, "Failed to send invitation"));
 		} finally {
 			setInviting(false);
+		}
+	}
+
+	async function handlePin(memberId: string, value: string) {
+		setError(null);
+		setPinningId(memberId);
+		try {
+			await setMemberBrandPinFn({
+				data: { organizationId, memberId, brandId: value === "none" ? null : value },
+			});
+			trackEvent("team_member_pin_changed");
+			await router.invalidate();
+		} catch (err) {
+			setError(writeError(err, "Failed to set the brand pin"));
+		} finally {
+			setPinningId(null);
 		}
 	}
 
@@ -131,6 +155,24 @@ function TeamSettingsPage() {
 								<p className="truncate text-sm text-muted-foreground">{m.email}</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-3">
+								<Select
+									items={{ none: "All brands", ...Object.fromEntries(brands.map((b) => [b.id, b.name])) }}
+									value={m.pinnedBrandId ?? "none"}
+									onValueChange={(value) => handlePin(m.id, value as string)}
+									disabled={pinningId === m.id}
+								>
+									<SelectTrigger className="w-36" aria-label={`Pin ${m.email} to a brand`}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="none">All brands</SelectItem>
+										{brands.map((b) => (
+											<SelectItem key={b.id} value={b.id}>
+												{b.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 								<Badge variant="secondary">{m.role}</Badge>
 								{m.userId !== currentUserId && (
 									<Button type="button" variant="outline" size="sm" onClick={() => handleRemove(m.id)}>

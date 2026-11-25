@@ -12,6 +12,7 @@ const BASE_ROUTE_CONTEXT: Record<string, unknown> = {
 		slug: "mock-organization",
 		name: "Acme",
 		role: "admin",
+		pinnedBrandId: null,
 		brandCreation: { kind: "allowed" },
 		brands: [{ id: "mock-brand-id", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
 	},

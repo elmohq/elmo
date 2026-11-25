@@ -262,6 +262,9 @@ function OrganizationSection({
 }) {
 	const { heading, children } = organizationTree(organization);
 	const isAdmin = isOrgAdminRole(organization.role);
+	const visibleChildren = organization.pinnedBrandId
+		? children.filter((row) => row.kind !== "brand" || row.id === organization.pinnedBrandId)
+		: children;
 
 	return (
 		<DropdownMenuGroup aria-label={organization.name}>
@@ -280,9 +283,9 @@ function OrganizationSection({
 				</DropdownMenuItem>
 			)}
 
-			{children.length > 0 && (
+			{visibleChildren.length > 0 && (
 				<div className="ml-4 border-l pl-1">
-					{children.map((row) => (
+					{visibleChildren.map((row) => (
 						<DropdownMenuItem
 							key={row.key}
 							render={<Link {...row.link} onClick={onNavigate} />}

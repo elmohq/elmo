@@ -7,6 +7,7 @@ const ORGANIZATION = {
 	name: "Acme",
 	slug: "acme",
 	role: "admin",
+	pinnedBrandId: null,
 	brands: [],
 	brandCreation: { kind: "allowed" as const },
 };
