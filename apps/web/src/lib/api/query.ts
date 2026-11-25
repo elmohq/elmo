@@ -7,10 +7,7 @@ import { z } from "zod";
 
 const INSTANT_EXAMPLE = "an ISO 8601 timestamp with an offset, e.g. 2026-01-01T00:00:00Z";
 
-/**
- * Clamped rather than rejected, as the shared `Limit` parameter documents: the
- * cap is there to bound a runaway query, not to refuse a caller who asked for more.
- */
+/** A top-k past its cap still answers with as many as there are, so it is clamped rather than refused. */
 export function clampedCount(max: number, fallback: number) {
 	return z
 		.string()
@@ -21,14 +18,32 @@ export function clampedCount(max: number, fallback: number) {
 		});
 }
 
-export const page = clampedCount(Number.MAX_SAFE_INTEGER, 1);
+/**
+ * Refused rather than clamped: a page size quietly cut to the cap shifts every
+ * later page's offset, so a client paging past it would skip rows without knowing.
+ */
+export function pagingCount(max: number, fallback: number) {
+	const range = max === Number.MAX_SAFE_INTEGER ? "a whole number of at least 1" : `a whole number from 1 to ${max}`;
+	return z
+		.string()
+		.optional()
+		.transform((raw, ctx) => {
+			if (raw === undefined) return fallback;
+			const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+			if (value >= 1 && value <= max) return value;
+			ctx.addIssue({ code: "custom", message: `must be ${range}` });
+			return z.NEVER;
+		});
+}
+
+export const page = pagingCount(Number.MAX_SAFE_INTEGER, 1);
 
 export const DEFAULT_LIMIT = 20;
 
-const limit = clampedCount(100, DEFAULT_LIMIT);
+const limit = pagingCount(100, DEFAULT_LIMIT);
 
 /** Most brands get every row on the first page, and a page stays well inside a response a function can return. */
-const analyticsListLimit = clampedCount(1000, 1000);
+const analyticsListLimit = pagingCount(1000, 1000);
 
 /** RFC 3339, as the spec's `format: date-time` says: without an offset, `Date` would read the server's local time. */
 export const instant = z.iso.datetime({

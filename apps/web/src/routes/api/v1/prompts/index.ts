@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { clampedCount, DEFAULT_LIMIT, offsetOf, page, paginationOf } from "@/lib/api/query";
+import { DEFAULT_LIMIT, offsetOf, page, paginationOf, pagingCount } from "@/lib/api/query";
 import { promptListSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
 import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-core";
@@ -14,7 +14,7 @@ import { createPrompts, listPrompts, toPromptSummary } from "@/server/prompts-co
 const listPromptsQuery = z.object({
 	brandId: z.string().optional(),
 	page,
-	limit: clampedCount(1000, DEFAULT_LIMIT),
+	limit: pagingCount(1000, DEFAULT_LIMIT),
 	// Anything but `true` or `false` filters nothing, rather than being refused.
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),

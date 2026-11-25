@@ -18,22 +18,28 @@ function parseAnalyticsWindow(search: string) {
 const WINDOW = "start=2026-01-01T00:00:00Z&end=2026-02-01T00:00:00Z";
 
 describe("analytics API query parsing", () => {
-	it("clamps pagination into range rather than refusing it", () => {
+	it("defaults missing paging and refuses paging outside the range", () => {
 		const read = (search: string) => parsed(z.object(paging), search);
 		expect(read("")).toEqual({ page: 1, limit: 20 });
-		expect(read("page=0&limit=101")).toEqual({ page: 1, limit: 100 });
-		expect(read("page=abc&limit=abc")).toEqual({ page: 1, limit: 20 });
+		expect(read("page=2&limit=100")).toEqual({ page: 2, limit: 100 });
+		expect(() => read("limit=101")).toThrow("must be a whole number from 1 to 100");
+		expect(() => read("limit=0")).toThrow("must be a whole number from 1 to 100");
+		expect(() => read("page=0")).toThrow("must be a whole number of at least 1");
+		expect(() => read("page=-1")).toThrow("must be a whole number of at least 1");
+		expect(() => read("page=abc")).toThrow("must be a whole number of at least 1");
+		expect(() => read("limit=20.5")).toThrow("must be a whole number from 1 to 100");
+		expect(() => read("limit=")).toThrow("must be a whole number from 1 to 100");
 	});
 
-	it("pages the analytics lists 1000 at a time by default, clamping out-of-range and unreadable values", () => {
+	it("pages the analytics lists 1000 at a time by default, refusing more", () => {
 		const read = (search: string) => {
 			const query = parsed(z.object(analyticsListPaging), search);
 			return { ...query, offset: offsetOf(query) };
 		};
 		expect(read("")).toEqual({ page: 1, limit: 1000, offset: 0 });
 		expect(read("page=3&limit=50")).toEqual({ page: 3, limit: 50, offset: 100 });
-		expect(read("limit=5000")).toMatchObject({ limit: 1000 });
-		expect(read("page=x&limit=abc")).toEqual({ page: 1, limit: 1000, offset: 0 });
+		expect(() => read("limit=1001")).toThrow("must be a whole number from 1 to 1000");
+		expect(() => read("limit=abc")).toThrow("must be a whole number from 1 to 1000");
 	});
 
 	it("requires both bounds of the window", () => {
