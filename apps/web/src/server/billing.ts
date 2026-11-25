@@ -1,16 +1,16 @@
 /**
  * Billing server functions (cloud mode). Read paths power the paywall, the
- * plan picker, and the billing settings page; the single write path adjusts
- * the extra premium slots add-on quantity. Checkout, plan changes, portal,
- * and cancellation all go through better-auth's Stripe endpoints client-side —
- * no custom payment surface here.
+ * plan picker, and the billing settings page; the write paths adjust the extra
+ * premium slots add-on quantity and switch a live subscription's plan.
+ * Checkout, portal, and cancellation go through better-auth's Stripe endpoints
+ * client-side.
  */
 import { createServerFn } from "@tanstack/react-start";
 import type { Entitlements } from "@workspace/config/entitlements";
-import { isPremiumAddonAvailable, premiumPlanNames } from "@workspace/config/plans";
+import { isPlanKey, isPremiumAddonAvailable, premiumPlanNames } from "@workspace/config/plans";
 import { isOrgAdminRole } from "@workspace/config/roles";
 import { getDeployment } from "@workspace/deployment";
-import { setPremiumAddonQuantity } from "@workspace/deployment/billing";
+import { changeSubscriptionPlan, setPremiumAddonQuantity } from "@workspace/deployment/billing";
 import { db } from "@workspace/lib/db/db";
 import { organization } from "@workspace/lib/db/schema";
 import {
@@ -176,4 +176,33 @@ export const setPremiumAddonQuantityFn = createServerFn({ method: "POST" })
 			quantity: data.quantity,
 		});
 		return { quantity };
+	});
+
+export const changePlanFn = createServerFn({ method: "POST" })
+	.validator(z.object({ organizationId: z.string(), plan: z.string().refine(isPlanKey, "Unknown plan") }))
+	.handler(async ({ data }) => {
+		const deployment = getDeployment();
+		if (!deployment.features.billing) throw new Error("Billing is not enabled on this deployment");
+
+		const session = await requireAuthSession();
+		const org = await requireOrganization(session.user.id, data.organizationId);
+		if (!isOrgAdminRole(org.role)) {
+			throw new Error("Only organization admins can change billing");
+		}
+
+		const state = await getOrgBillingState(org.id);
+		const subscription = state.subscription;
+		if (
+			!subscription?.stripeSubscriptionId ||
+			(subscription.status !== "active" && subscription.status !== "trialing")
+		) {
+			throw new Error("Only an active subscription can switch plans");
+		}
+		if (subscription.plan === data.plan) return;
+
+		await changeSubscriptionPlan({
+			stripeSubscriptionId: subscription.stripeSubscriptionId,
+			organizationId: org.id,
+			plan: data.plan,
+		});
 	});
