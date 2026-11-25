@@ -34,7 +34,6 @@ import {
 	requireAuthSession,
 	requireBrandAdminOrganization,
 	requireBrandAdminSession,
-	requireBrandOrganization,
 	requireBrandSession,
 	requireOrganizationAdmin,
 	requirePlatformPicksEditable,
