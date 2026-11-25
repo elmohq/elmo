@@ -205,7 +205,7 @@ function McpSettingsPage() {
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
 								<TableHead className="w-[22%]">Tool</TableHead>
-								<TableHead>What it does</TableHead>
+								<TableHead>What It Does</TableHead>
 								<TableHead className="w-[24%]">Scope</TableHead>
 							</TableRow>
 						</TableHeader>
