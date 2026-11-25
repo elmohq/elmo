@@ -1,13 +1,12 @@
 import type { FaqItem } from "@/lib/faqs";
 import { newest } from "@/lib/page-dates";
 import { CATEGORY_NOUN, indefiniteArticle, isOpenSource } from "./content";
-import { competitors, getComparisonSlug, getPopularityRank, graveyardRanking } from "./data";
+import { competitors, getPopularityRank, graveyardRanking } from "./data";
 import {
 	CATEGORY_LABELS,
 	type Competitor,
 	type CompetitorCategory,
 	ELMO_FEATURES,
-	FEATURE_CATEGORIES,
 	type FeatureKey,
 	getFeatureDescription,
 	getFeatureLabel,
