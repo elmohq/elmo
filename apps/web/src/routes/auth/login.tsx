@@ -109,6 +109,7 @@ function LoginPage() {
 			attribution={attributionParams(search)}
 			isCloud={mode === "cloud"}
 			canRegister={canRegister}
+			showForgotPassword={mode === "cloud" || mode === "local"}
 		/>
 	);
 }
@@ -214,12 +215,14 @@ export function EmailPasswordLogin({
 	attribution,
 	isCloud,
 	canRegister,
+	showForgotPassword = isCloud,
 }: {
 	destination?: string;
 	returnTo?: string;
 	attribution?: AttributionParams;
 	isCloud?: boolean;
 	canRegister?: boolean;
+	showForgotPassword?: boolean;
 }) {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
@@ -317,7 +320,7 @@ export function EmailPasswordLogin({
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
 						<Label htmlFor="password">Password</Label>
-						{isCloud && (
+						{showForgotPassword && (
 							<Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
 								Forgot password?
 							</Link>

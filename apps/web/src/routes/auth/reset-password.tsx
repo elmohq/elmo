@@ -1,5 +1,5 @@
 /**
- * /auth/reset-password - Choose a new password from a reset link (cloud only)
+ * /auth/reset-password - Choose a new password from a reset link (cloud and local)
  *
  * Better-auth redirects here with ?token=... on a valid link, or
  * ?error=INVALID_TOKEN on a bad one.
@@ -40,7 +40,7 @@ function ResetPasswordPage() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 
 	// Cloud is the only mode that can have issued the link that leads here.
-	if (context.clientConfig?.mode !== "cloud") {
+	if (context.clientConfig?.mode !== "cloud" && context.clientConfig?.mode !== "local") {
 		window.location.href = "/auth/login";
 		return null;
 	}

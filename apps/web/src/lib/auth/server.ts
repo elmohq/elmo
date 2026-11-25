@@ -8,6 +8,8 @@
  * All server functions, middleware, and route handlers import from here.
  */
 import { getCloudAuthOptions } from "@workspace/deployment/auth-hooks/cloud";
+import { sendEmail } from "@workspace/deployment/email";
+import { passwordResetEmail } from "@workspace/deployment/email-templates";
 import { getWhitelabelAuthOptions } from "@workspace/deployment/auth-hooks/whitelabel";
 import { type CreateAuthOptions, createAuth } from "@workspace/lib/auth/server";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
@@ -22,6 +24,9 @@ import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
  */
 function getLocalAuthOptions(): CreateAuthOptions {
 	return {
+		sendResetPassword: async ({ user, url }) => {
+			await sendEmail(user.email, passwordResetEmail({ url }));
+		},
 		databaseHooks: {
 			user: {
 				create: {
