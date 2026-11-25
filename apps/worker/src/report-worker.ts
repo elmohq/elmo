@@ -1,7 +1,7 @@
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, reports } from "@workspace/lib/db/schema";
+import { reports } from "@workspace/lib/db/schema";
 import type { MentionConfig } from "@workspace/lib/mentions";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getProvider, type ModelConfig } from "@workspace/lib/providers";

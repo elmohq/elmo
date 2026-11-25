@@ -57,7 +57,7 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 		const keys = providerKeys(provider);
 		if (keys.length === 0) continue;
 		requirements.push({
-			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
+			id: `PROVIDER_${provider.toUpperCase().replaceAll("-", "_")}`,
 			label: keys.join(" + "),
 			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
 			isSatisfied: requireAll(keys),

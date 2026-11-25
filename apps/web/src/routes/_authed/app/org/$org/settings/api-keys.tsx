@@ -204,7 +204,7 @@ function ApiKeysSettingsPage() {
 			<Dialog open={creatingOpen} onOpenChange={setCreatingOpen}>
 				<DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-2xl">
 					<DialogHeader className="shrink-0">
-						<DialogTitle>Create a key</DialogTitle>
+						<DialogTitle>Create a Key</DialogTitle>
 					</DialogHeader>
 					<CreateKeyForm
 						organizationId={organization.id}
@@ -411,8 +411,8 @@ function BrandPicker({
 			<p className="text-sm font-medium">Brand access</p>
 			<Tabs value={restricted ? "custom" : "all"} onValueChange={(value) => onRestricted(value === "custom")}>
 				<TabsList>
-					<TabsTrigger value="all">All brands</TabsTrigger>
-					<TabsTrigger value="custom">Specific brands</TabsTrigger>
+					<TabsTrigger value="all">All Brands</TabsTrigger>
+					<TabsTrigger value="custom">Specific Brands</TabsTrigger>
 				</TabsList>
 				<TabsContent value="all" className="pt-1 text-sm text-muted-foreground">
 					Every brand in this organization, including brands added later.
@@ -530,7 +530,7 @@ function KeyTable({
 						<TableHead className="w-[14%]">Access</TableHead>
 						<TableHead className="w-[12%]">Brands</TableHead>
 						<TableHead className="w-[10%]">Created</TableHead>
-						<TableHead className="w-[10%]">Last used</TableHead>
+						<TableHead className="w-[10%]">Last Used</TableHead>
 						<TableHead className="w-[15%]">{inactive ? "Reason" : "Expires"}</TableHead>
 						<TableHead className="w-[7%] text-right">
 							<span className="sr-only">Actions</span>
@@ -654,7 +654,7 @@ function EmptyKeys({
 			{canManage && (
 				<Button type="button" onClick={onCreate}>
 					<IconPlus className="size-4" />
-					{hasInactive ? "Create a key" : "Create your first key"}
+					{hasInactive ? "Create a Key" : "Create Your First Key"}
 				</Button>
 			)}
 		</div>

@@ -54,7 +54,7 @@ interface ClientDocs {
 
 function clientDocs(id: string, endpoint: string): ClientDocs[] {
 	const bearer = { Authorization: `Bearer ${KEY_PLACEHOLDER}` };
-	const keyEnvVar = `${id.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+	const keyEnvVar = `${id.toUpperCase().replaceAll("-", "_")}_API_KEY`;
 
 	return [
 		{
@@ -205,7 +205,7 @@ function McpSettingsPage() {
 						<TableHeader>
 							<TableRow className="hover:bg-transparent">
 								<TableHead className="w-[22%]">Tool</TableHead>
-								<TableHead>What it does</TableHead>
+								<TableHead>What It Does</TableHead>
 								<TableHead className="w-[24%]">Scope</TableHead>
 							</TableRow>
 						</TableHeader>

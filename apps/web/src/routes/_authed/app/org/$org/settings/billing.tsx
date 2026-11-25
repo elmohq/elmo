@@ -331,7 +331,7 @@ function UsagePanel({ state }: { state: BillingState }) {
 
 /** Stripe's status ids are snake_case and lowercase; a badge shouldn't be. */
 function humanizeStatus(status: string): string {
-	const words = status.replace(/_/g, " ");
+	const words = status.replaceAll("_", " ");
 	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
