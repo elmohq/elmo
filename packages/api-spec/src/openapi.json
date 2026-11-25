@@ -49,6 +49,11 @@
 						"type": "string",
 						"description": "The actual prompt text"
 					},
+					"parentId": {
+						"type": ["string", "null"],
+						"format": "uuid",
+						"description": "Set on a variant: the prompt whose question this one asks in other words. Each variant is tracked and billed as its own prompt. Null on a prompt that isn't a variant. Variants are one level deep, and when a parent is disabled or deleted its oldest enabled variant becomes the parent of the rest."
+					},
 					"enabled": {
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
@@ -89,6 +94,7 @@
 					"id",
 					"brandId",
 					"value",
+					"parentId",
 					"enabled",
 					"tags",
 					"systemTags",
@@ -116,6 +122,11 @@
 							"type": "string"
 						},
 						"description": "User-defined tags for categorizing this prompt"
+					},
+					"parentId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "The id of an existing prompt in the same brand, to add this prompt as a variant of it. Naming a variant adds this one beside it, under the same parent."
 					}
 				},
 				"required": ["brandId", "value"]
@@ -146,6 +157,11 @@
 							"type": "string"
 						},
 						"description": "Replaces the prompt's grounded models. Checked against the organization's premium pool."
+					},
+					"parentId": {
+						"type": ["string", "null"],
+						"format": "uuid",
+						"description": "Makes the prompt a variant of another prompt in the same brand, taking its own variants with it. Naming one of its own variants swaps the two. Null makes a variant stand on its own."
 					}
 				}
 			},
@@ -3565,6 +3581,15 @@
 						"description": "Comma-separated tags. A prompt matches if it carries any of them.",
 						"schema": {
 							"type": "string"
+						}
+					},
+					{
+						"name": "parentId",
+						"in": "query",
+						"description": "Only the variants of this prompt.",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
 						}
 					},
 					{

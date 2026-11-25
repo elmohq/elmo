@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { selectPremiumModels } from "@workspace/config/plans";
+import { variantGroupOf } from "@/lib/prompt-variants";
 
 export interface SubmittedPrompt {
 	id?: string;
@@ -6,6 +8,8 @@ export interface SubmittedPrompt {
 	enabled: boolean;
 	tags?: string[];
 	premiumModels?: string[];
+	/** Only read on an insert: the saved prompt, or the new prompts saved alongside, it is a variant of. */
+	variantOf?: string;
 }
 
 export interface StoredPrompt {
@@ -67,4 +71,25 @@ export function planPromptSave(
 	}
 
 	return { updates, inserts };
+}
+
+/**
+ * Ids and parents for prompts about to be inserted together. A key naming a saved prompt makes
+ * the new one its variant; among new prompts sharing any other key, the first is the parent.
+ */
+export function parentsForInserts(
+	keys: readonly (string | undefined)[],
+	saved: ReadonlyMap<string, { id: string; parentId: string | null }>,
+): { id: string; parentId: string | null }[] {
+	const firstWithKey = new Map<string, string>();
+	return keys.map((key) => {
+		const id = randomUUID();
+		if (!key) return { id, parentId: null };
+		const parent = saved.get(key);
+		if (parent) return { id, parentId: variantGroupOf(parent) };
+		const first = firstWithKey.get(key);
+		if (first) return { id, parentId: first };
+		firstWithKey.set(key, id);
+		return { id, parentId: null };
+	});
 }

@@ -12,11 +12,14 @@ import { type EditablePrompt, type PremiumAllowance, PromptsListEditor } from "@
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { trackEvent } from "@/lib/posthog";
+import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import { useWriteErrorMessage } from "@/lib/write-errors";
 import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
 	id: string;
+	parentId: string | null;
+	createdAt: Date | string;
 	value: string;
 	enabled: boolean;
 	tags?: string[] | null;
@@ -37,22 +40,17 @@ function sameModels(a: string[], b: string[]): boolean {
 	return a.length === b.length && [...a].sort().join() === [...b].sort().join();
 }
 
-/** Same ordering the route loader asks Postgres for, so the list a save leaves
- *  behind matches what a reload would show. */
 function toEditablePrompts(rows: PromptRow[]): EditablePrompt[] {
-	return rows
-		.map((p) => ({
-			id: p.id,
-			_key: p.id,
-			value: p.value,
-			enabled: p.enabled,
-			tags: p.tags || [],
-			systemTags: p.systemTags || [],
-			premiumModels: p.premiumModels ?? [],
-		}))
-		.sort(
-			(a, b) => a.value.localeCompare(b.value) || Number(b.enabled) - Number(a.enabled) || a.id.localeCompare(b.id),
-		);
+	return orderByGroup(rows).map((p) => ({
+		id: p.id,
+		_key: p.id,
+		groupId: variantGroupOf(p),
+		value: p.value,
+		enabled: p.enabled,
+		tags: p.tags || [],
+		systemTags: p.systemTags || [],
+		premiumModels: p.premiumModels ?? [],
+	}));
 }
 
 function sameTags(a: string[], b: string[]) {
@@ -143,7 +141,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			const allPrompts = [
 				...validPrompts.map((p) => ({
-					...(p.id ? { id: p.id } : {}),
+					// A saved prompt keeps its parent; only a new one needs telling whose variant it is.
+					...(p.id ? { id: p.id } : { variantOf: p.groupId }),
 					value: p.value.trim(),
 					enabled: p.enabled,
 					tags: p.tags,
@@ -199,6 +198,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				onChange={setPrompts}
 				changedKeys={changedKeys}
 				premium={premium}
+				variants
 				leading={<SuggestionsStatus suggestions={suggestions} ref={suggestionsRef} />}
 				pendingRows={suggestions.running ? SUGGESTION_PLACEHOLDER_ROWS : 0}
 			/>

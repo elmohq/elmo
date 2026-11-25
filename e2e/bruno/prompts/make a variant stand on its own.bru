@@ -1,0 +1,22 @@
+meta {
+  name: make a variant stand on its own
+  type: http
+  seq: 20
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/prompts/{{variantPromptId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "parentId": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.parentId: eq null
+}

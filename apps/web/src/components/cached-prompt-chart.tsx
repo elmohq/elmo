@@ -1,10 +1,15 @@
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { List } from "lucide-react";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import { useChartExport } from "@/hooks/use-chart-export";
+import { useBrandParams } from "@/hooks/use-route-params";
 import { visibilityBadgeProps } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
 import { BaseChart } from "./base-chart";
@@ -44,6 +49,49 @@ function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 				),
 			)}
 		</CardTitle>
+	);
+}
+
+export interface PromptCardVariant {
+	id: string;
+	value: string;
+}
+
+const NO_VARIANTS: PromptCardVariant[] = [];
+
+/** Beside the title of a prompt that has variants: how many, opening to a list that links to each. */
+function VariantsHint({ variants }: { variants: PromptCardVariant[] }) {
+	const params = useBrandParams();
+	if (variants.length === 0) return null;
+	const label = variants.length === 1 ? "1 variant" : `${variants.length} variants`;
+	return (
+		<Popover>
+			<PopoverTrigger
+				openOnHover
+				render={
+					<Button type="button" variant="ghost" size="sm" aria-label={label} className="h-6 shrink-0 gap-1 px-1.5" />
+				}
+			>
+				<List className="size-3.5" />
+				<span className="text-xs tabular-nums">{variants.length}</span>
+			</PopoverTrigger>
+			<PopoverContent align="start" initialFocus={false} className="w-80 p-0">
+				<p className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Variants</p>
+				<ul className="divide-y text-left text-sm">
+					{variants.map((variant) => (
+						<li key={variant.id}>
+							<Link
+								to="/app/org/$org/brand/$brand/prompts/$promptId"
+								params={{ ...params, promptId: variant.id }}
+								className="block px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent"
+							>
+								{variant.value}
+							</Link>
+						</li>
+					))}
+				</ul>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -92,6 +140,8 @@ export interface CachedPromptChartProps {
 	searchHighlight?: string;
 	/** Distinguishes first evaluation from an empty selected time window. */
 	hasEverBeenEvaluated?: boolean;
+	/** The other tracked wordings of this question. */
+	variants?: PromptCardVariant[];
 }
 
 // Memoized: when a sibling filter / react-query state change re-renders
@@ -106,6 +156,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 	availableModels,
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
+	variants = NO_VARIANTS,
 }: CachedPromptChartProps) {
 	const chartContext = useOptionalChartDataContext();
 
@@ -138,6 +189,13 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 		});
 	}, [handleExport, promptName, lastBrandVisibility, data, lookback, brand, competitors]);
 
+	const heading = (
+		<div className="flex min-w-0 items-center gap-2">
+			<PromptTitle name={promptName} highlight={searchHighlight} />
+			<VariantsHint variants={variants} />
+		</div>
+	);
+
 	if (!chartContext || chartContext.isLoading || !chartData) {
 		return <PromptChartSkeleton />;
 	}
@@ -148,9 +206,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
-				</CardHeader>
+				<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 				<Separator className="py-0 my-0" />
 				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
 				   keeping overall card height consistent with data-filled cards for virtualization */}
@@ -188,9 +244,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 			<>
 				{exportPortal}
 				<Card className="py-3 gap-3">
-					<CardHeader className="flex justify-between items-center px-3">
-						<PromptTitle name={promptName} highlight={searchHighlight} />
-					</CardHeader>
+					<CardHeader className="flex justify-between items-center px-3">{heading}</CardHeader>
 					<Separator className="py-0 my-0" />
 					<CardContent className="px-3">
 						<div className="h-[250px] flex items-center justify-center">
@@ -225,7 +279,7 @@ export const CachedPromptChart = memo(function CachedPromptChart({
 			{exportPortal}
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<PromptTitle name={promptName} highlight={searchHighlight} />
+					{heading}
 					{lastBrandVisibility !== null && (
 						<Badge
 							variant={visibilityBadgeProps(lastBrandVisibility).variant}

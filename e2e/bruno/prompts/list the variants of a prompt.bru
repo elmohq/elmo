@@ -1,0 +1,26 @@
+meta {
+  name: list the variants of a prompt
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?parentId={{promptId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  parentId: {{promptId}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the variant comes back, and nothing else", function() {
+    const ids = res.getBody().data.map((prompt) => prompt.id);
+    expect(ids).to.have.members([bru.getVar("variantPromptId")]);
+  });
+}

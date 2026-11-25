@@ -1,7 +1,7 @@
 ---
 title: Settings
 description: Configure your brand, competitors, prompts, and AI model settings.
-updated: 2026-10-12
+updated: 2026-11-17
 ---
 
 ## Settings Overview
@@ -35,8 +35,13 @@ Manage your tracking prompts:
 
 - **Add prompts** — Create new prompts manually, paste several at once, or click **Suggest Prompts** for AI suggestions that skip what you already track
 - **Edit prompts** — Modify prompt text and tags
+- **Add variants** — Open the **⋯** menu on a prompt and click **Add Variant** to track another wording of the same question. Variants sit under the prompt they reword
 - **Enable/Disable** — Toggle tracking for individual prompts without deleting them
 - **Delete** — Remove prompts you no longer need
+
+Each variant is tracked as its own prompt. It runs on every model you track, on the same schedule, and counts toward the prompt limit, so three wordings of one question cost three prompts. Use them where people phrase a question in ways different enough to change the answer.
+
+If you disable or remove a prompt that has variants, its oldest active variant takes its place and the others move under it.
 
 {/* TODO: Screenshot of prompt settings */}
 

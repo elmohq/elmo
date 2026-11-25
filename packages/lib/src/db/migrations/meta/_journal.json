@@ -239,6 +239,13 @@
       "when": 1794269454270,
       "tag": "0033_copilot_picks_to_bing_ai_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794852026882,
+      "tag": "0034_prompt_variants",
+      "breakpoints": true
     }
   ]
 }

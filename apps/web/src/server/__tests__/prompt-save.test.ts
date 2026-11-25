@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planPromptSave, type StoredPrompt, type SubmittedPrompt } from "@/server/prompt-save";
+import { parentsForInserts, planPromptSave, type StoredPrompt, type SubmittedPrompt } from "@/server/prompt-save";
 
 function stored(id: string, overrides: Partial<StoredPrompt> = {}): StoredPrompt {
 	return { id, enabled: true, premiumModels: [], ...overrides };
@@ -82,5 +82,29 @@ describe("the plan prices the save", () => {
 		const plan = planPromptSave([submitted()], []);
 
 		expect(plan.inserts[0]).not.toHaveProperty("before");
+	});
+});
+
+describe("parentsForInserts", () => {
+	const saved = new Map([
+		["parent", { id: "parent", parentId: null }],
+		["variant", { id: "variant", parentId: "parent" }],
+	]);
+
+	it("starts a prompt with no key on its own", () => {
+		expect(parentsForInserts([undefined], saved)[0].parentId).toBeNull();
+	});
+
+	it("puts a new prompt under the saved prompt its key names, or under that prompt's parent", () => {
+		const [direct, viaVariant] = parentsForInserts(["parent", "variant"], saved);
+		expect(direct.parentId).toBe("parent");
+		expect(viaVariant.parentId).toBe("parent");
+	});
+
+	it("makes the first of the new prompts sharing a key the parent of the rest", () => {
+		const [first, second, other] = parentsForInserts(["new-group", "new-group", "another"], saved);
+		expect(first.parentId).toBeNull();
+		expect(second.parentId).toBe(first.id);
+		expect(other.parentId).toBeNull();
 	});
 });

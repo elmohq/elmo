@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { prompts } from "@workspace/lib/db/schema";
 import { z } from "zod";
 import { createApiHandler, withMethodGuard } from "@/lib/api/handler";
+import { promptWriteError } from "@/lib/api/prompt-errors";
 import { clampedCount, DEFAULT_LIMIT, offsetOf, page, paginationOf } from "@/lib/api/query";
 import { promptListSchema, promptSchema } from "@/lib/api/schemas/prompts";
 import { brandScopeCondition, requireBrandInScope } from "@/lib/api/scope";
@@ -18,6 +19,7 @@ const listPromptsQuery = z.object({
 	// Anything but `true` or `false` filters nothing, rather than being refused.
 	enabled: z.preprocess((raw) => (raw === "true" ? true : raw === "false" ? false : undefined), z.boolean().optional()),
 	tags: z.string().optional(),
+	parentId: z.uuid().optional(),
 	q: z.string().optional(),
 });
 
@@ -25,6 +27,7 @@ const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
 	value: z.string().trim().min(1, "value must be a non-empty string"),
 	tags: z.array(z.string()).optional(),
+	parentId: z.uuid().optional(),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/")({
@@ -40,6 +43,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						brandId: query.brandId,
 						enabled: query.enabled,
 						tags: (query.tags ?? "").split(","),
+						parentId: query.parentId,
 						q: query.q,
 						limit: query.limit,
 						offset: offsetOf(query),
@@ -60,10 +64,11 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 				body: createPromptBody,
 				status: 201,
 				scopes: ["write"],
+				mapError: promptWriteError,
 				handle: async ({ body, auth }) => {
 					const brand = await requireBrandInScope(auth, body.brandId, "body");
 					const [created] = await createPrompts(brand, {
-						prompts: [{ value: body.value, tags: body.tags, enabled: true }],
+						prompts: [{ value: body.value, tags: body.tags, parentId: body.parentId, enabled: true }],
 					});
 					return toPromptSummary(created);
 				},

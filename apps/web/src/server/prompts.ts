@@ -14,7 +14,7 @@ import {
 import { bucketStart, markPromptRunsDirty } from "@workspace/lib/rollups";
 import { computeSystemTags, effectiveTags, matchesTagFilter } from "@workspace/lib/tag-utils";
 import { extractTextContent } from "@workspace/lib/text-extraction";
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireAuthSession, requireBrandAccess, requireBrandSession } from "@/lib/auth/helpers";
@@ -29,6 +29,7 @@ import {
 	getResponseSentimentCounts,
 	type ResponseSearchScope,
 } from "@/lib/postgres-read";
+import { orderByGroup, variantGroupOf } from "@/lib/prompt-variants";
 import {
 	type CitationUrlStats,
 	getCitationUrlStats,
@@ -43,8 +44,9 @@ import { responseSortSchema, sentimentFilterSchema } from "@/lib/sentiment";
 import { isRedditDomain, summarizeSubreddits } from "@/lib/subreddits";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveBrandLookbackDays } from "@/server/brand-window";
+import { settleVariantParents } from "@/server/prompt-parents";
 import { parseTagFilter } from "@/server/prompt-resolution";
-import { planPromptSave } from "@/server/prompt-save";
+import { parentsForInserts, planPromptSave } from "@/server/prompt-save";
 import { toResponse } from "@/server/responses";
 
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
@@ -80,6 +82,17 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			// pgboss schema may not exist yet — that's fine
 		}
 
+		const variants = await db
+			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled })
+			.from(prompts)
+			.where(
+				and(
+					eq(prompts.brandId, data.brandId),
+					or(eq(prompts.id, variantGroupOf(prompt)), eq(prompts.parentId, variantGroupOf(prompt))),
+				),
+			)
+			.orderBy(sql`${prompts.parentId} IS NOT NULL`, prompts.createdAt, prompts.id);
+
 		return {
 			id: prompt.id,
 			brandId: prompt.brandId,
@@ -88,6 +101,8 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
 			nextRunAt,
+			/** Every wording of this question, this one included: the parent, then its variants oldest first. */
+			variants,
 		};
 	});
 
@@ -102,6 +117,7 @@ function summarizePrompt(
 	},
 	stats: PerPromptRunStats | undefined,
 	firstEvaluatedAt: string | Date | null | undefined,
+	variants: { id: string; value: string }[],
 ) {
 	const totalRuns = stats?.runs ?? 0;
 	const ratio = (count: number | undefined) => (totalRuns > 0 ? (count ?? 0) / totalRuns : 0);
@@ -122,6 +138,8 @@ function summarizePrompt(
 		lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 		firstEvaluatedAt: firstEvaluatedAt ? new Date(firstEvaluatedAt) : null,
 		tags: effectiveTags(prompt),
+		/** The other tracked wordings of this question, oldest first. */
+		variants,
 	};
 }
 
@@ -187,9 +205,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const allUserTags = new Set<string>();
 		const tagFilter = parseTagFilter(data.tags);
 
+		const groups = new Map<string, typeof allPrompts>();
+		for (const p of orderByGroup(allPrompts))
+			groups.set(variantGroupOf(p), [...(groups.get(variantGroupOf(p)) ?? []), p]);
+
 		const promptSummaries = allPrompts.map((p) => {
 			for (const tag of p.tags || []) allUserTags.add(tag);
-			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id));
+			const variants = (groups.get(variantGroupOf(p)) ?? [])
+				.filter((other) => other.id !== p.id)
+				.map((other) => ({ id: other.id, value: other.value }));
+			return summarizePrompt(p, summaryMap.get(p.id), firstEvalMap.get(p.id), variants);
 		});
 
 		const filteredPrompts = promptSummaries.filter((p) => matchesTagFilter(p.tags, tagFilter));
@@ -431,6 +456,11 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					 * premium slots each.
 					 */
 					premiumModels: z.array(z.string()).optional(),
+					/**
+					 * On a new prompt: the id of the saved prompt it is a variant of, or a key shared by new
+					 * prompts saved together, the first of which becomes the parent of the rest.
+					 */
+					variantOf: z.uuid().optional(),
 				}),
 			),
 		}),
@@ -444,7 +474,13 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingRows = await db
-			.select({ id: prompts.id, value: prompts.value, enabled: prompts.enabled, premiumModels: prompts.premiumModels })
+			.select({
+				id: prompts.id,
+				parentId: prompts.parentId,
+				value: prompts.value,
+				enabled: prompts.enabled,
+				premiumModels: prompts.premiumModels,
+			})
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId));
 		const existingIds = new Set(existingRows.map((p) => p.id));
@@ -475,9 +511,17 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			);
 
 			if (inserts.length > 0) {
+				// A millisecond apart in the order submitted, so variants saved together keep that order.
+				const savedAt = Date.now();
+				const parents = parentsForInserts(
+					inserts.map(({ prompt }) => prompt.variantOf),
+					existingById,
+				);
 				await tx.insert(prompts).values(
-					inserts.map(({ prompt, after }) => ({
+					inserts.map(({ prompt, after }, index) => ({
+						...parents[index],
 						brandId: data.brandId,
+						createdAt: new Date(savedAt + index),
 						value: prompt.value,
 						enabled: prompt.enabled,
 						tags: prompt.tags || [],
@@ -486,6 +530,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 					})),
 				);
 			}
+			await settleVariantParents(tx, data.brandId);
 
 			return tx.query.prompts.findMany({
 				where: eq(prompts.brandId, data.brandId),

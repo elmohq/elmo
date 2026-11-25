@@ -13,6 +13,12 @@ import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { ModelIcon } from "@workspace/ui/brand/model-icon";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -21,14 +27,17 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
-import { Inbox, ListPlus, Plus, Sparkles, X } from "lucide-react";
+import { CornerDownRight, Inbox, ListPlus, MoreHorizontal, Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useOrganizationParams } from "@/hooks/use-route-params";
+import { countVariants, groupLeads, insertIntoGroup } from "@/lib/prompt-variants";
 
 export interface EditablePrompt {
 	id?: string;
 	_key: string;
+	/** Shared by a prompt and its variants. */
+	groupId: string;
 	value: string;
 	enabled: boolean;
 	tags: string[];
@@ -45,6 +54,7 @@ export interface PremiumAllowance {
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
 		_key: uuidv4(),
+		groupId: partial?.groupId ?? uuidv4(),
 		value: partial?.value ?? "",
 		enabled: partial?.enabled ?? true,
 		tags: partial?.tags ?? [],
@@ -165,6 +175,8 @@ interface PromptsListEditorProps {
 	changedKeys?: ReadonlySet<string>;
 	/** Omit to hide the premium column — self-hosted, or a plan with no pool. */
 	premium?: PremiumAllowance;
+	/** Lets a prompt gain variants. Off where prompts are only being drafted, like onboarding. */
+	variants?: boolean;
 	leading?: ReactNode;
 	pendingRows?: number;
 }
@@ -307,48 +319,81 @@ function ColumnHeader({
 	);
 }
 
+const ACTIONS_PADDING = ["", "pr-8", "pr-14"];
+
+const FIELD_ACTION_CLASS =
+	"flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground";
+
 function PromptTextField({
 	prompt,
+	lead,
 	onValueChange,
 	onRemove,
+	onAddVariant,
 	className,
 }: {
 	prompt: EditablePrompt;
+	/** The prompt this row is a variant of. */
+	lead?: EditablePrompt;
 	onValueChange: (value: string) => void;
 	onRemove: () => void;
+	onAddVariant?: () => void;
 	className?: string;
 }) {
 	const removable = !prompt.id;
+	const actions = Number(removable) + Number(Boolean(onAddVariant));
 	return (
-		<div className={cn("relative", className)}>
-			{prompt.suggested && (
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
-								<Sparkles className="size-3.5" aria-label="Suggested" />
-							</span>
-						}
-					/>
-					<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
-				</Tooltip>
-			)}
-			<Input
-				value={prompt.value}
-				onChange={(e) => onValueChange(e.target.value)}
-				placeholder="Enter prompt text..."
-				className={cn("min-w-0", prompt.suggested && "pl-8", removable && "pr-8")}
-			/>
-			{removable && (
-				<button
-					type="button"
-					onClick={onRemove}
-					aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
-					className="absolute inset-y-0 right-1.5 my-auto flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-				>
-					<X className="size-3.5" />
-				</button>
-			)}
+		<div className={cn("flex items-center gap-1.5", lead && "pl-4", className)}>
+			{lead && <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+			<div className="relative min-w-0 flex-1">
+				{prompt.suggested && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<span className="absolute inset-y-0 left-2.5 flex items-center text-primary">
+									<Sparkles className="size-3.5" aria-label="Suggested" />
+								</span>
+							}
+						/>
+						<TooltipContent>Suggested. Save to start tracking it, or remove it.</TooltipContent>
+					</Tooltip>
+				)}
+				<Input
+					value={prompt.value}
+					onChange={(e) => onValueChange(e.target.value)}
+					placeholder={lead ? "Another wording of this question..." : "Enter prompt text..."}
+					aria-label={lead ? `Variant of "${lead.value}"` : undefined}
+					className={cn("min-w-0", prompt.suggested && "pl-8", ACTIONS_PADDING[actions])}
+				/>
+				<div className="absolute inset-y-0 right-1.5 flex items-center gap-0.5">
+					{onAddVariant && (
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={
+									<button type="button" aria-label={`Actions for "${prompt.value}"`} className={FIELD_ACTION_CLASS} />
+								}
+							>
+								<MoreHorizontal className="size-4" />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem onClick={onAddVariant} className="cursor-pointer">
+									Add Variant
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
+					{removable && (
+						<button
+							type="button"
+							onClick={onRemove}
+							aria-label={prompt.value ? `Remove "${prompt.value}"` : "Remove prompt"}
+							className={FIELD_ACTION_CLASS}
+						>
+							<X className="size-3.5" />
+						</button>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -382,6 +427,8 @@ function PromptRow({
 	gridCols,
 	selected,
 	onToggleSelect,
+	lead,
+	onAddVariant,
 }: {
 	prompt: EditablePrompt;
 	index: number;
@@ -396,6 +443,8 @@ function PromptRow({
 	gridCols: string;
 	selected: boolean;
 	onToggleSelect: () => void;
+	lead?: EditablePrompt;
+	onAddVariant?: () => void;
 }) {
 	return (
 		<div
@@ -410,8 +459,10 @@ function PromptRow({
 				<div className="flex items-start gap-2">
 					<PromptTextField
 						prompt={prompt}
+						lead={lead}
 						onValueChange={(value) => update(index, { value })}
 						onRemove={() => remove(index)}
+						onAddVariant={onAddVariant}
 						className="min-w-0 flex-1"
 					/>
 					<div className="pt-2">
@@ -447,8 +498,10 @@ function PromptRow({
 				</div>
 				<PromptTextField
 					prompt={prompt}
+					lead={lead}
 					onValueChange={(value) => update(index, { value })}
 					onRemove={() => remove(index)}
+					onAddVariant={onAddVariant}
 				/>
 				{showSystemTags && <TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />}
 				<TagsInput
@@ -515,12 +568,63 @@ function BulkPasteBox({ bulk }: { bulk: ReturnType<typeof useBulkPaste> }) {
 	);
 }
 
+function SelectionBar({
+	count,
+	onSetEnabled,
+	onClear,
+}: {
+	count: number;
+	onSetEnabled: (enabled: boolean) => void;
+	onClear: () => void;
+}) {
+	return (
+		<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+			<span className="text-muted-foreground">
+				<strong className="text-foreground">{count}</strong> selected
+			</span>
+			<div className="flex items-center gap-2">
+				<Button type="button" size="sm" variant="outline" onClick={() => onSetEnabled(true)} className="cursor-pointer">
+					Enable
+				</Button>
+				<Button
+					type="button"
+					size="sm"
+					variant="outline"
+					onClick={() => onSetEnabled(false)}
+					className="cursor-pointer"
+				>
+					Disable
+				</Button>
+				<Button type="button" size="sm" variant="ghost" onClick={onClear} className="cursor-pointer">
+					Clear
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+function PromptCount({ prompts }: { prompts: EditablePrompt[] }) {
+	const tracked = prompts.filter((p) => p.enabled && p.value.trim().length > 0);
+	const variantCount = countVariants(tracked);
+	return (
+		<p className="text-xs text-muted-foreground">
+			<strong>
+				{tracked.length}/{MAX_PROMPTS}
+			</strong>{" "}
+			prompts configured
+			{variantCount > 0 &&
+				`, including ${variantCount} ${variantCount === 1 ? "variant" : "variants"}. Each variant is tracked as its own prompt.`}
+		</p>
+	);
+}
+
 export function PromptsListEditor({
 	prompts,
 	onChange,
 	showSystemTags = true,
 	changedKeys,
 	premium,
+	variants = false,
 	leading,
 	pendingRows = 0,
 }: PromptsListEditorProps) {
@@ -557,7 +661,14 @@ export function PromptsListEditor({
 		onChange(prompts.map((p) => (selectedKeys.has(p._key) ? { ...p, enabled } : p)));
 	};
 
-	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
+	const leads = useMemo(() => groupLeads(prompts), [prompts]);
+	const addVariant = (row: EditablePrompt) => {
+		const lead = leads.get(row.groupId) ?? row;
+		onChange(insertIntoGroup(prompts, newPromptEntry({ groupId: lead.groupId, tags: lead.tags })));
+	};
+	/** Only a prompt that isn't itself a variant gains them. A blank one has nothing to reword yet, and a full list has no room. */
+	const canAddVariant = (prompt: EditablePrompt) =>
+		variants && !atCapacity && leads.get(prompt.groupId) === prompt && prompt.value.trim().length > 0;
 
 	// Live pool usage: other brands' assignments plus whatever is ticked here,
 	// so the cap applies before a save rather than being rejected by the server.
@@ -570,34 +681,7 @@ export function PromptsListEditor({
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-					<span className="text-muted-foreground">
-						<strong className="text-foreground">{liveSelectedCount}</strong> selected
-					</span>
-					<div className="flex items-center gap-2">
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => applyEnabledToSelection(true)}
-							className="cursor-pointer"
-						>
-							Enable
-						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => applyEnabledToSelection(false)}
-							className="cursor-pointer"
-						>
-							Disable
-						</Button>
-						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
-							Clear
-						</Button>
-					</div>
-				</div>
+				<SelectionBar count={liveSelectedCount} onSetEnabled={applyEnabledToSelection} onClear={clearSelection} />
 			)}
 
 			{premium && (
@@ -654,6 +738,8 @@ export function PromptsListEditor({
 							gridCols={gridCols}
 							selected={selectedKeys.has(prompt._key)}
 							onToggleSelect={() => toggleSelect(prompt._key)}
+							lead={leads.get(prompt.groupId) === prompt ? undefined : leads.get(prompt.groupId)}
+							onAddVariant={canAddVariant(prompt) ? () => addVariant(prompt) : undefined}
 						/>
 					))}
 				</div>
@@ -692,12 +778,7 @@ export function PromptsListEditor({
 				</p>
 			)}
 
-			<p className="text-xs text-muted-foreground">
-				<strong>
-					{validCount}/{MAX_PROMPTS}
-				</strong>{" "}
-				prompts configured
-			</p>
+			<PromptCount prompts={prompts} />
 		</div>
 	);
 }
