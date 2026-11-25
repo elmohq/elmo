@@ -53,7 +53,7 @@ export function getLookbackEndDate(
 function lookbackChartWindow(lookback: LookbackPeriod, timezone: string): { startDate: Date; endDate: Date } {
 	const endDate = new Date(getLookbackEndDate(lookback, timezone));
 	const startDate = new Date(endDate);
-	startDate.setDate(startDate.getDate() - (getDaysFromLookback(lookback) - 1));
+	startDate.setUTCDate(startDate.getUTCDate() - (getDaysFromLookback(lookback) - 1));
 	return { startDate, endDate };
 }
 
@@ -63,7 +63,7 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 
 	while (current <= endDate) {
 		dates.push(current.toISOString().split("T")[0]);
-		current.setDate(current.getDate() + 1);
+		current.setUTCDate(current.getUTCDate() + 1);
 	}
 
 	return dates;
