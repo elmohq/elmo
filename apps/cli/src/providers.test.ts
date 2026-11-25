@@ -20,7 +20,7 @@ vi.mock("@clack/prompts", () => ({
 	log: { info: () => undefined, warn: () => undefined, step: () => undefined },
 }));
 
-const { collectProvider, providerSpec } = await import("./providers.js");
+const { collectProvider, collectTregGateway, providerSpec } = await import("./providers.js");
 
 describe("collectProvider", () => {
 	beforeEach(() => {
@@ -59,6 +59,48 @@ describe("collectProvider", () => {
 		await collectProvider(providerSpec("anthropic"), {}, targets);
 
 		expect(targets).toEqual(["claude:anthropic-api:claude-haiku-5-5:online"]);
+	});
+
+	it("can decline the gateway without changing existing credentials", async () => {
+		answers.push(false);
+		const env = { CLORO_API_KEY: "test-direct-key" };
+		await collectTregGateway(env);
+		expect(env).toEqual({ CLORO_API_KEY: "test-direct-key" });
+		expect(asked).toHaveLength(1);
+	});
+
+	it("collects one gateway connection for multiple integrations without asking for their native keys", async () => {
+		answers.push(true, ["cloro", "dataforseo"], "test-treg-key", "", "0.25");
+		const env: Record<string, string> = {};
+		const targets = ["claude:openrouter:example/model"];
+		await collectTregGateway(env);
+		answers.push(true, ["gemini:cloro:online", "bing-ai-mode:cloro:online"]);
+		await collectProvider(providerSpec("cloro"), env, targets);
+		answers.push(true, ["google-ai-mode:dataforseo:online"]);
+		await collectProvider(providerSpec("dataforseo"), env, targets);
+		expect(env).toEqual({
+			TREG_PROVIDERS: "cloro,dataforseo",
+			TREG_API_KEY: "test-treg-key",
+			TREG_ORG: "",
+			TREG_MAX_COST_USD: "0.25",
+		});
+		expect(targets).toEqual([
+			"claude:openrouter:example/model",
+			"gemini:cloro:online",
+			"bing-ai-mode:cloro:online",
+			"google-ai-mode:dataforseo:online",
+		]);
+		expect(asked.map((a) => a.kind)).toEqual([
+			"confirm",
+			"multiselect",
+			"password",
+			"text",
+			"text",
+			"confirm",
+			"multiselect",
+			"confirm",
+			"multiselect",
+		]);
 	});
 
 	it("collects both scraper credentials and the picked surfaces", async () => {

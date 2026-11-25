@@ -1,5 +1,6 @@
 import { ENV_REGISTRY, RESEARCH_PROVIDER_PREFERENCE } from "./env-registry";
 import { parseScrapeTargets } from "./scrape-targets";
+import { getTregProviders, tregConfigurationError, tregProviderSelected } from "./treg";
 import type { DeploymentMode, EnvRequirement } from "./types";
 
 export type EnvMap = Record<string, string | undefined>;
@@ -60,7 +61,15 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
 			label: keys.join(" + "),
 			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
-			isSatisfied: requireAll(keys),
+			isSatisfied: (values) => {
+				try {
+					return tregProviderSelected(provider, values)
+						? tregConfigurationError(provider, values) === null
+						: requireAll(keys)(values);
+				} catch {
+					return false;
+				}
+			},
 		});
 	}
 
@@ -92,7 +101,25 @@ function buildResearchProviderRequirement(): EnvRequirement {
 }
 
 function buildRequirements(mode: DeploymentMode): EnvRequirement[] {
-	return [...buildStaticRequirements(mode), ...buildProviderKeyRequirements(), buildResearchProviderRequirement()];
+	return [
+		...buildStaticRequirements(mode),
+		...buildProviderKeyRequirements(),
+		{
+			id: "TREG_GATEWAY",
+			label: "TREG_PROVIDERS, TREG_API_KEY and TREG_MAX_COST_USD",
+			description: "Selected treg integrations require a shared key and an explicit per-request cost guard.",
+			isSatisfied: (env) => {
+				try {
+					return getTregProviders(env.TREG_PROVIDERS).every(
+						(provider) => tregConfigurationError(provider, env) === null,
+					);
+				} catch {
+					return false;
+				}
+			},
+		},
+		buildResearchProviderRequirement(),
+	];
 }
 
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {

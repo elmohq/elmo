@@ -133,6 +133,39 @@ describe("requireEnvVars", () => {
 	});
 });
 
+describe("shared treg gateway requirements", () => {
+	it("is optional until an integration is explicitly selected", () => {
+		expect(missingIds("local", { TREG_API_KEY: "unused-key" }).has("TREG_GATEWAY")).toBe(false);
+	});
+
+	it("requires a shared key and explicit cost guard, but not an organization for scoped tokens", () => {
+		const env = { TREG_PROVIDERS: "cloro,dataforseo", TREG_API_KEY: "test-key" };
+		expect(missingIds("local", env).has("TREG_GATEWAY")).toBe(true);
+		expect(missingIds("local", { ...env, TREG_MAX_COST_USD: "0.25" }).has("TREG_GATEWAY")).toBe(false);
+	});
+
+	it("reports unsupported selections rather than satisfying them with native keys", () => {
+		expect(
+			missingIds("local", {
+				TREG_PROVIDERS: "openai-api",
+				TREG_API_KEY: "test-key",
+				TREG_MAX_COST_USD: "0.25",
+				OPENAI_API_KEY: "direct-key",
+			}).has("TREG_GATEWAY"),
+		).toBe(true);
+	});
+
+	it("does not mistake a collection gateway for a direct onboarding model", () => {
+		expect(
+			missingIds("local", {
+				TREG_PROVIDERS: "cloro,dataforseo",
+				TREG_API_KEY: "test-key",
+				TREG_MAX_COST_USD: "0.25",
+			}).has("RESEARCH_PROVIDER"),
+		).toBe(true);
+	});
+});
+
 describe("assertRequiredEnv", () => {
 	it("names every missing var for the mode in one error", () => {
 		expect(() =>

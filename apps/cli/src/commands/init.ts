@@ -14,6 +14,7 @@ import { collectJudgeKey } from "../judge.js";
 import {
 	collectCredentials,
 	collectProvider,
+	collectTregGateway,
 	DEFAULT_SCRAPER_MODELS,
 	type DirectApiProvider,
 	finalizeScrapeTargets,
@@ -248,6 +249,7 @@ async function configureProvidersCustom(env: EnvMap): Promise<void> {
 	}
 
 	p.log.step(pc.bold("Step 2 of 2 — Scrapers (optional, but needed to track ChatGPT / Google AI Mode)"));
+	await collectTregGateway(env);
 	for (const spec of PROVIDER_PROMPTS.filter((candidate) => candidate.kind === "scraper")) {
 		await collectProvider(spec, env, targets);
 	}
@@ -483,7 +485,8 @@ export async function runInit(options: InitOptions, version: string): Promise<vo
 				env.SEARCHAPI_API_KEY ||
 				env.OLOSTEP_API_KEY ||
 				env.OXYLABS_USERNAME ||
-				env.CLORO_API_KEY,
+				env.CLORO_API_KEY ||
+				env.TREG_API_KEY,
 		),
 		has_direct_api: hasDirectApiConfigured(env),
 	});

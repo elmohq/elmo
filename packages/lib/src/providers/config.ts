@@ -1,4 +1,5 @@
 import { ENV_REGISTRY } from "@workspace/config/env-registry";
+import { tregConfigurationError } from "@workspace/config/treg";
 import { WEB_QUERIES_UNAVAILABLE } from "../constants";
 import { getCredential } from "../secrets";
 import type { ModelConfig } from "./types";
@@ -47,6 +48,21 @@ export const OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low" as const;
 export const RESEARCH_WEB_SEARCH_MAX_USES = 5;
 export const RESEARCH_WEB_SEARCH_CONTEXT_SIZE = "medium" as const;
 
+function providerCredentialsError(id: string, configured: boolean): string | null {
+	const gatewayError = tregConfigurationError(id, {
+		...process.env,
+		TREG_API_KEY: getCredential("TREG_API_KEY"),
+		TREG_ORG: getCredential("TREG_ORG"),
+	});
+	if (gatewayError) return `SCRAPE_TARGETS: provider "${id}" via treg: ${gatewayError}`;
+	if (configured) return null;
+	const keys = ENV_REGISTRY.filter((spec) => spec.provider === id && !getCredential(spec.name)).map(
+		(spec) => spec.name,
+	);
+	const keyList = keys.length > 0 ? `: ${keys.join(", ")}` : " (see docs)";
+	return `SCRAPE_TARGETS: provider "${id}" requires API key(s) to be configured${keyList}`;
+}
+
 export function validateScrapeTargets(
 	configs: ModelConfig[],
 	getProvider: (
@@ -60,20 +76,9 @@ export function validateScrapeTargets(
 			errors.add(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
 			continue;
 		}
-		if (!provider.isConfigured()) {
-			const keys = ENV_REGISTRY.filter((spec) => spec.provider === config.provider && !getCredential(spec.name)).map(
-				(spec) => spec.name,
-			);
-			const keyList = keys.length > 0 ? `: ${keys.join(", ")}` : " (see docs)";
-			errors.add(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured${keyList}`);
-		}
-		if (
-			(config.provider === "openai-api" ||
-				config.provider === "anthropic-api" ||
-				config.provider === "mistral-api" ||
-				config.provider === "openrouter") &&
-			!config.version
-		)
+		const credentialError = providerCredentialsError(config.provider, provider.isConfigured());
+		if (credentialError) errors.add(credentialError);
+		if (["openai-api", "anthropic-api", "mistral-api", "openrouter"].includes(config.provider) && !config.version)
 			errors.add(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
 		if (targetError) errors.add(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);

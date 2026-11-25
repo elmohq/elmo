@@ -51,6 +51,10 @@ declare global {
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
 			readonly CLORO_API_KEY?: string;
+			readonly TREG_API_KEY?: string;
+			readonly TREG_ORG?: string;
+			readonly TREG_MAX_COST_USD?: string;
+			readonly TREG_PROVIDERS?: string;
 			readonly TYPESAFE_API_KEY?: string;
 			readonly REPROCESS_DAYS?: string;
 			readonly JINA_API_KEY?: string;

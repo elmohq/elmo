@@ -1,4 +1,5 @@
 import * as client from "dataforseo-client";
+import { isTregEnabled, tregFetch } from "../../http/treg";
 import { getCredential } from "../../secrets";
 import { configuredWhen } from "../config";
 import { type Attempt, nonEmptyStrings } from "./scrape-shared";
@@ -53,6 +54,7 @@ export function fanOutQueries(result: { fan_out_queries?: unknown }): string[] {
 }
 
 function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
+	if (isTregEnabled("dataforseo")) return tregFetch("dataforseo", url, init);
 	const username = getCredential("DATAFORSEO_LOGIN");
 	const password = getCredential("DATAFORSEO_PASSWORD");
 	if (!username || !password) {
