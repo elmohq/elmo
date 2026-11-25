@@ -7456,6 +7456,46 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
+		slug: "rankspot",
+		name: "RankSpot",
+		domain: "rankspot.ai",
+		url: "https://www.rankspot.ai/",
+		tagline: "SEO and AI search actions run from your own AI agent, billed per action",
+		description:
+			"RankSpot connects to Claude, ChatGPT, Cursor, n8n, and other agents through an MCP server, checks prompts across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews, and AI Mode, and reports visibility score, share of voice, sentiment, and cited sources next to Search Console data. The agent then carries out approved work: writing and publishing articles, finding editors and sending backlink pitches, and drafting forum replies for pages AI answers cite. There is no subscription; each check, article, and email is billed from prepaid credit.",
+		category: "tracking",
+		ahrefsDR: 31,
+		status: "active",
+		checkedAt: "2026-11-18",
+		features: {
+			multiLlmTracking: true,
+			chatgpt: true,
+			googleAiOverviews: true,
+			googleAiMode: true,
+			gemini: true,
+			perplexity: true,
+			claude: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			mcpServer: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: true, startingPrice: "$10 credit top-up", hasEnterprise: false },
+		highlights: [
+			"Runs inside the user's own AI agent through an MCP server",
+			"Pay-per-action pricing with prepaid credit and no subscription",
+			"Executes backlink outreach and forum replies after approval",
+		],
+	},
+	{
 		slug: "share-of-model",
 		name: "Share of Model",
 		domain: "shareofmodel.ai",
@@ -9117,6 +9157,7 @@ const aeoPopularityRanking: string[] = [
 	"geovector", // Six engines incl. AI Overview and AI Mode separately, GSC/Ads/GA integrations; no disclosed customers
 	"gushwork", // $9M raised, AI agents for end-to-end SEO workflows
 	"keytomic", // Agent-run SEO+AEO automation at $99, claims 300+ users
+	"rankspot", // Agent-run SEO+AEO through MCP, pay-per-action pricing, DR 31; no disclosed customers
 	"quattr", // GIGA AI agent, unified SEO + AEO + GEO
 	"maxeo", // Claims 200+ brands and an investor, but thin public detail
 	"ziptie", // Three-signal AI Success Score; also runs ziptie.dev (DR 71)

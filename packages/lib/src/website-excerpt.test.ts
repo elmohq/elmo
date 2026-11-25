@@ -121,6 +121,28 @@ describe("getWebsiteExcerpt", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
+	it("keeps headings and list items when falling back to Readability", async () => {
+		const html = ARTICLE_HTML.replace(
+			"</article>",
+			`<h2>Products</h2>
+		<ul>
+			<li>Picker fleet for small-parts fulfillment</li>
+			<li>Pallet movers for cross-docking</li>
+		</ul>
+		</article>`,
+		);
+		stubFetch({
+			jina: response({ status: 401 }),
+			direct: response({ contentType: "text/html", body: html }),
+		});
+
+		const lines = (await getWebsiteExcerpt("acme.com")).split("\n");
+
+		expect(lines).toContain("## Products");
+		expect(lines).toContain("- Picker fleet for small-parts fulfillment");
+		expect(lines).toContain("- Pallet movers for cross-docking");
+	});
+
 	it("continues past Jina when it throws (network error)", async () => {
 		const fetchMock = vi.fn(async (input: unknown) => {
 			const url = String(input);
