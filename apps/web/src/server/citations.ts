@@ -25,12 +25,14 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
 import { applyPerPromptKeyedLVCF, citationDateWindow } from "@/lib/chart-utils";
+import { buildChannelMix, type ChannelMix } from "@/lib/citation-channels";
 import type { CitationFlowRow } from "@/lib/citation-flow";
 import {
 	type CitationClassTotalRow,
 	type CitationDomainStatsRow,
 	type CitationSummary,
 	type CitationUrlListRow,
+	getCitationChannelRows,
 	getCitationDomainPage,
 	getCitationFlowRows,
 	getCitationSummary,
@@ -427,6 +429,20 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}),
 			whatsChanged,
 		};
+	});
+
+export const getCitationChannelsFn = createServerFn({ method: "GET" })
+	.validator(citationFiltersSchema)
+	.handler(async ({ data }): Promise<ChannelMix> => {
+		await requireBrandSession(data.brandId);
+		const { scope, brand, brandDomains, competitorsList } = await resolveCitationScope(data);
+		if (scope.promptIds.length === 0) return { totalCitations: 0, subjects: [], overall: {}, channels: [] };
+
+		return buildChannelMix({
+			rows: await getCitationChannelRows(scope),
+			brand: { name: brand?.name ?? "", domains: [...brandDomains] },
+			competitors: competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains })),
+		});
 	});
 
 const listPageSchema = {

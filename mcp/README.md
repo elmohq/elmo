@@ -23,9 +23,12 @@ claude mcp add --transport http elmo https://app.elmohq.com/api/mcp
 
 # Codex
 codex mcp add elmo --url https://app.elmohq.com/api/mcp && codex mcp login elmo
+
+# VS Code
+code --add-mcp '{"name":"elmo","type":"http","url":"https://app.elmohq.com/api/mcp"}'
 ```
 
-In Claude.ai, ChatGPT, Cursor, VS Code, and other clients, add a remote MCP server with the same
+In Claude.ai, ChatGPT, Cursor, and other clients, add a remote MCP server with the same
 URL. The [docs](https://www.elmohq.com/docs/api/mcp) have step-by-step setup for each one.
 
 For a client that can't open a browser, issue an API key under **Settings → API Keys** and send it

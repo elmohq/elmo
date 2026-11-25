@@ -1,5 +1,41 @@
 # @workspace/worker
 
+## 0.7.12
+
+### Patch Changes
+
+- @workspace/config@0.7.12
+  - @workspace/deployment@0.7.12
+  - @workspace/lib@0.7.12
+
+## 0.7.11
+
+### Patch Changes
+
+- @workspace/config@0.7.11
+  - @workspace/deployment@0.7.11
+  - @workspace/lib@0.7.11
+
+## 0.7.10
+
+### Patch Changes
+
+- 13dd6af: Sentry now traces each worker job with its database calls, leaves health checks out of web traces, and raises an issue when the worker stops running.
+- Updated dependencies [3db9f08]
+  - @workspace/lib@0.7.10
+  - @workspace/deployment@0.7.10
+  - @workspace/config@0.7.10
+
+## 0.7.9
+
+### Patch Changes
+
+- Updated dependencies [ed4432f]
+- Updated dependencies [ed4432f]
+  - @workspace/lib@0.7.9
+  - @workspace/deployment@0.7.9
+  - @workspace/config@0.7.9
+
 ## 0.7.8
 
 ### Patch Changes

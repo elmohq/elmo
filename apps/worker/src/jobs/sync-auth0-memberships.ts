@@ -8,7 +8,7 @@
  * Runs on a schedule (~every 15 minutes) as a safety net so membership
  * changes don't require users to log out and back in.
  */
-
+import { setTimeout as sleep } from "node:timers/promises";
 import { syncAuth0User } from "@workspace/deployment/auth-hooks/whitelabel";
 import { listAuth0Accounts } from "@workspace/lib/db/auth-sync";
 import type { Job } from "pg-boss";
@@ -20,10 +20,6 @@ export interface SyncAuth0MembershipsData {
 // Auth0 Management API rate limit is ~10 req/s on most plans
 const BATCH_SIZE = 5;
 const BATCH_DELAY_MS = 1000;
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 type Auth0Account = Awaited<ReturnType<typeof listAuth0Accounts>>[number];
 

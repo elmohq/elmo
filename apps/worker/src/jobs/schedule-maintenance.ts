@@ -26,6 +26,8 @@ import type { Job } from "pg-boss";
 import { getBoss } from "../boss";
 import { requestUnjudgedRuns } from "./derive-runs";
 
+export const MAINTENANCE_CRON = "*/5 * * * *";
+
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
 }

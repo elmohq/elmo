@@ -11,3 +11,7 @@ import { getModelMeta } from "@workspace/config/models";
 export function getModelDisplayName(model: string): string {
 	return getModelMeta(model).label;
 }
+
+export function formatPercent(part: number, whole: number): string {
+	return `${Math.round((part / whole) * 100)}%`;
+}

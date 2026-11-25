@@ -4,7 +4,16 @@ import { getModelMeta } from "@workspace/config/models";
 import { parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, brands, organization, type Prompt, prompts, rollupPromptRuns } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	member,
+	organization,
+	type Prompt,
+	prompts,
+	rollupPromptRuns,
+	user,
+} from "@workspace/lib/db/schema";
 import { assertCadenceAllowed, getBrandOrganizationId, getOrgEntitlementsMap } from "@workspace/lib/entitlements";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import type { ModelConfig } from "@workspace/lib/providers";
@@ -15,7 +24,7 @@ import {
 	targetKey,
 	targetOverdueStatus,
 } from "@workspace/lib/run-policy";
-import { desc, eq, inArray, type SQL, sql } from "drizzle-orm";
+import { count, desc, eq, ilike, inArray, or, type SQL, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { z } from "zod";
 import { isAdmin, requireAuthSession } from "@/lib/auth/helpers";
@@ -246,6 +255,73 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 			.returning();
 		if (!result[0]) throw new Error("Brand not found");
 		return result[0];
+	});
+
+const ADMIN_USERS_PAGE_SIZE = 25;
+
+export interface AdminUser {
+	id: string;
+	name: string;
+	email: string;
+	role: string;
+	banned: boolean;
+	createdAt: string;
+	organizations: { id: string; name: string }[];
+}
+
+export const listAdminUsersFn = createServerFn({ method: "GET" })
+	.validator(z.object({ search: z.string().max(200).default(""), page: z.number().int().min(0).default(0) }))
+	.handler(async ({ data }): Promise<{ users: AdminUser[]; total: number; pageSize: number }> => {
+		await requireAdmin();
+		const term = data.search.trim().replace(/[\\%_]/g, "\\$&");
+		const where = term ? or(ilike(user.email, `%${term}%`), ilike(user.name, `%${term}%`)) : undefined;
+
+		const [rows, [totals]] = await Promise.all([
+			db
+				.select({
+					id: user.id,
+					name: user.name,
+					email: user.email,
+					role: user.role,
+					banned: user.banned,
+					createdAt: user.createdAt,
+				})
+				.from(user)
+				.where(where)
+				.orderBy(desc(user.createdAt), user.id)
+				.limit(ADMIN_USERS_PAGE_SIZE)
+				.offset(data.page * ADMIN_USERS_PAGE_SIZE),
+			db.select({ total: count() }).from(user).where(where),
+		]);
+
+		const memberships =
+			rows.length === 0
+				? []
+				: await db
+						.select({ userId: member.userId, id: organization.id, name: organization.name })
+						.from(member)
+						.innerJoin(organization, eq(member.organizationId, organization.id))
+						.where(
+							inArray(
+								member.userId,
+								rows.map((row) => row.id),
+							),
+						)
+						.orderBy(organization.name);
+
+		return {
+			total: totals?.total ?? 0,
+			pageSize: ADMIN_USERS_PAGE_SIZE,
+			users: rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				email: row.email,
+				role: row.role ?? "user",
+				banned: row.banned === true,
+				createdAt: row.createdAt.toISOString(),
+				organizations: memberships.filter((m) => m.userId === row.id).map(({ id, name }) => ({ id, name })),
+			})),
+		};
 	});
 
 /** The same pipeline as onboarding and `POST /api/v1/tools/analyze`. */

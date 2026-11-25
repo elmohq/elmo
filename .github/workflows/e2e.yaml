@@ -362,7 +362,7 @@ jobs:
           TYPESAFE_API_KEY: stub
         run: |
           ELMO_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
-            nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-local.log 2>&1 &
+            nohup pnpm -C apps/worker start > /tmp/worker-local.log 2>&1 &
           echo $! > /tmp/worker.pid
           sleep 15
           npx tsx e2e/scheduling/verify-scheduling.ts local
@@ -380,7 +380,7 @@ jobs:
           GOOGLE_CLIENT_ID: ci
           GOOGLE_CLIENT_SECRET: ci
         run: |
-          nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-cloud.log 2>&1 &
+          nohup pnpm -C apps/worker start > /tmp/worker-cloud.log 2>&1 &
           echo $! > /tmp/worker.pid
           sleep 15
           npx tsx e2e/scheduling/verify-scheduling.ts cloud

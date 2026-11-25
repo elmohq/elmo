@@ -19,8 +19,7 @@ import {
 	type SentimentFilterCounts,
 	sentimentTotal,
 } from "@/lib/sentiment";
-
-const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
+import { formatPercent } from "@/lib/utils";
 
 export function SentimentBar({
 	counts,
@@ -43,7 +42,7 @@ export function SentimentBar({
 					"min-w-1 basis-0 rounded-full transition-opacity",
 					selected && selected !== sentiment && "opacity-25",
 				);
-				const label = `${SENTIMENT_STYLES[sentiment].label}: ${percent(counts[sentiment], total)}`;
+				const label = `${SENTIMENT_STYLES[sentiment].label}: ${formatPercent(counts[sentiment], total)}`;
 				return onSelect ? (
 					// A mouse shortcut: the legend below is the same control for keyboards and screen readers.
 					<button
@@ -156,7 +155,7 @@ export function SentimentFilterCard({
 				<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 					<div className="text-sm">
 						{clear > 0 ? (
-							<span className="font-semibold tabular-nums">{percent(counts.positive, clear)} positive</span>
+							<span className="font-semibold tabular-nums">{formatPercent(counts.positive, clear)} positive</span>
 						) : (
 							<span className="font-semibold">No sentiment yet</span>
 						)}

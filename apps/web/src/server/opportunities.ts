@@ -22,7 +22,7 @@ import {
 	type PerPromptRunStats,
 } from "@/lib/rollup-read";
 import { resolveLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
-import { computeVolatility, type DailyDomainCount, stabilityScore } from "@/lib/visibility-stats";
+import { computeVolatility, stabilityScore } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 /** First occurrence of each entry, by whatever `key` identifies it. */

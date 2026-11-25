@@ -31,6 +31,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "PostgreSQL connection string.",
 	},
 	{
+		name: "DATABASE_POOL_MAX",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Most PostgreSQL connections each web or worker process holds open. Defaults to 10, or 5 on Vercel, AWS Lambda, and Google Cloud Run, where every instance has its own pool.",
+	},
+	{
 		name: "APP_URL",
 		scope: "server",
 		requiredBy: ["cloud"],
@@ -140,7 +147,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
 		description:
-			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,gemini:olostep:online",
 	},
 	{
 		name: "SEARCHAPI_API_KEY",
@@ -272,7 +279,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "ENVIRONMENT",
 		scope: "server",
 		requiredBy: "optional",
-		description: "Environment name reported to Sentry (e.g. production).",
+		description:
+			"Environment name reported to Sentry (e.g. production). Defaults to NODE_ENV. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "VITE_APP_NAME",
@@ -355,6 +363,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description: "Sentry DSN for server-side error reporting.",
+	},
+	{
+		name: "SENTRY_TRACES_SAMPLE_RATE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Scales how much is traced in Sentry, from 0 to 1 (default 1). The web app traces this share of requests; the worker multiplies its per-queue rates by it. The web app also reads it at build time for the browser.",
 	},
 	{
 		name: "SENTRY_ORG",

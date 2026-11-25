@@ -1,12 +1,11 @@
 import { useSearch } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { CalendarRange } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { CustomRangeFields, formatLookbackLabel } from "@/components/lookback-picker";
-import { useBrand } from "@/hooks/use-brands";
 import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
-import { getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import {
+	DEFAULT_LOOKBACK,
 	formatCustomLookback,
 	LOOKBACK_PERIODS,
 	type LookbackPeriod,
@@ -29,11 +28,7 @@ interface LookbackSelectorProps {
 }
 
 export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSelectorProps) {
-	const { data: brand } = useBrand();
-	const computedDefaultPeriod = useMemo(
-		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[defaultPeriod, brand?.earliestDataDate],
-	);
+	const computedDefaultPeriod = defaultPeriod ?? DEFAULT_LOOKBACK;
 
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
@@ -89,11 +84,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 }
 
 export function useLookbackPeriod(defaultPeriod?: LookbackPeriod) {
-	const { data: brand } = useBrand();
-	const computedDefaultPeriod = useMemo(
-		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[defaultPeriod, brand?.earliestDataDate],
-	);
+	const computedDefaultPeriod = defaultPeriod ?? DEFAULT_LOOKBACK;
 
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
 	return coerceLookback(urlLookback, computedDefaultPeriod);

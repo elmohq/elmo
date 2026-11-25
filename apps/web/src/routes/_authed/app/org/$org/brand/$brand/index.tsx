@@ -4,7 +4,6 @@ import { labelForModelFilter } from "@workspace/config/model-filter";
 import type { ClientConfig } from "@workspace/config/types";
 import type { BrandTrackingState } from "@workspace/lib/brand-state";
 import { buttonVariants } from "@workspace/ui/components/button";
-import { Card, CardContent } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { type ReactNode, useEffect } from "react";
@@ -21,7 +20,6 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrandParams } from "@/hooks/use-route-params";
 import { brandRank, LANDSCAPE_METRICS } from "@/lib/landscape";
 import { describeTargetSchedule, type TrackedTarget } from "@/lib/model-filter";
-import { METRIC_META } from "@/lib/overview-metrics";
 import { setPersonProperties } from "@/lib/posthog";
 import { pageHead } from "@/lib/route-head";
 import { BRAND_ROUTE_ID } from "@/lib/route-subject";
@@ -332,9 +330,7 @@ function DashboardPage() {
 
 	// No runs yet (and no filter narrowing them away): nothing to plot, so point at what to do next.
 	if (!loading && summary?.totalRuns === 0 && !modelParam && tags.length === 0) {
-		return (
-			<AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.prompts?.length ?? 0) > 0} />
-		);
+		return <AwaitingFirstEvaluation totalPrompts={summary.totalPrompts} hasPrompts={(brand?.promptCount ?? 0) > 0} />;
 	}
 
 	return (

@@ -23,6 +23,9 @@ interface ImportMetaEnv {
 	readonly VITE_POSTHOG_KEY?: string;
 	readonly VITE_TURNSTILE_SITE_KEY?: string;
 	readonly VITE_SENTRY_DSN?: string;
+	// Set by Vite `define` from the server's ENVIRONMENT and SENTRY_TRACES_SAMPLE_RATE.
+	readonly VITE_SENTRY_ENVIRONMENT?: string;
+	readonly VITE_SENTRY_TRACES_SAMPLE_RATE?: number;
 }
 
 interface ImportMeta {
@@ -36,6 +39,7 @@ declare global {
 		interface ProcessEnv {
 			readonly DEPLOYMENT_MODE: string;
 			readonly DATABASE_URL: string;
+			readonly DATABASE_POOL_MAX?: string;
 			readonly APP_URL?: string;
 			readonly SCRAPE_TARGETS?: string;
 			readonly OPENAI_API_KEY: string;
@@ -72,6 +76,7 @@ declare global {
 			readonly SENTRY_ORG?: string;
 			readonly SENTRY_PROJECT?: string;
 			readonly SENTRY_AUTH_TOKEN?: string;
+			readonly SENTRY_TRACES_SAMPLE_RATE?: string;
 			readonly DISABLE_TELEMETRY?: string;
 			readonly STRIPE_SECRET_KEY?: string;
 			readonly STRIPE_WEBHOOK_SECRET?: string;

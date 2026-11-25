@@ -5,14 +5,7 @@
 
 import type { MentionAssessment, RunMentionAssessments } from "@workspace/lib/mentions";
 import { type SQL, sql } from "drizzle-orm";
-import {
-	type AnalyticsScope,
-	modelFilter,
-	type PromptListScope,
-	queryPg,
-	scopeFilter,
-	windowFilter,
-} from "@/lib/analytics-sql";
+import { modelFilter, type PromptListScope, queryPg, scopeFilter, windowFilter } from "@/lib/analytics-sql";
 import { UNAVAILABLE_SENTINEL } from "@/lib/fanout-analysis";
 import type { ResponseSort, Sentiment, SentimentFilter, SentimentFilterCounts } from "@/lib/sentiment";
 import { responseOrder, sentimentBucket, sentimentCondition, toSentimentFilterCounts } from "@/lib/sentiment-sql";

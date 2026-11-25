@@ -5,10 +5,18 @@ export interface Viewer {
 	session: NonNullable<Awaited<ReturnType<typeof getAuthSession>>>;
 	isAdmin: boolean;
 	hasReportAccess: boolean;
+	impersonating: boolean;
 }
 
 export const getViewerFn = createServerFn({ method: "GET" }).handler(async (): Promise<Viewer | null> => {
 	const session = await getAuthSession();
 	if (!session) return null;
-	return { session, isAdmin: isAdmin(session), hasReportAccess: hasReportAccess(session) };
+	// customSession's return type drops the fields other plugins add to the session.
+	const { impersonatedBy } = session.session as { impersonatedBy?: string | null };
+	return {
+		session,
+		isAdmin: isAdmin(session),
+		hasReportAccess: hasReportAccess(session),
+		impersonating: Boolean(impersonatedBy),
+	};
 });

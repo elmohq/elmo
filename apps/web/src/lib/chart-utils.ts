@@ -2,28 +2,21 @@ import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { daysInRange, type LookbackPeriod, parseCustomLookback } from "@/lib/lookback";
 import type { PerPromptDailyCompetitorRow, PerPromptDailyRuns } from "@/lib/rollup-read";
 
+// Shared, because charts format a date per axis tick and `toLocaleDateString` builds a formatter per call.
+const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
 /** A calendar day ("2026-03-04") as a chart labels it ("Mar 4"). */
-export const formatShortDate = (date: string) =>
-	new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const formatShortDate = (date: string) => SHORT_DATE.format(new Date(`${date}T00:00:00Z`));
+
+const LONG_DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** A calendar day ("2026-03-04") as a chart tooltip titles it ("March 4, 2026"). */
+export const formatLongDate = (date: string) => LONG_DATE.format(new Date(`${date}T00:00:00Z`));
 
 /** Charts key a series by id and label it by name; nothing else about a brand is read. */
 export interface ChartSubject {
 	id: string;
 	name: string;
-}
-
-/** Use a stable one-month default while history loads, then shorten it for brands with less than a week of data. */
-export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
-	if (!earliestDataDate) {
-		return "1m";
-	}
-
-	const earliestDate = new Date(earliestDataDate);
-	const now = new Date();
-	const diffInMs = now.getTime() - earliestDate.getTime();
-	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-	return diffInDays > 7 ? "1m" : "1w";
 }
 
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
@@ -60,7 +53,7 @@ export function getLookbackEndDate(
 function lookbackChartWindow(lookback: LookbackPeriod, timezone: string): { startDate: Date; endDate: Date } {
 	const endDate = new Date(getLookbackEndDate(lookback, timezone));
 	const startDate = new Date(endDate);
-	startDate.setDate(startDate.getDate() - (getDaysFromLookback(lookback) - 1));
+	startDate.setUTCDate(startDate.getUTCDate() - (getDaysFromLookback(lookback) - 1));
 	return { startDate, endDate };
 }
 
@@ -70,7 +63,7 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 
 	while (current <= endDate) {
 		dates.push(current.toISOString().split("T")[0]);
-		current.setDate(current.getDate() + 1);
+		current.setUTCDate(current.getUTCDate() + 1);
 	}
 
 	return dates;

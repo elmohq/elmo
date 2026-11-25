@@ -82,9 +82,9 @@ describe("planPlatformBreakdown", () => {
 
 	it("separates scraped searches from model APIs", () => {
 		const groups = groupsById("business");
-		expect(groups.get("scraped")?.models.map((m) => m.model)).toContain("perplexity");
+		expect(groups.get("scraped")?.models.map((m) => m.model)).toContain("gemini");
 		expect(groups.get("scraped")?.models.map((m) => m.model)).not.toContain("claude");
-		expect(groups.get("api")?.models.map((m) => m.model)).not.toContain("perplexity");
+		expect(groups.get("api")?.models.map((m) => m.model)).not.toContain("gemini");
 	});
 
 	it("names every platform it lists", () => {

@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { parseScrapeTargets, providersByModel } from "@workspace/config/scrape-targets";
+import {
+	parseScrapeTargets,
+	providersByModel,
+	type RetiredScrapeTarget,
+	retiredScrapeTargets,
+} from "@workspace/config/scrape-targets";
 import { getDeployment } from "@workspace/deployment";
 import { getDefaultDelayHours, getRunsPerPrompt } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
@@ -59,6 +64,8 @@ export type ModelPickerState = {
 		/** Split by how each reaches the model: the two are not interchangeable. */
 		providers: { id: string; name: string; access: ProviderAccess; docsUrl: string }[];
 	}[];
+	/** Self-hosted only: SCRAPE_TARGETS entries the instance skips, which only the server log mentions otherwise. */
+	retiredTargets: RetiredScrapeTarget[];
 };
 
 export type OnboardingPlatformState = {
@@ -158,14 +165,17 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 		if (entitlements.unlimited) {
 			const selfHosted = await selfHostedCostBasis(brand);
 			const available = optionsByModel(configs, { forOperator: selfHosted !== null, excludePremium: false });
+			const models = available.map((option) => option.model);
 			return {
 				available,
 				editable: picksEditable(available, null),
-				enabledModels: brand.enabledModels ?? available.map((option) => option.model),
+				// A pick whose target is gone has no checkbox, so it could never be cleared.
+				enabledModels: models.filter((model) => brand.enabledModels?.includes(model) ?? true),
 				planLimits: null,
 				upgradeOptions: [],
 				costBasis: selfHosted,
 				unconfiguredPlatforms: selfHosted !== null ? unconfiguredPlatforms(configs) : [],
+				retiredTargets: selfHosted !== null ? retiredScrapeTargets(process.env.SCRAPE_TARGETS) : [],
 			};
 		}
 
@@ -184,6 +194,7 @@ export const getModelPickerStateFn = createServerFn({ method: "GET" })
 			upgradeOptions: pickable.filter((option) => !menu.has(option.model)),
 			costBasis: null,
 			unconfiguredPlatforms: [],
+			retiredTargets: [],
 		};
 	});
 

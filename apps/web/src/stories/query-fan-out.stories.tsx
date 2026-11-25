@@ -32,7 +32,6 @@ function brand(scrapeTargets: string) {
 		onboarded: true,
 		enabled: true,
 		prompts: [{ id: "p1", value: "best email finder", enabled: true }],
-		earliestDataDate: "2026-08-10",
 		delayOverrideHours: 24,
 		trackedTargets: trackedTargets(scrapeTargets),
 	};

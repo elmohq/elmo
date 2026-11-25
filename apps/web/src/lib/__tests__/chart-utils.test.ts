@@ -1,12 +1,11 @@
 import { toRoundedPercentages } from "@workspace/lib/citations/domain-categories";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	applyPerPromptKeyedLVCF,
 	citationDateWindow,
 	filterAndCompleteChartData,
 	generateDateRange,
 	getDaysFromLookback,
-	getDefaultLookbackPeriod,
 	toBatchChartData,
 } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/lookback";
@@ -24,39 +23,6 @@ describe("getDaysFromLookback", () => {
 		["2025-12-31..2026-01-01", 2],
 	])("maps %s to %i days", (lookback, days) => {
 		expect(getDaysFromLookback(lookback)).toBe(days);
-	});
-});
-
-describe("getDefaultLookbackPeriod", () => {
-	// Freeze the clock: the 7-day cutoff is exact, so a real clock ticking between
-	// building the input date and reading `now` inside the function flips the boundary case.
-	beforeEach(() => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2026-06-09T12:00:00Z"));
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-	it.each<[string, string | null | undefined]>([
-		["null (not loaded)", null],
-		["undefined (not loaded)", undefined],
-	])("defaults to 1m for %s", (_label, input) => {
-		expect(getDefaultLookbackPeriod(input)).toBe("1m");
-	});
-
-	// The cutoff is exclusive: > 7 days of history defaults to 1m, otherwise 1w.
-	it.each<[number, LookbackPeriod]>([
-		[0, "1w"],
-		[3, "1w"],
-		[7, "1w"],
-		[8, "1m"],
-		[90, "1m"],
-	])("returns %s-period default when earliest data is %i days old", (days, expected) => {
-		expect(getDefaultLookbackPeriod(daysAgo(days))).toBe(expected);
 	});
 });
 
@@ -161,6 +127,29 @@ describe("filterAndCompleteChartData with a custom range", () => {
 			{ date: "2026-03-03", brand: 60 },
 			{ date: "2026-03-04" },
 		]);
+	});
+});
+
+describe("day windows across a daylight-saving change", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it.each([
+		["Europe/Amsterdam", "2026-10-25", "2026-11-23"],
+		["America/New_York", "2026-11-01", "2026-11-30"],
+		["America/New_York", "2026-03-08", "2026-04-06"],
+	])("keeps every day of the window in %s from %s", (timezone, from, to) => {
+		vi.stubEnv("TZ", timezone);
+
+		const days = generateDateRange(new Date(from), new Date(to));
+		expect(days).toHaveLength(30);
+		expect(days[0]).toBe(from);
+		expect(days.at(-1)).toBe(to);
+
+		const plotted = filterAndCompleteChartData([{ date: to, brand: 50 }], `${from}..${to}`);
+		expect(plotted.map((point) => point.date)).toEqual(days);
+		expect(plotted.at(-1)).toEqual({ date: to, brand: 50 });
 	});
 });
 

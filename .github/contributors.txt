@@ -19,7 +19,6 @@
 #   - blank lines are ignored
 #
 # ─────────────────────────────────────────────────────────────────────
-
 jrhizor
 uchiha-suraj
 prashantindurkar
@@ -28,6 +27,7 @@ tuliren
 melalj
 mfa-g
 rodriguescarson
+2204zero
 dchaudhari7177
 nosey-dewdrop
 snowyukitty
@@ -56,5 +56,15 @@ bdmohammed
 jamiusaliu
 riavadhavkar
 fate-lab
+0xmyst3ry
+loresclement
+kidkender
+prudhvirajkonda8-bot
+ecomseo
+MuhammadSaim32
+kart4206
+aadithya-kl
+vanshchitransh
+nishitaupreti
+peremunoz
 asyoutoshx
-

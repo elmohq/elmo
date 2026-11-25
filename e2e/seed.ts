@@ -5,7 +5,7 @@
  * Usage: tsx seed.ts
  */
 import { createHash } from "node:crypto";
-import { createDb } from "@workspace/lib/db/db";
+import { createDb, createPool } from "@workspace/lib/db/db";
 import { resolveUnpagedCitations } from "@workspace/lib/rollups/citation-pages";
 import { markRunsDirty, refreshAllMarked } from "@workspace/lib/rollups/dirty";
 import pg from "pg";
@@ -192,7 +192,7 @@ async function seedOpportunities(client: pg.Client): Promise<void> {
 
 /** The worker is down while the fixture suites run, so the seed builds the rollups analytics read itself. */
 async function buildRollups(connectionString: string): Promise<void> {
-  const conn = createDb(connectionString);
+  const conn = createDb(createPool(connectionString));
   try {
     await resolveUnpagedCitations(conn);
     await markRunsDirty(conn, null);

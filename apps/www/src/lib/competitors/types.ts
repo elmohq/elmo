@@ -367,7 +367,7 @@ export const ELMO_FEATURES: Record<FeatureKey, boolean> = {
 	googleAiMode: true,
 	gemini: true,
 	perplexity: true,
-	copilot: true,
+	copilot: false,
 	claude: true,
 	grok: true,
 	deepseek: true,

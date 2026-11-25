@@ -81,8 +81,6 @@ export function ChartExportPreview({
 						lookback={lookback}
 						brand={brand}
 						competitors={competitors}
-						isAnimationActive={false}
-						chartType="line"
 						chartColors={branding.chartColors}
 						chartHeight={`${CHART_H}px`}
 					/>
