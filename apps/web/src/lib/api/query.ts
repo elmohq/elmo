@@ -7,11 +7,7 @@ import { z } from "zod";
 
 const INSTANT_EXAMPLE = "an ISO 8601 timestamp with an offset, e.g. 2026-01-01T00:00:00Z";
 
-/**
- * Refused rather than clamped: a count quietly cut to the cap answers a different
- * question than the one asked, and a clamped page size shifts every later page's
- * offset, so a client paging past it would skip rows without knowing.
- */
+/** Out of range is a 400: a page size cut to the cap would shift every later page's offset, and the client would skip rows without knowing. */
 export function boundedCount(max: number, fallback: number) {
 	return z
 		.string()
