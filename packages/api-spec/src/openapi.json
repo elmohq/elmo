@@ -2234,17 +2234,18 @@
 			"Page": {
 				"name": "page",
 				"in": "query",
-				"description": "Page number, 1-based.",
+				"description": "Page number, 1-based. A value outside the range returns a 400.",
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
+					"maximum": 9007199254740991,
 					"default": 1
 				}
 			},
 			"Limit": {
 				"name": "limit",
 				"in": "query",
-				"description": "Items per page. Values above the maximum are clamped, not rejected.",
+				"description": "Items per page. A value outside the range returns a 400.",
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
@@ -2291,7 +2292,7 @@
 			"AnalyticsListLimit": {
 				"name": "limit",
 				"in": "query",
-				"description": "Items per page. Values above the maximum are clamped, not rejected. The default is large enough that most windows fit on the first page.",
+				"description": "Items per page. A value outside the range returns a 400. The default is large enough that most windows fit on the first page.",
 				"schema": {
 					"type": "integer",
 					"minimum": 1,
@@ -2416,6 +2417,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
@@ -3080,6 +3084,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -3412,6 +3419,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -3543,7 +3553,7 @@
 					{
 						"name": "limit",
 						"in": "query",
-						"description": "Items per page. Values above the maximum are clamped, not rejected. This list had no ceiling before, so the maximum is set to bound a runaway query rather than to change what an existing caller gets back.",
+						"description": "Items per page. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -3622,6 +3632,9 @@
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
@@ -4050,7 +4063,7 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"description": "Number of top competitor entities to return in mentionsTopK",
+						"description": "Number of top competitor entities to return in mentionsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -4061,7 +4074,7 @@
 					{
 						"name": "kCitations",
 						"in": "query",
-						"description": "Number of top cited URLs to return in citedUrlsTopK",
+						"description": "Number of top cited URLs to return in citedUrlsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,
@@ -4293,6 +4306,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -4329,7 +4345,7 @@
 					{
 						"name": "kMentions",
 						"in": "query",
-						"description": "Number of top competitor entities to return in each prompt's mentionsTopK",
+						"description": "Number of top competitor entities to return in each prompt's mentionsTopK. A value outside the range returns a 400.",
 						"schema": {
 							"type": "integer",
 							"minimum": 1,

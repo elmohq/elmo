@@ -1,5 +1,5 @@
 meta {
-  name: a large prompt page is clamped high, not to 100
+  name: a prompt page past the ceiling is rejected
   type: http
   seq: 34
 }
@@ -19,6 +19,6 @@ params:query {
 }
 
 assert {
-  res.status: eq 200
-  res.body.pagination.limit: eq 1000
+  res.status: eq 400
+  res.body.code: eq validation_error
 }

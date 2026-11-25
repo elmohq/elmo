@@ -11,7 +11,7 @@ import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { ApiError, createApiHandler, withMethodGuard } from "@/lib/api/handler";
-import { clampedCount } from "@/lib/api/query";
+import { topK } from "@/lib/api/query";
 import { promptSnapshotSchema } from "@/lib/api/schemas/snapshots";
 import { requirePromptInScope } from "@/lib/api/scope";
 import { getCitationUrlStats, getCompetitorTotals, getMentionTotals } from "@/lib/rollup-read";
@@ -24,14 +24,11 @@ function day() {
 	});
 }
 
-/** Top-K lists are bounded so one request can't ask for the whole history. */
-const MAX_TOP_K = 50;
-
 const snapshotQuery = z.object({
 	startDate: day(),
 	endDate: day(),
-	kMentions: clampedCount(MAX_TOP_K, 5),
-	kCitations: clampedCount(MAX_TOP_K, 10),
+	kMentions: topK(5),
+	kCitations: topK(10),
 });
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({

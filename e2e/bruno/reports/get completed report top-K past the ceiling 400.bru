@@ -1,0 +1,21 @@
+meta {
+  name: get completed report top-K past the ceiling 400
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{completedReportId}}?kMentions=51
+  body: none
+  auth: inherit
+}
+
+params:query {
+  kMentions: 51
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq validation_error
+  res.body.message: startsWith kMentions
+}
