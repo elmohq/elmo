@@ -3,7 +3,8 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { requireAuthSession, requireOrganization, requireOrganizationAdmin } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
@@ -74,8 +75,50 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		const org = await requireOrganizationAdmin(session.user.id, data.organizationId);
 
+		const email = data.email.trim().toLowerCase();
+
+		const [existingUser] = await db.select({ id: user.id }).from(user).where(ilike(user.email, email)).limit(1);
+
+		if (!existingUser) {
+			const [pending] = await db
+				.select({ id: invitation.id })
+				.from(invitation)
+				.where(and(eq(invitation.organizationId, org.id), ilike(invitation.email, email)))
+				.limit(1);
+			if (pending) {
+				await db.delete(invitation).where(eq(invitation.id, pending.id));
+			}
+
+			const userId = uuidv4();
+			const localPart = email.split("@")[0] ?? email;
+			await db.transaction(async (tx) => {
+				await tx.insert(user).values({ id: userId, name: localPart, email });
+				await tx.insert(member).values({
+					id: uuidv4(),
+					organizationId: org.id,
+					userId,
+					role: data.role,
+					createdAt: new Date(),
+				});
+			});
+
+			await auth.api.requestPasswordReset({
+				body: { email, redirectTo: "/auth/reset-password" },
+				headers: getRequestHeaders(),
+			});
+
+			return { success: true, provisioned: true };
+		}
+
+		const [alreadyMember] = await db
+			.select({ id: member.id })
+			.from(member)
+			.where(and(eq(member.organizationId, org.id), eq(member.userId, existingUser.id)))
+			.limit(1);
+		if (alreadyMember) throw new Error("This person is already a member of the organization");
+
 		await auth.api.createInvitation({
-			body: { email: data.email, role: data.role, organizationId: org.id },
+			body: { email, role: data.role, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
 
