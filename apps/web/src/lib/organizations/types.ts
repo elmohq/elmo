@@ -17,6 +17,7 @@ export interface OrganizationSummary {
 	id: string;
 	slug: string;
 	name: string;
+	role: string;
 	brands: OrganizationBrand[];
 	brandCreation: BrandCreation;
 }

@@ -51,6 +51,7 @@ export async function summarizeOrganizations(orgs: UserOrganization[]): Promise<
 		id: org.id,
 		slug: org.slug,
 		name: org.name,
+		role: org.role,
 		// Sorted here rather than in SQL so it doesn't depend on the deployment's
 		// collation — `ORDER BY name` under LC_COLLATE=C is byte order, which puts
 		// every capitalized name ahead of every lowercase one.

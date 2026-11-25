@@ -20,6 +20,7 @@ import {
 	IconUsers,
 } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+import { isOrgAdminRole } from "@workspace/config/roles";
 import type { DeploymentMode, FeaturesConfig } from "@workspace/config/types";
 import { brandLinkParams, orgLinkParams } from "@workspace/lib/app-urls";
 import type { Brand } from "@workspace/lib/db/schema";
@@ -108,7 +109,7 @@ function brandGroups(organization: OrganizationSummary, brand: Brand): NavGroup[
 
 	const groups: NavGroup[] = [{ label: "Dashboard", items: dashboard }];
 
-	if (brand.onboarded) {
+	if (brand.onboarded && isOrgAdminRole(organization.role)) {
 		groups.push({
 			label: "Settings",
 			items: [

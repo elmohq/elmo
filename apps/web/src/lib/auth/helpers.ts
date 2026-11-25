@@ -17,7 +17,7 @@ export async function getAuthSession() {
 /** Session plus org, requiring an org-admin role. Reads stay open to every member. */
 export async function requireOrganizationAdmin(userId: string, organizationId: string): Promise<UserOrganization> {
 	const org = await requireOrganization(userId, organizationId);
-	if (!isOrgAdminRole(org.role)) throw new Error("Forbidden: Admin access required");
+	if (!isOrgAdminRole(org.role)) throw new Error("Sorry, admin access is required to make changes.");
 	return org;
 }
 
@@ -31,7 +31,7 @@ export async function requireBrandAdminSession(brandId: string) {
 /** Brand's org, requiring an org-admin role. */
 export async function requireBrandAdminOrganization(userId: string, brandId: string): Promise<UserOrganization> {
 	const org = await requireBrandOrganization(userId, brandId);
-	if (!isOrgAdminRole(org.role)) throw new Error("Forbidden: Admin access required");
+	if (!isOrgAdminRole(org.role)) throw new Error("Sorry, admin access is required to make changes.");
 	return org;
 }
 

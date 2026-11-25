@@ -7,6 +7,7 @@ function organization(brandCreation: BrandCreation, brandNames: string[] = []): 
 		id: "org-1",
 		slug: "acme",
 		name: "Acme",
+		role: "admin",
 		brandCreation,
 		brands: brandNames.map((name) => ({
 			id: name,

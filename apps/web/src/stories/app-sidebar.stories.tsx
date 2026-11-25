@@ -28,6 +28,7 @@ const organization = {
 	id: "org-1",
 	slug: "mock-organization",
 	name: "Acme",
+	role: "admin",
 	brandCreation: { kind: "allowed" as const },
 	brands: [{ id: "brand-1", slug: null, name: "Acme Corp", website: "https://acme.com", onboarded: true }],
 };

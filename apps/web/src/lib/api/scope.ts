@@ -85,12 +85,7 @@ export async function requireBrandWriteAccess(auth: Principal, brand: Brand): Pr
 		.where(and(eq(member.userId, auth.userId), eq(member.organizationId, brand.organizationId)))
 		.limit(1);
 	if (!row || !isOrgAdminRole(row.role)) {
-		throw new ApiError(
-			403,
-			"Forbidden",
-			"Only organization admins can change tracked brands, prompts, and competitors.",
-			"forbidden",
-		);
+		throw new ApiError(403, "Forbidden", "Sorry, admin access is required to make changes.", "forbidden");
 	}
 }
 
