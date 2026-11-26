@@ -5,7 +5,7 @@ import { brands, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireBrandSession } from "@/lib/auth/helpers";
-import { type ProcessedBatchChartDataPoint, toBatchChartData } from "@/lib/chart-utils";
+import { toBatchChartColumns, toBatchChartData } from "@/lib/chart-utils";
 import { type LookbackPeriod, lookbackSchema } from "@/lib/lookback";
 import { getPerPromptDailyCompetitors, getPerPromptDailyRuns } from "@/lib/rollup-read";
 import { getBrandVisibility } from "@/server/analytics-core";
@@ -13,7 +13,11 @@ import { resolveBrandWindow } from "@/server/brand-window";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
 export interface BatchChartDataResponse {
-	chartData: ProcessedBatchChartDataPoint[];
+	/**
+	 * `BatchChartColumns` as JSON text. The server-function encoding wraps every
+	 * number in an object of its own, which made this response several megabytes.
+	 */
+	chartData: string;
 	brand: {
 		id: string;
 		name: string;
@@ -82,7 +86,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		// payload rather than erroring (the page renders an empty state).
 		if (promptIds.length === 0) {
 			return {
-				chartData: [],
+				chartData: JSON.stringify(toBatchChartColumns([])),
 				brand: { id: brand.id, name: brand.name },
 				competitors: competitorsResult,
 				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
@@ -96,7 +100,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		]);
 
 		return {
-			chartData: toBatchChartData(runs, competitorRuns),
+			chartData: JSON.stringify(toBatchChartColumns(toBatchChartData(runs, competitorRuns))),
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
