@@ -363,8 +363,8 @@ export function calculateVisibilityPercentages(
 		dataPoint[brand.id] = brandVisibility;
 
 		sortedCompetitors.forEach((competitor) => {
-			const competitorMentions = runsForDate.filter(
-				(run) => run.competitorsMentioned && run.competitorsMentioned.includes(competitor.name),
+			const competitorMentions = runsForDate.filter((run) =>
+				run.competitorsMentioned?.includes(competitor.name),
 			).length;
 			const competitorVisibility = Math.round((competitorMentions / totalRuns) * 100);
 			dataPoint[competitor.id] = competitorVisibility;

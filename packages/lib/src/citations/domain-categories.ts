@@ -210,7 +210,7 @@ export function isGoogleSurfaceUrl(url: string): boolean {
 }
 
 export function parseGoogleProductName(url: string, title?: string | null): string | null {
-	if (title && title.trim()) return title.trim();
+	if (title?.trim()) return title.trim();
 	try {
 		const m = new URL(url).search.match(/productid(?:%3a|:)(\d+)/i);
 		return m ? `Product ${m[1]}` : null;
