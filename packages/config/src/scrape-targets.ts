@@ -75,7 +75,7 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 }
 
 function parseAllScrapeTargets(envValue?: string): ModelConfig[] {
-	if (!envValue || !envValue.trim()) {
+	if (!envValue?.trim()) {
 		throw new Error(
 			"SCRAPE_TARGETS environment variable is required. " +
 				"Set it to configure which AI models to track. Example:\n" +
