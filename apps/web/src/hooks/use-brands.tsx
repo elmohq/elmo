@@ -8,6 +8,12 @@ export const brandKeys = {
 	competitors: (brandId: string) => [...brandKeys.all, "competitors", brandId] as const,
 };
 
+export const brandDetailQuery = (brandId: string) => ({
+	queryKey: brandKeys.detail(brandId),
+	queryFn: () => getBrand({ data: { brandId } }),
+	staleTime: 30_000,
+});
+
 /**
  * Get a single brand by ID.
  * If no brandId provided, extracts from route params.
@@ -17,10 +23,8 @@ export function useBrand(brandId?: string) {
 	const queryClient = useQueryClient();
 
 	const query = useQuery({
-		queryKey: brandKeys.detail(resolvedBrandId || ""),
-		queryFn: () => getBrand({ data: { brandId: resolvedBrandId! } }),
+		...brandDetailQuery(resolvedBrandId || ""),
 		enabled: !!resolvedBrandId,
-		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		refetchOnReconnect: true,
 	});
