@@ -142,7 +142,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 		[
 			"Elmo needs two kinds of providers:",
 			"",
-			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
+			`${pc.bold("1. A scraper")} — to track ChatGPT and Google AI Mode (no public APIs):`,
 			`     • ${pc.cyan("Cloro")}      — most reliable, every surface, ~$0.65/mo per prompt ($30/mo min)`,
 			`     • ${pc.cyan("BrightData")} — pay-as-you-go and cheaper, but slower, ~$0.45/mo per prompt`,
 			`     • ${pc.cyan("Oxylabs")}    — cheapest per run, no Gemini, $49/mo min`,
@@ -150,7 +150,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			`     • ${pc.cyan("Olostep")}    — premium, built for high volume, ~$2.25/mo per prompt`,
 			`     • ${pc.cyan("DataForSEO")} — pay-as-you-go, scrapers + direct APIs, ~$1.20/mo per prompt`,
 			"",
-			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
+			`${pc.bold("2. A direct LLM API")} — for low-latency tasks (onboarding analysis, sentiment scoring,`,
 			"   ad-hoc LLM calls). Required:",
 			`     • ${pc.cyan("OpenRouter")} — one key, all major models (recommended)`,
 			`     • ${pc.cyan("Anthropic / OpenAI / Mistral")} — direct provider keys`,

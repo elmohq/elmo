@@ -82,7 +82,7 @@ const config: StorybookConfig = {
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },
 					{ find: /^@tanstack\/react-start\/server$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },
 					{ find: /^@tanstack\/react-start$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },
-					{ find: /^@\//, replacement: path.resolve(__dirname, "../src") + "/" },
+					{ find: /^@\//, replacement: `${path.resolve(__dirname, "../src")}/` },
 				],
 			},
 		});
