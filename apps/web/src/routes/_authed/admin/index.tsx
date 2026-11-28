@@ -95,7 +95,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 	}, [open, currentDelay]);
 
 	const handleUpdateUnit = (unit: keyof typeof timeUnits, value: string) => {
-		const numValue = value === "" ? 0 : Math.max(0, parseInt(value) || 0);
+		const numValue = value === "" ? 0 : Math.max(0, Number.parseInt(value, 10) || 0);
 		setTimeUnits({ ...timeUnits, [unit]: numValue });
 	};
 
