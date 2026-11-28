@@ -19,7 +19,7 @@ import * as pgRead from "../src/lib/rollup-read";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
-const ITERATIONS = parseInt(process.argv.find((a) => a.startsWith("--iterations="))?.split("=")[1] || "5");
+const ITERATIONS = Number.parseInt(process.argv.find((a) => a.startsWith("--iterations="))?.split("=")[1] || "5", 10);
 const WARMUP = 1;
 
 interface BenchResult {
@@ -99,7 +99,7 @@ async function benchBrand(brandId: string, runCount: number, hasCitations: boole
 }
 
 async function main(): Promise<void> {
-	const NUM_BRANDS = parseInt(process.argv.find((a) => a.startsWith("--brands="))?.split("=")[1] || "5");
+	const NUM_BRANDS = Number.parseInt(process.argv.find((a) => a.startsWith("--brands="))?.split("=")[1] || "5", 10);
 	console.log(`Benchmark: ${ITERATIONS} iterations + ${WARMUP} warmup, top ${NUM_BRANDS} brands\n`);
 
 	await db.execute(sql`SET statement_timeout = '30s'`);
